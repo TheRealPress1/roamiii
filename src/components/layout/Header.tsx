@@ -25,7 +25,7 @@ export function Header({ transparent }: HeaderProps) {
   };
 
   const handleGetStarted = () => {
-    navigate(user ? '/app' : '/auth?mode=signup');
+    navigate(user ? '/app' : '/onboarding');
   };
 
   return (
