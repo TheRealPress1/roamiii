@@ -1,123 +1,192 @@
 
 
-# Fix "new row violates RLS policy for trips" on Create Trip
+# Auto-Calculate "Split Between X People" from Trip Members
 
-## Problem Analysis
-
-The error occurs because of how PostgreSQL RLS interacts with `INSERT ... RETURNING`:
-
-1. When the app inserts a trip with `.select('id, name, join_code')`, PostgreSQL evaluates **both** the INSERT policy AND the SELECT policy
-2. The INSERT policy passes: `auth.uid() = created_by`
-3. The SELECT policy fails: `is_trip_member(id, auth.uid())` returns `false` because the trigger that creates the `trip_members` row runs **AFTER** the insert, but `RETURNING` needs the SELECT policy to pass **during** the insert
-
-### Technical Detail
-The `on_trip_created` trigger is an AFTER INSERT trigger that adds the creator to `trip_members`. But RLS for `RETURNING` is evaluated before the trigger completes/commits.
+This plan removes the manual split input and automatically calculates the per-person cost based on the actual number of trip members.
 
 ---
 
-## Solution: Add Creator SELECT Policy
+## Current State
 
-Add an additional SELECT policy that allows the **trip creator** to view their trip immediately, without needing to be in `trip_members` first.
-
-### Database Migration
-
-```sql
--- Add policy allowing trip creator to view their own trip
--- This enables INSERT ... RETURNING to work properly
--- since the trigger hasn't run yet at RETURNING evaluation time
-CREATE POLICY "Creator can view own trips"
-ON public.trips
-FOR SELECT
-TO authenticated
-USING (auth.uid() = created_by);
-```
-
-This policy works alongside the existing "Members can view trips" policy. Since both are PERMISSIVE, either one passing allows SELECT access.
+The `CreateProposalModal` component currently:
+- Has a manual input field for "Split between X people" (default: 4)
+- Uses this value to calculate `costPerPerson = totalCost / attendeeCount`
+- The parent `TripChat.tsx` already has `members` data from `useTripData` hook
 
 ---
 
-## Why This Works
+## Solution: Pass Member Count as Prop
 
-```text
-INSERT with RETURNING Flow:
-┌─────────────────────────────────────────────────────────────────┐
-│ 1. INSERT row with created_by = auth.uid()                      │
-│    → INSERT policy "Users can create their own trips"           │
-│    → CHECK: auth.uid() = created_by ✓                           │
-├─────────────────────────────────────────────────────────────────┤
-│ 2. RETURNING clause evaluates SELECT policies                   │
-│    → Policy 1: is_trip_member(id, auth.uid()) ✗ (no member yet) │
-│    → Policy 2: auth.uid() = created_by ✓  ← NEW POLICY          │
-│    → At least one PERMISSIVE policy passes → SELECT allowed     │
-├─────────────────────────────────────────────────────────────────┤
-│ 3. AFTER INSERT trigger runs                                    │
-│    → handle_new_trip() inserts trip_members row with role=owner │
-├─────────────────────────────────────────────────────────────────┤
-│ 4. Transaction commits                                          │
-│    → Now is_trip_member() also returns true                     │
-└─────────────────────────────────────────────────────────────────┘
-```
+Since `TripChat.tsx` already fetches members via `useTripData`, we'll pass the member count to the modal rather than making a duplicate query.
 
----
-
-## Files to Modify
+### Changes Overview
 
 | File | Action | Description |
 |------|--------|-------------|
-| `supabase/migrations/[timestamp]_fix_trip_rls_select.sql` | Create | Add new SELECT policy for creator |
+| `src/components/proposal/CreateProposalModal.tsx` | Update | Add `memberCount` prop, remove manual input, auto-calculate split |
+| `src/pages/TripChat.tsx` | Update | Pass `memberCount={members.length}` to the modal |
 
 ---
 
-## Code Review
+## Implementation Details
 
-The existing `src/pages/CreateTrip.tsx` code is **already correct**:
+### 1. Update CreateProposalModal Props
+
+**File:** `src/components/proposal/CreateProposalModal.tsx`
+
+Add new prop to interface:
 
 ```typescript
-// Line 75-95: Already includes created_by: user.id
-const handleCreateTrip = async () => {
-  if (!user) return;  // ✓ Checks for authenticated user
-  
-  const { data: trip, error: tripError } = await supabase
-    .from('trips')
-    .insert({
-      name: name.trim(),
-      created_by: user.id,  // ✓ Correctly sets creator
-      // ... other fields
-    })
-    .select('id, name, join_code')
-    .single();
+interface CreateProposalModalProps {
+  open: boolean;
+  onClose: () => void;
+  tripId: string;
+  onCreated: () => void;
+  memberCount: number;  // NEW: Auto-populated from trip members
+}
 ```
 
-No code changes needed - the fix is purely database-side.
+### 2. Remove Manual Attendee Input State
+
+Remove:
+```typescript
+const [attendeeCount, setAttendeeCount] = useState('4');
+```
+
+Replace with derived value:
+```typescript
+// Use member count from props, minimum of 1
+const splitCount = Math.max(memberCount, 1);
+```
+
+### 3. Update Cost Per Person Calculation
+
+Change from:
+```typescript
+const costPerPerson = attendeeCount ? Math.round(totalCost / parseInt(attendeeCount)) : 0;
+```
+
+To:
+```typescript
+const costPerPerson = Math.round(totalCost / splitCount);
+```
+
+### 4. Replace Manual Input with Static Text
+
+**Current UI (lines 303-314):**
+```text
+┌─────────────────────────────────────────────────────┐
+│ Split between [ 4 ] people          Est. per person │
+│                                           $XXX      │
+└─────────────────────────────────────────────────────┘
+```
+
+**New UI:**
+```text
+┌─────────────────────────────────────────────────────┐
+│ Split: 4 members                    Est. per person │
+│                                           $XXX      │
+└─────────────────────────────────────────────────────┘
+```
+
+Replace the input section with:
+```tsx
+<div className="flex items-center gap-2">
+  <span className="text-sm text-muted-foreground">
+    Split: {splitCount} {splitCount === 1 ? 'member' : 'members'}
+  </span>
+</div>
+```
+
+### 5. Update Reset Form Function
+
+Remove `attendeeCount` from `resetForm()` since it's no longer state.
+
+### 6. Update Proposal Insert
+
+Change:
+```typescript
+attendee_count: parseInt(attendeeCount) || 1,
+```
+
+To:
+```typescript
+attendee_count: splitCount,
+```
+
+### 7. Update TripChat to Pass Member Count
+
+**File:** `src/pages/TripChat.tsx`
+
+Update modal invocation:
+```tsx
+<CreateProposalModal
+  open={proposalModalOpen}
+  onClose={() => setProposalModalOpen(false)}
+  tripId={tripId!}
+  onCreated={() => {
+    setProposalModalOpen(false);
+    refetch();
+  }}
+  memberCount={members.length}  // NEW
+/>
+```
+
+---
+
+## Edge Cases Handled
+
+| Scenario | Handling |
+|----------|----------|
+| Member count is 0 (impossible but defensive) | `Math.max(memberCount, 1)` ensures minimum of 1 |
+| Modal opened before members loaded | Parent waits for loading to complete before rendering modal |
+| Members change while modal is open | Props update automatically; per-person recalculates |
+
+---
+
+## Visual Comparison
+
+**Before:**
+```text
+┌─────────────────────────────────────────────────────┐
+│ Cost Estimator                                      │
+├─────────────────────────────────────────────────────┤
+│ Lodging Total    Transport                          │
+│ [$ 1200      ]   [$ 400       ]                     │
+│ Food             Activities                         │
+│ [$ 300       ]   [$ 200       ]                     │
+├─────────────────────────────────────────────────────┤
+│ Split between [4] people          Est. per person   │
+│ ────────────────────────                 $525       │
+└─────────────────────────────────────────────────────┘
+                  ↑
+        Manual editable input
+```
+
+**After:**
+```text
+┌─────────────────────────────────────────────────────┐
+│ Cost Estimator                                      │
+├─────────────────────────────────────────────────────┤
+│ Lodging Total    Transport                          │
+│ [$ 1200      ]   [$ 400       ]                     │
+│ Food             Activities                         │
+│ [$ 300       ]   [$ 200       ]                     │
+├─────────────────────────────────────────────────────┤
+│ Split: 4 members                  Est. per person   │
+│                                          $525       │
+└─────────────────────────────────────────────────────┘
+        ↑
+   Static text from actual member count
+```
 
 ---
 
 ## Acceptance Criteria
 
-After applying the migration:
-
-1. Logged-in user navigates to `/app/create`
-2. Enters trip name (minimum 3 characters)
-3. Clicks "Continue" button
-4. Trip is created successfully without RLS errors
-5. User is automatically added as owner in `trip_members` (via trigger)
-6. User proceeds to the Invite step with join code visible
-7. User can navigate to trip chat
-8. Refreshing the page still shows the trip (membership-based SELECT works)
-9. Non-members still cannot see the trip (original policy still enforced)
-
----
-
-## Summary
-
-| Current State | Issue |
-|---------------|-------|
-| INSERT policy works | `auth.uid() = created_by` passes |
-| SELECT policy fails on RETURNING | `is_trip_member()` returns false before trigger |
-
-| Solution | Effect |
-|----------|--------|
-| Add creator SELECT policy | `auth.uid() = created_by` allows RETURNING |
-| Keep member SELECT policy | Non-creators still need membership |
-| Both are PERMISSIVE | Either passing allows access |
+1. No manual "split between X people" input field in the modal
+2. Per-person estimate automatically uses actual trip member count
+3. If member count changes (e.g., someone joins), the calculation updates
+4. Saved proposal has correct `attendee_count` matching member count
+5. Works correctly with 1, 2, or many members
 
