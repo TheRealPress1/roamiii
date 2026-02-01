@@ -241,6 +241,97 @@ export type Database = {
           },
         ]
       }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          proposal_id: string | null
+          trip_id: string
+          type: Database["public"]["Enums"]["message_type"]
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          proposal_id?: string | null
+          trip_id: string
+          type?: Database["public"]["Enums"]["message_type"]
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          proposal_id?: string | null
+          trip_id?: string
+          type?: Database["public"]["Enums"]["message_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_proposal_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "trip_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -267,6 +358,58 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      proposal_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          proposal_id: string
+          trip_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          proposal_id: string
+          trip_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          proposal_id?: string
+          trip_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_comments_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "trip_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_comments_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       proposals: {
         Row: {
@@ -388,6 +531,313 @@ export type Database = {
           },
         ]
       }
+      trip_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          id: string
+          invited_by: string
+          message: string | null
+          status: Database["public"]["Enums"]["invite_status"]
+          token: string
+          trip_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          invited_by: string
+          message?: string | null
+          status?: Database["public"]["Enums"]["invite_status"]
+          token?: string
+          trip_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          invited_by?: string
+          message?: string | null
+          status?: Database["public"]["Enums"]["invite_status"]
+          token?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_invites_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_invites_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_members: {
+        Row: {
+          availability_json: Json | null
+          budget_max: number | null
+          budget_min: number | null
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["trip_role"]
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          availability_json?: Json | null
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["trip_role"]
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          availability_json?: Json | null
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["trip_role"]
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_members_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_proposals: {
+        Row: {
+          attendee_count: number | null
+          cost_activities_total: number | null
+          cost_food_total: number | null
+          cost_lodging_total: number | null
+          cost_transport_total: number | null
+          cover_image_url: string
+          created_at: string
+          created_by: string
+          date_end: string | null
+          date_start: string | null
+          destination: string
+          estimated_cost_per_person: number | null
+          flexible_dates: boolean | null
+          id: string
+          image_urls: string[] | null
+          lodging_links: string[] | null
+          trip_id: string
+          updated_at: string
+          vibe_tags: string[] | null
+        }
+        Insert: {
+          attendee_count?: number | null
+          cost_activities_total?: number | null
+          cost_food_total?: number | null
+          cost_lodging_total?: number | null
+          cost_transport_total?: number | null
+          cover_image_url: string
+          created_at?: string
+          created_by: string
+          date_end?: string | null
+          date_start?: string | null
+          destination: string
+          estimated_cost_per_person?: number | null
+          flexible_dates?: boolean | null
+          id?: string
+          image_urls?: string[] | null
+          lodging_links?: string[] | null
+          trip_id: string
+          updated_at?: string
+          vibe_tags?: string[] | null
+        }
+        Update: {
+          attendee_count?: number | null
+          cost_activities_total?: number | null
+          cost_food_total?: number | null
+          cost_lodging_total?: number | null
+          cost_transport_total?: number | null
+          cover_image_url?: string
+          created_at?: string
+          created_by?: string
+          date_end?: string | null
+          date_start?: string | null
+          destination?: string
+          estimated_cost_per_person?: number | null
+          flexible_dates?: boolean | null
+          id?: string
+          image_urls?: string[] | null
+          lodging_links?: string[] | null
+          trip_id?: string
+          updated_at?: string
+          vibe_tags?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_proposals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_proposals_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_votes: {
+        Row: {
+          created_at: string
+          id: string
+          proposal_id: string
+          score: number | null
+          trip_id: string
+          updated_at: string
+          user_id: string
+          vote: Database["public"]["Enums"]["vote_type"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          proposal_id: string
+          score?: number | null
+          trip_id: string
+          updated_at?: string
+          user_id: string
+          vote: Database["public"]["Enums"]["vote_type"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          proposal_id?: string
+          score?: number | null
+          trip_id?: string
+          updated_at?: string
+          user_id?: string
+          vote?: Database["public"]["Enums"]["vote_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_votes_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "trip_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_votes_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trips: {
+        Row: {
+          budget_max: number | null
+          budget_min: number | null
+          created_at: string
+          created_by: string
+          date_end: string | null
+          date_start: string | null
+          decision_deadline: string | null
+          flexible_dates: boolean | null
+          home_city: string | null
+          id: string
+          join_code: string | null
+          name: string
+          pinned_proposal_id: string | null
+          status: Database["public"]["Enums"]["trip_status"]
+          updated_at: string
+        }
+        Insert: {
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          created_by: string
+          date_end?: string | null
+          date_start?: string | null
+          decision_deadline?: string | null
+          flexible_dates?: boolean | null
+          home_city?: string | null
+          id?: string
+          join_code?: string | null
+          name: string
+          pinned_proposal_id?: string | null
+          status?: Database["public"]["Enums"]["trip_status"]
+          updated_at?: string
+        }
+        Update: {
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          created_by?: string
+          date_end?: string | null
+          date_start?: string | null
+          decision_deadline?: string | null
+          flexible_dates?: boolean | null
+          home_city?: string | null
+          id?: string
+          join_code?: string | null
+          name?: string
+          pinned_proposal_id?: string | null
+          status?: Database["public"]["Enums"]["trip_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_pinned_proposal_fkey"
+            columns: ["pinned_proposal_id"]
+            isOneToOne: false
+            referencedRelation: "trip_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       votes: {
         Row: {
           board_id: string
@@ -448,6 +898,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_join_code: { Args: never; Returns: string }
       is_board_admin: {
         Args: { board_uuid: string; user_uuid: string }
         Returns: boolean
@@ -460,11 +911,26 @@ export type Database = {
         Args: { board_uuid: string; user_uuid: string }
         Returns: boolean
       }
+      is_trip_admin: {
+        Args: { trip_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
+      is_trip_member: {
+        Args: { trip_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
+      is_trip_owner: {
+        Args: { trip_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       board_role: "owner" | "admin" | "member"
       board_status: "active" | "decided" | "archived"
       invite_status: "pending" | "accepted" | "expired"
+      message_type: "text" | "proposal" | "system"
+      trip_role: "owner" | "admin" | "member"
+      trip_status: "planning" | "decided"
       vote_type: "in" | "maybe" | "out"
     }
     CompositeTypes: {
@@ -596,6 +1062,9 @@ export const Constants = {
       board_role: ["owner", "admin", "member"],
       board_status: ["active", "decided", "archived"],
       invite_status: ["pending", "accepted", "expired"],
+      message_type: ["text", "proposal", "system"],
+      trip_role: ["owner", "admin", "member"],
+      trip_status: ["planning", "decided"],
       vote_type: ["in", "maybe", "out"],
     },
   },
