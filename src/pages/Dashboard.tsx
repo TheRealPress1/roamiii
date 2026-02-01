@@ -1,19 +1,37 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Users, Loader2, MessageCircle, ChevronRight, Crown } from 'lucide-react';
+import { Plus, Users, Loader2, MessageCircle, ChevronRight, Crown, Copy, Check, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import type { TripWithMeta } from '@/lib/tripchat-types';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+
+interface TripWithDetails {
+  id: string;
+  name: string;
+  status: 'planning' | 'decided';
+  date_start: string | null;
+  date_end: string | null;
+  flexible_dates: boolean | null;
+  home_city: string | null;
+  join_code: string | null;
+  created_at: string;
+  updated_at: string;
+  member_count: number;
+  proposal_count: number;
+  last_message: string | null;
+  last_message_at: string | null;
+}
 
 export default function Dashboard() {
   const { profile } = useAuth();
-  const [trips, setTrips] = useState<TripWithMeta[]>([]);
+  const [trips, setTrips] = useState<TripWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTrips();
@@ -21,6 +39,7 @@ export default function Dashboard() {
 
   const fetchTrips = async () => {
     try {
+      // Fetch trips with member count, proposal count
       const { data: tripData, error } = await supabase
         .from('trips')
         .select(`
@@ -28,22 +47,58 @@ export default function Dashboard() {
           trip_members(count),
           trip_proposals(count)
         `)
-        .order('created_at', { ascending: false });
+        .order('updated_at', { ascending: false });
 
       if (error) throw error;
 
-      const tripsWithMeta = (tripData || []).map((trip: any) => ({
-        ...trip,
-        member_count: trip.trip_members?.[0]?.count || 0,
-        proposal_count: trip.trip_proposals?.[0]?.count || 0,
-      }));
+      // Get last message for each trip
+      const tripsWithDetails: TripWithDetails[] = await Promise.all(
+        (tripData || []).map(async (trip: any) => {
+          // Fetch latest message for this trip
+          const { data: messageData } = await supabase
+            .from('messages')
+            .select('body, created_at, type')
+            .eq('trip_id', trip.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-      setTrips(tripsWithMeta);
+          return {
+            ...trip,
+            member_count: trip.trip_members?.[0]?.count || 0,
+            proposal_count: trip.trip_proposals?.[0]?.count || 0,
+            last_message: messageData?.body || null,
+            last_message_at: messageData?.created_at || null,
+          };
+        })
+      );
+
+      // Sort by last activity (message or update)
+      tripsWithDetails.sort((a, b) => {
+        const aTime = a.last_message_at || a.updated_at;
+        const bTime = b.last_message_at || b.updated_at;
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      });
+
+      setTrips(tripsWithDetails);
     } catch (error) {
       console.error('Error fetching trips:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCopyInvite = async (e: React.MouseEvent, trip: TripWithDetails) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!trip.join_code) return;
+    
+    const inviteLink = `${window.location.origin}/join/${trip.join_code}`;
+    await navigator.clipboard.writeText(inviteLink);
+    setCopiedId(trip.id);
+    toast.success('Invite link copied!');
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -59,10 +114,10 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
           >
             <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
-              {profile?.name ? `Hey, ${profile.name.split(' ')[0]}!` : 'Welcome back!'}
+              {profile?.name ? `Hey, ${profile.name.split(' ')[0]}!` : 'Dashboard'}
             </h1>
             <p className="text-muted-foreground">
-              Plan your next adventure with friends
+              Your trip chats
             </p>
           </motion.div>
 
@@ -104,16 +159,24 @@ export default function Dashboard() {
                 <div className="w-20 h-20 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
                   <MessageCircle className="h-10 w-10 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">No trips yet</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">You're not in any trips yet</h3>
                 <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
                   Create a trip chat and invite your crew to start planning together.
                 </p>
-                <Link to="/app/create">
-                  <Button className="gradient-primary text-white">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Trip
-                  </Button>
-                </Link>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link to="/app/create">
+                    <Button className="gradient-primary text-white">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create a Trip
+                    </Button>
+                  </Link>
+                  <Link to="/app/join">
+                    <Button variant="outline">
+                      <Users className="h-4 w-4 mr-2" />
+                      Join a Trip
+                    </Button>
+                  </Link>
+                </div>
               </motion.div>
             ) : (
               <div className="space-y-3">
@@ -137,24 +200,29 @@ export default function Dashboard() {
                             <h3 className="text-base font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                               {trip.name}
                             </h3>
-                            {trip.status === 'decided' && (
-                              <span className="px-2 py-0.5 rounded-full bg-vote-in text-white text-xs font-medium flex items-center gap-1">
-                                <Crown className="h-3 w-3" />
-                                Decided
-                              </span>
-                            )}
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${
+                              trip.status === 'decided' 
+                                ? 'bg-vote-in text-white' 
+                                : 'bg-primary/10 text-primary'
+                            }`}>
+                              {trip.status === 'decided' && <Crown className="h-3 w-3" />}
+                              {trip.status === 'decided' ? 'Decided' : 'Planning'}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                            {(trip.date_start || trip.date_end) && (
+                          
+                          {/* Trip details */}
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground mb-1">
+                            {(trip.date_start || trip.date_end) ? (
                               <span>
                                 {trip.date_start && format(new Date(trip.date_start), 'MMM d')}
                                 {trip.date_end && ` - ${format(new Date(trip.date_end), 'MMM d')}`}
                               </span>
-                            )}
-                            {trip.flexible_dates && <span>Flexible dates</span>}
+                            ) : trip.flexible_dates ? (
+                              <span>Flexible dates</span>
+                            ) : null}
                             <span className="flex items-center gap-1">
                               <Users className="h-3.5 w-3.5" />
-                              {trip.member_count}
+                              {trip.member_count} {trip.member_count === 1 ? 'member' : 'members'}
                             </span>
                             {trip.proposal_count > 0 && (
                               <span className="text-primary font-medium">
@@ -162,10 +230,29 @@ export default function Dashboard() {
                               </span>
                             )}
                           </div>
+
+                          {/* Last message preview */}
+                          <p className="text-sm text-muted-foreground truncate">
+                            {trip.last_message || 'No messages yet'}
+                          </p>
                         </div>
 
-                        {/* Arrow */}
-                        <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => handleCopyInvite(e, trip)}
+                          >
+                            {copiedId === trip.id ? (
+                              <Check className="h-4 w-4 text-vote-in" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                        </div>
                       </div>
                     </Link>
                   </motion.div>
