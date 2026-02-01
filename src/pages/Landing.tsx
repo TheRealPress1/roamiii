@@ -27,7 +27,11 @@ export default function Landing() {
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
-    navigate(user ? '/app' : '/auth?mode=signup');
+    navigate(user ? '/app' : '/onboarding');
+  };
+
+  const handleCreateTrip = () => {
+    navigate(user ? '/app/create' : '/onboarding?next=/app/create');
   };
 
   const handleSignIn = () => {
@@ -78,7 +82,7 @@ export default function Landing() {
               <Button 
                 size="lg" 
                 className="gradient-primary text-white shadow-lg hover:shadow-xl transition-all text-base px-8"
-                onClick={handleGetStarted}
+                onClick={handleCreateTrip}
               >
                 Create a Trip
                 <ArrowRight className="ml-2 h-5 w-5" />
