@@ -98,8 +98,8 @@ export default function Auth() {
             </h1>
             <p className="text-muted-foreground">
               {mode === 'signup' 
-                ? 'Start planning your next group adventure' 
-                : 'Sign in to access your trip boards'}
+                ? 'Start planning your next group trip' 
+                : 'Sign in to access your trip chats'}
             </p>
           </div>
 
@@ -154,7 +154,7 @@ export default function Auth() {
             </>
           ) : (
             <>
-              New to Trip Arena?{' '}
+              New to TripChat?{' '}
               <a href="/auth?mode=signup" className="text-primary hover:underline">Create an account</a>
             </>
           )}

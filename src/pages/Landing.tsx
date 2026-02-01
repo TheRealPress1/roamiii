@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Users, Vote, CheckCircle, MapPin, Calendar, DollarSign } from 'lucide-react';
+import { ArrowRight, Users, Vote, CheckCircle, MessageCircle, Calendar, DollarSign, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -47,26 +47,26 @@ export default function Landing() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
             >
-              <Users className="h-4 w-4" />
-              Group Trip Planning Made Simple
+              <MessageCircle className="h-4 w-4" />
+              Group Trip Planning Made Fun
             </motion.div>
             
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-foreground mb-6 leading-tight">
-              Stop Arguing.{' '}
+              Plan Trips Like{' '}
               <span className="bg-gradient-to-r from-primary via-orange-500 to-amber-500 bg-clip-text text-transparent">
-                Pick the Trip.
+                You're Texting
               </span>
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              The visual-first platform where friends propose trips, vote on destinations, 
-              and converge on the perfect adventure. No more endless group chats.
+              TripChat is where friends chat, propose destinations, vote on ideas, 
+              and lock in the perfect trip. No more endless group texts.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/auth?mode=signup">
                 <Button size="lg" className="gradient-primary text-white shadow-lg hover:shadow-xl transition-all text-base px-8">
-                  Create a Trip Board
+                  Create a Trip
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
@@ -78,7 +78,7 @@ export default function Landing() {
             </div>
           </motion.div>
 
-          {/* Mock Preview Card */}
+          {/* Mock Chat Preview */}
           <motion.div 
             className="mt-16 max-w-4xl mx-auto"
             initial={{ opacity: 0, y: 40 }}
@@ -86,45 +86,63 @@ export default function Landing() {
             transition={{ delay: 0.4, duration: 0.6 }}
           >
             <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
-              <div className="aspect-[16/9] relative bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <MapPin className="h-12 w-12 mx-auto mb-3 opacity-80" />
-                    <p className="text-2xl font-display font-semibold">Cancún, Mexico</p>
-                  </div>
+              {/* Chat Header */}
+              <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                  <MessageCircle className="h-5 w-5 text-primary" />
                 </div>
-                {/* Overlay gradient */}
-                <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/50 to-transparent" />
-                {/* Tags */}
-                <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
-                  <VibeTag vibe="beach" />
-                  <VibeTag vibe="party" />
-                  <VibeTag vibe="adventure" />
+                <div>
+                  <h3 className="font-semibold text-foreground">Senior Spring Break</h3>
+                  <p className="text-sm text-muted-foreground">8 friends · Planning</p>
                 </div>
               </div>
-              <div className="p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-foreground mb-2">Spring Break 2026</h3>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        Mar 15 - 22
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="h-4 w-4" />
-                        $850/person
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        8 friends
-                      </span>
+
+              {/* Chat Messages */}
+              <div className="p-4 space-y-4">
+                {/* Text message */}
+                <div className="flex items-start gap-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">JM</div>
+                  <div className="bg-muted px-4 py-2 rounded-2xl rounded-tl-sm max-w-xs">
+                    <p className="text-sm">We need to decide soon! Who's looking into options?</p>
+                  </div>
+                </div>
+
+                {/* Proposal Card in Chat */}
+                <div className="flex items-start gap-2">
+                  <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">SK</div>
+                  <div className="max-w-sm">
+                    <p className="text-xs text-muted-foreground mb-1">proposed a trip</p>
+                    <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+                      <div className="aspect-[2/1] bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 relative">
+                        <div className="absolute bottom-2 left-2 flex gap-1">
+                          <VibeTag vibe="beach" size="sm" />
+                          <VibeTag vibe="party" size="sm" />
+                        </div>
+                      </div>
+                      <div className="p-3">
+                        <p className="font-semibold text-foreground">Cancún, Mexico</p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" /> Mar 15-22
+                          </span>
+                          <span className="flex items-center gap-1 text-primary font-medium">
+                            <DollarSign className="h-3 w-3" /> $850/person
+                          </span>
+                        </div>
+                        <div className="flex gap-2 mt-3">
+                          <VotePill vote="in" count={5} />
+                          <VotePill vote="maybe" count={2} />
+                          <VotePill vote="out" count={1} />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <VotePill vote="in" count={5} />
-                    <VotePill vote="maybe" count={2} />
-                    <VotePill vote="out" count={1} />
+                </div>
+
+                {/* Reaction text */}
+                <div className="flex justify-end">
+                  <div className="bg-primary text-white px-4 py-2 rounded-2xl rounded-tr-sm max-w-xs">
+                    <p className="text-sm">This looks amazing! I'm in 🙌</p>
                   </div>
                 </div>
               </div>
@@ -141,10 +159,10 @@ export default function Landing() {
             {...fadeIn}
           >
             <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
-              How It Works
+              How TripChat Works
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              From chaos to consensus in three simple steps
+              From group chat chaos to booked and ready in three steps
             </p>
           </motion.div>
 
@@ -158,23 +176,23 @@ export default function Landing() {
             {[
               {
                 step: '01',
-                icon: MapPin,
-                title: 'Propose',
-                description: 'Anyone can add trip ideas with images, dates, and cost estimates. Compare apples to apples.',
+                icon: MessageCircle,
+                title: 'Chat & Propose',
+                description: 'Create a trip chat and invite your crew. Anyone can propose destinations as visual cards right in the conversation.',
                 color: 'from-primary to-orange-500'
               },
               {
                 step: '02',
                 icon: Vote,
-                title: 'Vote',
-                description: 'Cast your vote: In, Maybe, or Out. See what works for the group in real-time.',
+                title: 'Vote Together',
+                description: 'Everyone votes In, Maybe, or Out on each proposal. See what works for the whole group in real-time.',
                 color: 'from-blue-500 to-cyan-500'
               },
               {
                 step: '03',
                 icon: CheckCircle,
-                title: 'Commit',
-                description: 'The group converges on a final pick. Lock it in and start packing.',
+                title: 'Pin & Go',
+                description: "Once the group converges, pin the final pick. You're ready to book and start packing!",
                 color: 'from-emerald-500 to-green-500'
               }
             ].map((item, i) => (
@@ -201,12 +219,16 @@ export default function Landing() {
       <section className="py-20 md:py-28 bg-secondary/30">
         <div className="container">
           <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+              <Sparkles className="h-4 w-4" />
+              No more group chat chaos
+            </div>
             <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-6">
-              Built for Group Decisions
+              Finally, A Trip Gets Planned
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
-              Stop scrolling through hundreds of messages. Trip Arena forces clarity with 
-              comparable proposals, clear vote counts, budget fit indicators, and decision deadlines.
+              TripChat combines the ease of group messaging with structured proposals, 
+              cost breakdowns, and voting. Everyone's on the same page, and decisions actually happen.
             </p>
             <Link to="/auth?mode=signup">
               <Button size="lg" className="gradient-primary text-white shadow-lg">

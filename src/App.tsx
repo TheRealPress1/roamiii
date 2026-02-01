@@ -8,9 +8,9 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import CreateBoard from "./pages/CreateBoard";
-import Board from "./pages/Board";
-import CreateProposal from "./pages/CreateProposal";
+import CreateTrip from "./pages/CreateTrip";
+import JoinTrip from "./pages/JoinTrip";
+import TripChat from "./pages/TripChat";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,17 +32,17 @@ const App = () => (
             } />
             <Route path="/app/create" element={
               <ProtectedRoute>
-                <CreateBoard />
+                <CreateTrip />
               </ProtectedRoute>
             } />
-            <Route path="/app/board/:boardId" element={
+            <Route path="/app/join" element={
               <ProtectedRoute>
-                <Board />
+                <JoinTrip />
               </ProtectedRoute>
             } />
-            <Route path="/app/board/:boardId/propose" element={
+            <Route path="/app/trip/:tripId" element={
               <ProtectedRoute>
-                <CreateProposal />
+                <TripChat />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
