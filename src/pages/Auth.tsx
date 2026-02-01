@@ -13,7 +13,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const { user, signIn } = useAuth();
+  const { user, loading: authLoading, signIn } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -21,7 +21,10 @@ export default function Auth() {
   const mode = searchParams.get('mode') || 'login';
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/app';
 
+  // Redirect if already authenticated
   useEffect(() => {
+    if (authLoading) return; // Wait for auth to initialize
+    
     if (user) {
       // Check for pending join code after auth
       const pendingJoinCode = sessionStorage.getItem('pendingJoinCode');
@@ -32,7 +35,7 @@ export default function Auth() {
         navigate(from, { replace: true });
       }
     }
-  }, [user, navigate, from]);
+  }, [user, authLoading, navigate, from]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +56,15 @@ export default function Auth() {
     setEmailSent(true);
     toast.success('Check your email for the magic link!');
   };
+
+  // Show loading while checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (emailSent) {
     return (
