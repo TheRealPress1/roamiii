@@ -1,275 +1,296 @@
 
 
-# Phone Number Invites for TripChat
+# Replace SMS Invites with Shareable Link + Invite Code + Gated Preview
 
-This plan adds phone number-based invitations to the Create Trip flow, allowing users to invite friends via SMS as the primary method while keeping email as a fallback option.
+This plan simplifies the invite system by removing SMS/Twilio dependencies and implementing a viral, link-based sharing approach with a gated preview for unauthenticated users.
 
 ---
 
 ## Overview
 
-**Current State**: Users can only invite friends by email during trip creation
-**Target State**: Phone number invites as primary, with email as a toggle option
+**Current State**: Phone/email invite inputs requiring SMS infrastructure
+**Target State**: Copy-able invite links and codes with a beautiful gated preview experience
+
+**Key Benefits**:
+- No Twilio costs or SMS deliverability issues
+- Viral by design - works in any group chat
+- Matches how people naturally share links
 
 ---
 
-## Changes Required
+## Database Changes
 
-### 1. Database Schema Update
+### Remove Phone Number Constraint
 
-Add a `phone_number` column to the `trip_invites` table and make `email` nullable:
+The recent migration added a `phone_number` column and constraint. We need to:
+
+1. Drop the `invite_contact_check` constraint (requires exactly one of email/phone)
+2. Make both `email` and `phone_number` fully nullable (invites may not need either for link-based sharing)
 
 ```sql
--- Add phone_number column
 ALTER TABLE public.trip_invites 
-ADD COLUMN phone_number TEXT;
+DROP CONSTRAINT IF EXISTS invite_contact_check;
 
--- Make email nullable
 ALTER TABLE public.trip_invites 
 ALTER COLUMN email DROP NOT NULL;
+```
 
--- Add constraint: exactly one of email or phone_number must be present
-ALTER TABLE public.trip_invites 
-ADD CONSTRAINT invite_contact_check 
-CHECK (
-  (email IS NOT NULL AND phone_number IS NULL) OR 
-  (email IS NULL AND phone_number IS NOT NULL)
+Note: The `join_code` column already exists on the `trips` table with the `generate_join_code()` function - no additional database changes needed for the core invite flow.
+
+---
+
+## New Route: `/join/:code`
+
+Create a dedicated route for invite links that:
+- Works for both authenticated and unauthenticated users
+- Shows a gated preview for unauthenticated users
+- Auto-joins authenticated users directly
+
+**Route structure**:
+```
+/join/:code  →  JoinTripPreview (public, handles gated preview)
+/app/join    →  Keep existing (for manual code entry when logged in)
+```
+
+---
+
+## File Changes
+
+### 1. Create New Page: `src/pages/JoinTripPreview.tsx`
+
+This is the **gated preview page** for unauthenticated users:
+
+**Behavior**:
+- Fetches trip preview data using the join code (public query via service role or RLS bypass)
+- Shows read-only preview for 2 seconds
+- Then overlays modal: "Join this trip to continue"
+- Buttons: "Sign Up" / "Sign In"
+- After auth, auto-redirects back with code, triggering join
+
+**Preview shows**:
+- Trip name and dates
+- Member count (e.g., "8 friends planning")
+- Top proposal card (destination, cover image, price)
+- Blurred recent messages area
+
+**For authenticated users**:
+- Auto-join the trip immediately
+- Redirect to `/app/trip/:tripId`
+
+---
+
+### 2. Update: `src/App.tsx`
+
+Add the new public route:
+
+```typescript
+<Route path="/join/:code" element={<JoinTripPreview />} />
+```
+
+This route is NOT wrapped in ProtectedRoute since it needs to show the gated preview.
+
+---
+
+### 3. Update: `src/pages/CreateTrip.tsx`
+
+Replace Step 2 (Invite Crew) with the new share-first UI:
+
+**New Step 2 UI**:
+```
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│            🎉 Invite your friends                   │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  Invite Link                                  │  │
+│  │  ┌─────────────────────────────┐ ┌────────┐   │  │
+│  │  │ tripchat.app/join/ABCD12   │ │  Copy  │   │  │
+│  │  └─────────────────────────────┘ └────────┘   │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  Invite Code                                  │  │
+│  │                                               │  │
+│  │          ┌──────────────────────┐             │  │
+│  │          │     ABCD12           │  [Copy]     │  │
+│  │          └──────────────────────┘             │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  Share this link or code in any group chat.         │
+│                                                     │
+│          [ Go to Trip Chat ]                        │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+**Key changes**:
+- Remove all email/phone input fields
+- Remove invite message textarea
+- Remove trip_invites insertion logic
+- Show invite link and code after trip creation
+- Add copy buttons for both link and code
+- Change final button to "Go to Trip Chat"
+
+**Implementation approach**:
+1. Step 1 stays the same (Trip Setup)
+2. Step 2 becomes a "success + share" screen shown AFTER trip is created
+3. Trip creation happens on Step 1's "Continue" click
+4. Step 2 displays the generated invite link and code
+
+---
+
+### 4. Update: `src/components/invite/InviteModal.tsx`
+
+Simplify to show only link and code:
+
+**New UI**:
+- Remove all email invite functionality
+- Show invite link with copy button
+- Show invite code with copy button
+- Helper text: "Share this link or code in any group chat"
+
+Remove:
+- Email input and Add button
+- Email chips display
+- Send invites button and logic
+
+---
+
+### 5. Update: `src/pages/JoinTrip.tsx`
+
+Update the authenticated join page:
+
+**Changes**:
+- Accept invite link paste (extract code from URL)
+- Keep code input field
+- Redirect to `/join/:code` for link-based joins (to leverage the auto-join logic)
+
+---
+
+### 6. Update: `src/pages/Auth.tsx`
+
+Handle redirect after auth with pending join:
+
+**Changes**:
+- Check for `pendingJoinCode` in sessionStorage after successful auth
+- If exists, redirect to `/join/:code` to complete the join flow
+- Clear the pendingJoinCode after use
+
+---
+
+### 7. Create: `src/lib/trip-preview.ts`
+
+Helper functions for fetching trip preview data:
+
+```typescript
+export async function fetchTripPreview(joinCode: string) {
+  // Fetch basic trip info by join code
+  // This needs to be a public query or use service role
+  // Returns: name, dates, member_count, top_proposal
+}
+```
+
+**Note**: This requires adding an RLS policy that allows reading basic trip info by join_code for preview purposes, OR creating an edge function to fetch preview data.
+
+---
+
+## Security Considerations
+
+### RLS Policy for Trip Preview
+
+Add a limited SELECT policy for unauthenticated preview:
+
+```sql
+-- Allow reading basic trip info by join_code (for preview)
+CREATE POLICY "Anyone can preview trips by join code" ON public.trips
+FOR SELECT
+USING (
+  -- Only return rows if querying by join_code
+  join_code IS NOT NULL
 );
-
--- Update RLS policy for phone-based invite acceptance
-DROP POLICY IF EXISTS "Invited users can update invite" ON public.trip_invites;
-
-CREATE POLICY "Invited users can update invite" ON public.trip_invites
-FOR UPDATE USING (
-  email = (SELECT email FROM profiles WHERE id = auth.uid())
-  -- Phone-based acceptance will be handled via token validation
-);
 ```
 
----
+However, this approach has risks. A safer approach is to:
 
-### 2. SMS Provider Setup (Twilio)
+1. Create an edge function `get-trip-preview` that:
+   - Accepts a join_code
+   - Returns limited data (name, dates, member count, top proposal)
+   - Uses service role internally
+   - No auth required
 
-An edge function will be needed to send SMS invites. This requires:
-
-- **TWILIO_ACCOUNT_SID** - Twilio account identifier
-- **TWILIO_AUTH_TOKEN** - Twilio authentication token  
-- **TWILIO_PHONE_NUMBER** - Your Twilio phone number for sending SMS
-
-You'll need to sign up at [twilio.com](https://www.twilio.com) and get these credentials from your Twilio Console.
-
----
-
-### 3. Edge Function: Send SMS Invite
-
-Create `supabase/functions/send-sms-invite/index.ts`:
-
-```typescript
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-interface SMSInviteRequest {
-  phoneNumber: string;
-  joinCode: string;
-  tripName: string;
-  inviterName: string;
-}
-
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const { phoneNumber, joinCode, tripName, inviterName }: SMSInviteRequest = await req.json();
-
-    const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-    const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    const twilioNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
-
-    const message = `${inviterName} invited you to join "${tripName}" on TripChat! 🌴\n\nJoin with code: ${joinCode}\n\nOr tap here: ${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app')}/app/join?code=${joinCode}`;
-
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Basic ${btoa(`${accountSid}:${authToken}`)}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          From: twilioNumber!,
-          To: phoneNumber,
-          Body: message,
-        }),
-      }
-    );
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || "Failed to send SMS");
-    }
-
-    return new Response(JSON.stringify({ success: true, sid: result.sid }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (error: any) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-});
-```
-
----
-
-### 4. UI Updates: CreateTrip.tsx (Step 2 - Invite Crew)
-
-**New state variables:**
-- `inviteMode`: `'phone' | 'email'` - Toggle between phone and email input
-- `phoneInput`: Current phone number being entered
-- `countryCode`: Selected country code (default `'+1'`)
-- `invites`: Array of `{ type: 'phone' | 'email', value: string }` objects
-
-**UI changes:**
-- Label: "Invite Friends by Phone (up to 30)"
-- Helper text: "We'll text them a link to join the trip."
-- Phone input with country code selector dropdown
-- Placeholder: "+1 (555) 123-4567"
-- Toggle link: "Invite by email instead" / "Invite by phone instead"
-- Update helper text at bottom: "Invites will be sent via text with a link to join. You can invite people later."
-
-**Country codes to support:**
-```typescript
-const COUNTRY_CODES = [
-  { code: '+1', country: 'US/CA', flag: '🇺🇸' },
-  { code: '+44', country: 'UK', flag: '🇬🇧' },
-  { code: '+61', country: 'AU', flag: '🇦🇺' },
-  { code: '+91', country: 'IN', flag: '🇮🇳' },
-  { code: '+49', country: 'DE', flag: '🇩🇪' },
-  { code: '+33', country: 'FR', flag: '🇫🇷' },
-  { code: '+81', country: 'JP', flag: '🇯🇵' },
-  { code: '+86', country: 'CN', flag: '🇨🇳' },
-  { code: '+55', country: 'BR', flag: '🇧🇷' },
-  { code: '+52', country: 'MX', flag: '🇲🇽' },
-];
-```
-
----
-
-### 5. UI Updates: InviteModal.tsx
-
-Apply the same phone-first pattern to the InviteModal used in the Trip Panel:
-- Default to phone input with country code
-- Toggle link to switch to email
-- Update placeholder and helper text
-
----
-
-### 6. Submit Flow Updates
-
-When creating invites:
-
-```typescript
-// For phone invites
-const phoneInvites = invites
-  .filter(i => i.type === 'phone')
-  .map(i => ({
-    trip_id: trip.id,
-    phone_number: i.value,
-    email: null,
-    invited_by: user.id,
-    message: inviteMessage.trim() || null,
-  }));
-
-// For email invites  
-const emailInvites = invites
-  .filter(i => i.type === 'email')
-  .map(i => ({
-    trip_id: trip.id,
-    phone_number: null,
-    email: i.value,
-    invited_by: user.id,
-    message: inviteMessage.trim() || null,
-  }));
-
-// Insert all invites
-await supabase.from('trip_invites').insert([...phoneInvites, ...emailInvites]);
-
-// Send SMS for phone invites via edge function
-for (const invite of phoneInvites) {
-  await supabase.functions.invoke('send-sms-invite', {
-    body: {
-      phoneNumber: invite.phone_number,
-      joinCode: trip.join_code,
-      tripName: trip.name,
-      inviterName: profile?.name || 'A friend',
-    },
-  });
-}
-```
-
----
-
-### 7. Type Updates
-
-Update `src/lib/tripchat-types.ts` to include phone_number:
-
-```typescript
-export interface TripInvite {
-  id: string;
-  trip_id: string;
-  email: string | null;
-  phone_number: string | null;
-  token: string;
-  status: 'pending' | 'accepted' | 'expired';
-  invited_by: string;
-  message: string | null;
-  accepted_by: string | null;
-  accepted_at: string | null;
-  created_at: string;
-}
-```
-
----
-
-## File Changes Summary
-
-| File | Action | Description |
-|------|--------|-------------|
-| `supabase/migrations/...` | Create | Add phone_number column and constraint |
-| `supabase/functions/send-sms-invite/index.ts` | Create | Edge function to send SMS via Twilio |
-| `supabase/config.toml` | Update | Register new edge function |
-| `src/pages/CreateTrip.tsx` | Update | Phone-first invite input with toggle |
-| `src/components/invite/InviteModal.tsx` | Update | Phone-first invite in trip panel |
-| `src/lib/tripchat-types.ts` | Update | Add phone_number to TripInvite type |
-
----
-
-## Required Secrets
-
-Before SMS sending will work, you'll need to provide:
-
-1. **TWILIO_ACCOUNT_SID** - From your Twilio Console
-2. **TWILIO_AUTH_TOKEN** - From your Twilio Console  
-3. **TWILIO_PHONE_NUMBER** - A Twilio phone number you own
+This keeps RLS intact and doesn't expose trip data broadly.
 
 ---
 
 ## Implementation Order
 
-1. Run database migration to add phone_number column
-2. Request Twilio API credentials from you
-3. Create the SMS edge function
-4. Update CreateTrip.tsx with phone-first UI
-5. Update InviteModal.tsx with phone-first UI
-6. Update type definitions
-7. Test end-to-end flow
+1. **Database migration**: Remove phone_number constraint
+2. **Create JoinTripPreview page**: The core gated preview experience
+3. **Update App.tsx**: Add `/join/:code` route
+4. **Update CreateTrip.tsx**: New share-first Step 2
+5. **Update InviteModal.tsx**: Simplify to link/code only
+6. **Update Auth.tsx**: Handle pending join after auth
+7. **Test the full flow**: Create trip → copy link → open in incognito → preview → auth → auto-join
+
+---
+
+## User Flow Diagram
+
+```
+Creator:
+  1. Creates trip
+  2. Sees invite link + code
+  3. Copies link, shares in group chat
+
+Friend (not logged in):
+  1. Clicks link → /join/ABCD12
+  2. Sees trip preview (2 seconds)
+  3. Modal appears: "Join this trip to continue"
+  4. Clicks "Sign Up" or "Sign In"
+  5. Stores code in sessionStorage
+  6. Completes auth
+  7. Redirected back to /join/ABCD12
+  8. Now authenticated → auto-joined
+  9. Lands in trip chat
+
+Friend (already logged in):
+  1. Clicks link → /join/ABCD12
+  2. Auto-joined immediately
+  3. Lands in trip chat
+```
+
+---
+
+## File Summary
+
+| File | Action | Description |
+|------|--------|-------------|
+| `supabase/migrations/...` | Create | Remove phone constraint |
+| `src/pages/JoinTripPreview.tsx` | Create | Gated preview page |
+| `src/App.tsx` | Update | Add `/join/:code` route |
+| `src/pages/CreateTrip.tsx` | Update | Replace invite step with share UI |
+| `src/components/invite/InviteModal.tsx` | Update | Link/code only, no email |
+| `src/pages/Auth.tsx` | Update | Handle pending join code |
+| `src/pages/JoinTrip.tsx` | Update | Accept pasted links |
+| `supabase/functions/get-trip-preview/index.ts` | Create | Public preview data endpoint |
+
+---
+
+## Edge Function: get-trip-preview
+
+Since RLS requires authentication to read trip data, we need a public edge function:
+
+```typescript
+// supabase/functions/get-trip-preview/index.ts
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+serve(async (req: Request) => {
+  // Get join_code from request
+  // Use service role to fetch trip preview
+  // Return limited data: name, dates, member_count, top_proposal
+});
+```
+
+This allows unauthenticated users to see the preview without compromising RLS.
 
