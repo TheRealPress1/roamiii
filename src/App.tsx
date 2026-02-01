@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ProfileGate } from "@/components/ProfileGate";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -13,6 +14,7 @@ import CreateTrip from "./pages/CreateTrip";
 import JoinTrip from "./pages/JoinTrip";
 import JoinTripPreview from "./pages/JoinTripPreview";
 import TripChat from "./pages/TripChat";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,24 +31,39 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/join/:code" element={<JoinTripPreview />} />
+            {/* Profile page - protected but no ProfileGate (this IS the gate destination) */}
+            <Route path="/app/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            {/* All other app routes - protected AND gated by profile completeness */}
             <Route path="/app" element={
               <ProtectedRoute>
-                <Dashboard />
+                <ProfileGate>
+                  <Dashboard />
+                </ProfileGate>
               </ProtectedRoute>
             } />
             <Route path="/app/create" element={
               <ProtectedRoute>
-                <CreateTrip />
+                <ProfileGate>
+                  <CreateTrip />
+                </ProfileGate>
               </ProtectedRoute>
             } />
             <Route path="/app/join" element={
               <ProtectedRoute>
-                <JoinTrip />
+                <ProfileGate>
+                  <JoinTrip />
+                </ProfileGate>
               </ProtectedRoute>
             } />
             <Route path="/app/trip/:tripId" element={
               <ProtectedRoute>
-                <TripChat />
+                <ProfileGate>
+                  <TripChat />
+                </ProfileGate>
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
