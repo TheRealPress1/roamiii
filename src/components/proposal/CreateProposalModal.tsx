@@ -11,6 +11,28 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Notification helper - notify all trip members about new proposal
+const notifyTripMembers = async (
+  tripId: string,
+  actorId: string,
+  actorName: string,
+  destination: string
+) => {
+  try {
+    await supabase.rpc('notify_trip_members', {
+      _trip_id: tripId,
+      _actor_id: actorId,
+      _type: 'proposal_posted',
+      _title: 'New proposal posted',
+      _body: `${actorName} proposed ${destination}`,
+      _href: `/app/trip/${tripId}`,
+    });
+  } catch (error) {
+    console.error('Error sending notifications:', error);
+    // Non-blocking - don't fail the whole action
+  }
+};
+
 interface CreateProposalModalProps {
   open: boolean;
   onClose: () => void;
@@ -20,7 +42,7 @@ interface CreateProposalModalProps {
 }
 
 export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCount }: CreateProposalModalProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [loading, setLoading] = useState(false);
 
   // Form state
@@ -103,6 +125,10 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
         type: 'proposal',
         proposal_id: proposal.id,
       });
+
+      // Notify other trip members
+      const actorName = profile?.name || profile?.email?.split('@')[0] || 'Someone';
+      await notifyTripMembers(tripId, user.id, actorName, destination.trim());
 
       toast.success('Proposal posted!');
       resetForm();

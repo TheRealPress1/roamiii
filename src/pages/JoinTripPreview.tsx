@@ -125,6 +125,27 @@ export default function JoinTripPreview() {
           body: `👋 ${displayName} joined the trip!`,
         });
 
+        // Notify existing trip members about the new member
+        const { data: existingMembers } = await supabase
+          .from('trip_members')
+          .select('user_id')
+          .eq('trip_id', preview.id)
+          .neq('user_id', user.id);
+
+        if (existingMembers?.length) {
+          const notifications = existingMembers.map(m => ({
+            user_id: m.user_id,
+            trip_id: preview.id,
+            actor_id: user.id,
+            type: 'member_joined',
+            title: 'New member joined',
+            body: `${displayName} joined ${preview.name}`,
+            href: `/app/trip/${preview.id}`,
+          }));
+
+          await supabase.from('notifications').insert(notifications);
+        }
+
         toast.success(`Joined "${preview.name}"!`);
         navigate(`/app/trip/${preview.id}`);
       } catch (err: any) {

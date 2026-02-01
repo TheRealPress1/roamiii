@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { NotificationDrawer } from '@/components/notifications/NotificationDrawer';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface HeaderProps {
   transparent?: boolean;
@@ -19,6 +23,10 @@ interface HeaderProps {
 export function Header({ transparent }: HeaderProps) {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const { notifications, loading, unreadCount, markAsRead, markAllAsRead } =
+    useNotifications();
 
   const handleLogin = () => {
     navigate(user ? '/app' : '/auth');
@@ -28,6 +36,12 @@ export function Header({ transparent }: HeaderProps) {
     navigate(user ? '/app' : '/onboarding');
   };
 
+  const handleNotificationClick = (href: string | null, id: string) => {
+    markAsRead(id);
+    setDrawerOpen(false);
+    if (href) navigate(href);
+  };
+
   return (
     <header className={`sticky top-0 z-50 w-full transition-colors ${
       transparent ? 'bg-transparent' : 'bg-background/80 backdrop-blur-lg border-b border-border'
@@ -35,7 +49,7 @@ export function Header({ transparent }: HeaderProps) {
       <div className="container flex h-16 items-center justify-between">
         <Logo />
 
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-2">
           {user ? (
             <>
               <Link to="/app">
@@ -44,6 +58,12 @@ export function Header({ transparent }: HeaderProps) {
                   Dashboard
                 </Button>
               </Link>
+              
+              <NotificationBell
+                count={unreadCount}
+                onClick={() => setDrawerOpen(true)}
+              />
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2">
@@ -72,6 +92,16 @@ export function Header({ transparent }: HeaderProps) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <NotificationDrawer
+                open={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                notifications={notifications}
+                loading={loading}
+                onMarkAsRead={markAsRead}
+                onMarkAllAsRead={markAllAsRead}
+                onNavigate={handleNotificationClick}
+              />
             </>
           ) : (
             <>

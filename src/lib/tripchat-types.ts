@@ -144,3 +144,20 @@ export const VIBE_TAGS = [
 ] as const;
 
 export const REACTION_EMOJIS = ['👍', '❤️', '🔥', '😂', '😮', '🙌', '✈️', '🏝️'] as const;
+
+// Notification types
+export type NotificationType = 'member_joined' | 'proposal_posted' | 'plan_locked' | 'mention';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  trip_id: string | null;
+  actor_id: string | null;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  href: string | null;
+  read_at: string | null;
+  created_at: string;
+  actor?: Profile;
+}

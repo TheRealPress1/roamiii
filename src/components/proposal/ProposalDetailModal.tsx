@@ -88,6 +88,21 @@ export function ProposalDetailModal({
         body: `🎉 Final pick pinned: ${proposal.destination}!`,
       });
 
+      // Notify all trip members about the locked plan
+      try {
+        await supabase.rpc('notify_trip_members', {
+          _trip_id: tripId,
+          _actor_id: user.id,
+          _type: 'plan_locked',
+          _title: 'Plan locked ✅',
+          _body: `The plan for ${proposal.destination} has been finalized!`,
+          _href: `/app/trip/${tripId}`,
+        });
+      } catch (notifyError) {
+        console.error('Error sending notifications:', notifyError);
+        // Non-blocking
+      }
+
       toast.success('Final pick set!');
       onPinned();
       onClose();
