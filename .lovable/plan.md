@@ -1,330 +1,275 @@
 
 
-# TripChat: Complete Application Rebuild Plan
+# Phone Number Invites for TripChat
 
-This plan transforms the existing "Trip Arena" board-style voting platform into "TripChat" - a group-chat-style trip planning application. This is a major architectural shift that requires new database tables, new UI components, and a fundamentally different user experience.
+This plan adds phone number-based invitations to the Create Trip flow, allowing users to invite friends via SMS as the primary method while keeping email as a fallback option.
 
 ---
 
 ## Overview
 
-**Current State**: Trip Arena - A visual-first platform with Trip Boards, Proposal cards, and a tab-based voting interface.
-
-**Target State**: TripChat - A group chat experience where each trip is a private chat room with proposal cards embedded in the message stream.
-
-**Key Paradigm Shift**: From "dashboard → board → tabs → proposals" to "dashboard → trip chat room with messages + right sidebar panel"
+**Current State**: Users can only invite friends by email during trip creation
+**Target State**: Phone number invites as primary, with email as a toggle option
 
 ---
 
-## Phase 1: Database Schema Changes
+## Changes Required
 
-### New Tables Required
+### 1. Database Schema Update
 
-1. **`trips` table** (replaces mental model of "boards")
-   - Add `flexible_dates` boolean column
-   - Add `join_code` column (unique 6-8 character code for easy sharing)
-   - Add `pinned_proposal_id` (replaces `chosen_proposal_id`)
-   - Rename status values: `planning` | `decided` (instead of `active` | `decided` | `archived`)
-
-2. **`trip_members` table** (mirrors `board_members`)
-   - Same structure, references `trips` instead of `boards`
-
-3. **`messages` table** (new - core chat functionality)
-   - `id`, `trip_id`, `user_id`
-   - `type`: `text` | `proposal` | `system`
-   - `body` (nullable - for text/system messages)
-   - `proposal_id` (nullable - for proposal messages)
-   - `created_at`
-
-4. **`proposals` table** (keep existing, update references)
-   - Change `board_id` → `trip_id`
-
-5. **`proposal_comments` table** (separate from chat messages)
-   - Comments specific to a proposal (not in main chat)
-   - `id`, `proposal_id`, `trip_id`, `user_id`, `body`, `created_at`
-
-6. **`message_reactions` table** (for emoji reactions on messages)
-   - `id`, `message_id`, `user_id`, `emoji`, `created_at`
-
-### Database Migration Strategy
-- Create new tables alongside existing ones
-- Create new RLS policies matching security model
-- Add helper functions: `is_trip_member()`, `is_trip_admin()`, `is_trip_owner()`
-- Add trigger to auto-create owner when trip is created
-
-### Storage Bucket
-- Create `tripchat-images` storage bucket for proposal cover images and message attachments
-
----
-
-## Phase 2: Core UI Architecture
-
-### Route Changes
-
-| Old Route | New Route | Purpose |
-|-----------|-----------|---------|
-| `/` | `/` | Landing page (rebrand to TripChat) |
-| `/auth` | `/auth` | Authentication (rebrand) |
-| `/app` | `/app` | Main dashboard with "Create/Join Trip" + trip list |
-| `/app/create` | `/app/create` | 2-step trip creation wizard |
-| N/A | `/app/join` | Join trip via code/link |
-| `/app/board/:boardId` | `/app/trip/:tripId` | Trip chat room (major redesign) |
-| `/app/board/:boardId/propose` | (modal inside chat) | Proposal creation modal |
-| N/A | `/app/trip/:tripId/proposal/:proposalId` | Proposal detail view |
-| N/A | `/app/trip/:tripId/summary` | Final decision summary page |
-
-### New Layout: Trip Chat Room
-
-```text
-+----------------------------------------------------------+
-|  [Back]  Trip Name                    [Settings] [Panel] |
-+----------------------------------------------------------+
-|                                    |                      |
-|   CHAT FEED                        |   TRIP PANEL         |
-|   (scrollable messages)            |   - Trip basics      |
-|                                    |   - Members list     |
-|   [Text message bubble]            |   - Proposals ranked |
-|   [System: "John joined"]          |   - Pinned decision  |
-|   [PROPOSAL CARD embedded]         |                      |
-|     - Image, destination           |                      |
-|     - Vote buttons inline          |                      |
-|   [Text message bubble]            |                      |
-|                                    |                      |
-|----------------------------------- |                      |
-|  [Input] [Attach] [Send] [Propose] |                      |
-+----------------------------------------------------------+
-```
-
----
-
-## Phase 3: New Components
-
-### Chat Components
-1. **`ChatFeed.tsx`** - Scrollable message list with auto-scroll
-2. **`ChatMessage.tsx`** - Renders text/system messages
-3. **`ProposalMessage.tsx`** - Rich proposal card embedded in chat
-4. **`ChatComposer.tsx`** - Input with send, attach, and propose buttons
-5. **`MessageReactions.tsx`** - Emoji reaction picker and display
-
-### Trip Panel Components
-1. **`TripPanel.tsx`** - Right sidebar with trip info
-2. **`TripBasicsSection.tsx`** - Name, dates, budget, countdown
-3. **`MembersSection.tsx`** - Avatar list with invite button
-4. **`ProposalsRanking.tsx`** - Sorted proposal mini-cards
-5. **`PinnedDecision.tsx`** - Final pick display
-
-### Proposal Components
-1. **`ProposalDetailModal.tsx`** - Full proposal view with carousel
-2. **`ProposalComments.tsx`** - Comments specific to a proposal
-3. **`CreateProposalModal.tsx`** - Modal for proposal creation
-
-### Join/Invite Components
-1. **`JoinTrip.tsx`** - Join by code or link
-2. **`InviteModal.tsx`** - Email invite interface
-
----
-
-## Phase 4: Feature Implementation
-
-### 4.1 Landing Page Updates
-- Rebrand from "Trip Arena" to "TripChat"
-- Update hero text: "Group trip planning that feels like a chat"
-- Update mock preview to show chat-style interface
-- Change CTAs to "Create a Trip" / "Sign In"
-
-### 4.2 Main Dashboard (`/app`)
-- Centered layout with two prominent buttons:
-  - "Create a Trip" (primary)
-  - "Join a Trip" (secondary)
-- "Your Trips" list below showing:
-  - Trip name, date window, member count
-  - Status badge (Planning / Decided)
-  - Last message preview OR pinned proposal title
-- Empty state with illustration
-
-### 4.3 Create Trip Flow (`/app/create`)
-- **Step 1: Trip Setup**
-  - Trip name (required)
-  - Date window (start/end or flexible toggle)
-  - Home city (optional)
-  - Budget guidance (min/max per person, optional)
-  - Decision deadline (optional)
-  
-- **Step 2: Invite Crew**
-  - Multi-email input (up to 30)
-  - Optional message
-  - Generate join code automatically
-  - On create: redirect to trip chat
-
-### 4.4 Join Trip Flow (`/app/join`)
-- Input for join code (6-8 characters)
-- Auto-detect if coming from invite link with token
-- Validate and add user to trip_members
-- Redirect to trip chat on success
-
-### 4.5 Trip Chat Room (`/app/trip/:tripId`)
-- **Chat Feed**:
-  - Chronological messages
-  - Three types: text, proposal, system
-  - Proposal cards show vote buttons inline
-  - Emoji reactions on any message
-  
-- **Composer**:
-  - Text input with multiline support
-  - Attach button (image upload)
-  - Send button
-  - "Propose" button opens proposal modal
-
-- **Trip Panel** (desktop: sidebar, mobile: drawer):
-  - Trip basics with countdown
-  - Members with invite option
-  - Proposals ranked by support
-  - Pinned decision section
-
-### 4.6 Proposal Creation (Modal)
-- Destination (required)
-- Date range OR "Flexible" toggle
-- Cover image upload (required)
-- Additional images (up to 6, optional)
-- Vibe tags (preset + custom)
-- Lodging links (1-3)
-- Cost estimator with per-person auto-calc
-- On submit: create proposal + post message to chat
-
-### 4.7 Proposal Detail View
-- Full image carousel
-- Complete cost breakdown table
-- Votes list (who voted what)
-- Proposal-specific comments section
-- Pin button for owner/admin
-
-### 4.8 Decision Flow
-- Owner/admin can "Pin as Final Pick" from proposal detail
-- System message posted: "Final pick pinned: [Destination]"
-- Trip status changes to `decided`
-- Summary page becomes available
-
-### 4.9 Summary Page (`/app/trip/:tripId/summary`)
-- Final destination with dates
-- Lodging links
-- Estimated cost per person
-- Committed members (voted "In")
-- Share options: email summary to members, copy link
-
----
-
-## Phase 5: Real-time Features
-
-### Supabase Realtime Subscriptions
-- Enable realtime on `messages` table for live chat
-- Subscribe to proposal votes for instant updates
-- Subscribe to trip status changes
+Add a `phone_number` column to the `trip_invites` table and make `email` nullable:
 
 ```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.votes;
+-- Add phone_number column
+ALTER TABLE public.trip_invites 
+ADD COLUMN phone_number TEXT;
+
+-- Make email nullable
+ALTER TABLE public.trip_invites 
+ALTER COLUMN email DROP NOT NULL;
+
+-- Add constraint: exactly one of email or phone_number must be present
+ALTER TABLE public.trip_invites 
+ADD CONSTRAINT invite_contact_check 
+CHECK (
+  (email IS NOT NULL AND phone_number IS NULL) OR 
+  (email IS NULL AND phone_number IS NOT NULL)
+);
+
+-- Update RLS policy for phone-based invite acceptance
+DROP POLICY IF EXISTS "Invited users can update invite" ON public.trip_invites;
+
+CREATE POLICY "Invited users can update invite" ON public.trip_invites
+FOR UPDATE USING (
+  email = (SELECT email FROM profiles WHERE id = auth.uid())
+  -- Phone-based acceptance will be handled via token validation
+);
 ```
 
 ---
 
-## Phase 6: File Structure
+### 2. SMS Provider Setup (Twilio)
 
-### New Files to Create
-```text
-src/
-  pages/
-    TripChat.tsx         # Main trip chat room
-    JoinTrip.tsx         # Join trip page
-    TripSummary.tsx      # Final decision summary
-  components/
-    chat/
-      ChatFeed.tsx
-      ChatMessage.tsx
-      ProposalMessage.tsx
-      ChatComposer.tsx
-      MessageReactions.tsx
-    trip/
-      TripPanel.tsx
-      TripBasicsSection.tsx
-      MembersSection.tsx
-      ProposalsRanking.tsx
-      PinnedDecision.tsx
-    proposal/
-      CreateProposalModal.tsx
-      ProposalDetailModal.tsx
-      ProposalComments.tsx
-    invite/
-      InviteModal.tsx
-  hooks/
-    useTripMessages.ts   # Real-time chat hook
-    useTripData.ts       # Trip data fetching
-  lib/
-    tripchat-types.ts    # New type definitions
-```
+An edge function will be needed to send SMS invites. This requires:
 
-### Files to Modify
-- `src/pages/Landing.tsx` - Rebrand to TripChat
-- `src/pages/Auth.tsx` - Update branding
-- `src/pages/Dashboard.tsx` - Complete redesign for chat-first UX
-- `src/pages/CreateBoard.tsx` - Rename and simplify to 2 steps
-- `src/App.tsx` - Update routes
-- `src/components/ui/Logo.tsx` - Update to TripChat branding
-- `src/index.css` - Adjust colors/theme if needed
-- `src/contexts/AuthContext.tsx` - Keep as-is
+- **TWILIO_ACCOUNT_SID** - Twilio account identifier
+- **TWILIO_AUTH_TOKEN** - Twilio authentication token  
+- **TWILIO_PHONE_NUMBER** - Your Twilio phone number for sending SMS
 
-### Files to Remove/Deprecate
-- `src/pages/Board.tsx` (replaced by TripChat.tsx)
-- `src/components/MembersTab.tsx` (replaced by panel components)
+You'll need to sign up at [twilio.com](https://www.twilio.com) and get these credentials from your Twilio Console.
 
 ---
 
-## Technical Considerations
+### 3. Edge Function: Send SMS Invite
 
-### Security (RLS Policies)
-- All chat messages protected by trip membership
-- Only members can read/write messages
-- Only members can create proposals
-- Only owner/admin can pin final decision
-- Invite acceptance adds user to trip_members
+Create `supabase/functions/send-sms-invite/index.ts`:
 
-### Performance
-- Paginate chat messages (load last 50, infinite scroll up)
-- Lazy load proposal images
-- Debounce typing indicators (future enhancement)
-- Index on `messages.trip_id` and `messages.created_at`
+```typescript
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
-### Mobile Experience
-- Trip panel becomes slide-up drawer on mobile
-- Chat composer stays fixed at bottom
-- Proposal cards remain full-width
-- Touch-friendly emoji reactions
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+interface SMSInviteRequest {
+  phoneNumber: string;
+  joinCode: string;
+  tripName: string;
+  inviterName: string;
+}
+
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { phoneNumber, joinCode, tripName, inviterName }: SMSInviteRequest = await req.json();
+
+    const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const twilioNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+
+    const message = `${inviterName} invited you to join "${tripName}" on TripChat! 🌴\n\nJoin with code: ${joinCode}\n\nOr tap here: ${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app')}/app/join?code=${joinCode}`;
+
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${btoa(`${accountSid}:${authToken}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          From: twilioNumber!,
+          To: phoneNumber,
+          Body: message,
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Failed to send SMS");
+    }
+
+    return new Response(JSON.stringify({ success: true, sid: result.sid }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error: any) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
+```
+
+---
+
+### 4. UI Updates: CreateTrip.tsx (Step 2 - Invite Crew)
+
+**New state variables:**
+- `inviteMode`: `'phone' | 'email'` - Toggle between phone and email input
+- `phoneInput`: Current phone number being entered
+- `countryCode`: Selected country code (default `'+1'`)
+- `invites`: Array of `{ type: 'phone' | 'email', value: string }` objects
+
+**UI changes:**
+- Label: "Invite Friends by Phone (up to 30)"
+- Helper text: "We'll text them a link to join the trip."
+- Phone input with country code selector dropdown
+- Placeholder: "+1 (555) 123-4567"
+- Toggle link: "Invite by email instead" / "Invite by phone instead"
+- Update helper text at bottom: "Invites will be sent via text with a link to join. You can invite people later."
+
+**Country codes to support:**
+```typescript
+const COUNTRY_CODES = [
+  { code: '+1', country: 'US/CA', flag: '🇺🇸' },
+  { code: '+44', country: 'UK', flag: '🇬🇧' },
+  { code: '+61', country: 'AU', flag: '🇦🇺' },
+  { code: '+91', country: 'IN', flag: '🇮🇳' },
+  { code: '+49', country: 'DE', flag: '🇩🇪' },
+  { code: '+33', country: 'FR', flag: '🇫🇷' },
+  { code: '+81', country: 'JP', flag: '🇯🇵' },
+  { code: '+86', country: 'CN', flag: '🇨🇳' },
+  { code: '+55', country: 'BR', flag: '🇧🇷' },
+  { code: '+52', country: 'MX', flag: '🇲🇽' },
+];
+```
+
+---
+
+### 5. UI Updates: InviteModal.tsx
+
+Apply the same phone-first pattern to the InviteModal used in the Trip Panel:
+- Default to phone input with country code
+- Toggle link to switch to email
+- Update placeholder and helper text
+
+---
+
+### 6. Submit Flow Updates
+
+When creating invites:
+
+```typescript
+// For phone invites
+const phoneInvites = invites
+  .filter(i => i.type === 'phone')
+  .map(i => ({
+    trip_id: trip.id,
+    phone_number: i.value,
+    email: null,
+    invited_by: user.id,
+    message: inviteMessage.trim() || null,
+  }));
+
+// For email invites  
+const emailInvites = invites
+  .filter(i => i.type === 'email')
+  .map(i => ({
+    trip_id: trip.id,
+    phone_number: null,
+    email: i.value,
+    invited_by: user.id,
+    message: inviteMessage.trim() || null,
+  }));
+
+// Insert all invites
+await supabase.from('trip_invites').insert([...phoneInvites, ...emailInvites]);
+
+// Send SMS for phone invites via edge function
+for (const invite of phoneInvites) {
+  await supabase.functions.invoke('send-sms-invite', {
+    body: {
+      phoneNumber: invite.phone_number,
+      joinCode: trip.join_code,
+      tripName: trip.name,
+      inviterName: profile?.name || 'A friend',
+    },
+  });
+}
+```
+
+---
+
+### 7. Type Updates
+
+Update `src/lib/tripchat-types.ts` to include phone_number:
+
+```typescript
+export interface TripInvite {
+  id: string;
+  trip_id: string;
+  email: string | null;
+  phone_number: string | null;
+  token: string;
+  status: 'pending' | 'accepted' | 'expired';
+  invited_by: string;
+  message: string | null;
+  accepted_by: string | null;
+  accepted_at: string | null;
+  created_at: string;
+}
+```
+
+---
+
+## File Changes Summary
+
+| File | Action | Description |
+|------|--------|-------------|
+| `supabase/migrations/...` | Create | Add phone_number column and constraint |
+| `supabase/functions/send-sms-invite/index.ts` | Create | Edge function to send SMS via Twilio |
+| `supabase/config.toml` | Update | Register new edge function |
+| `src/pages/CreateTrip.tsx` | Update | Phone-first invite input with toggle |
+| `src/components/invite/InviteModal.tsx` | Update | Phone-first invite in trip panel |
+| `src/lib/tripchat-types.ts` | Update | Add phone_number to TripInvite type |
+
+---
+
+## Required Secrets
+
+Before SMS sending will work, you'll need to provide:
+
+1. **TWILIO_ACCOUNT_SID** - From your Twilio Console
+2. **TWILIO_AUTH_TOKEN** - From your Twilio Console  
+3. **TWILIO_PHONE_NUMBER** - A Twilio phone number you own
 
 ---
 
 ## Implementation Order
 
-1. Database migration (new tables, RLS policies)
-2. Storage bucket creation
-3. Type definitions update
-4. Landing/Auth rebranding
-5. Dashboard redesign
-6. Create Trip flow (2-step wizard)
-7. Join Trip page
-8. Trip Chat room (core experience)
-9. Chat messaging (text + system)
-10. Proposal creation modal
-11. Proposal message cards with voting
-12. Trip panel sidebar
-13. Proposal detail modal
-14. Pin decision flow
-15. Summary page
-16. Real-time subscriptions
-17. Image upload integration
-18. Polish and testing
-
----
-
-## Summary
-
-This rebuild transforms the app from a structured board-based voting tool into a fluid, chat-first collaborative experience. The core innovation is embedding rich proposal cards directly into the chat stream, making trip planning feel like a natural conversation while maintaining the structured comparison and voting that makes group decisions work.
+1. Run database migration to add phone_number column
+2. Request Twilio API credentials from you
+3. Create the SMS edge function
+4. Update CreateTrip.tsx with phone-first UI
+5. Update InviteModal.tsx with phone-first UI
+6. Update type definitions
+7. Test end-to-end flow
 
