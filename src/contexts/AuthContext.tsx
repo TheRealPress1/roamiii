@@ -64,10 +64,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string) => {
+    // Check for pending join code to include in redirect
+    const pendingJoinCode = sessionStorage.getItem('pendingJoinCode');
+    const redirectTo = pendingJoinCode 
+      ? `${window.location.origin}/join/${pendingJoinCode}`
+      : `${window.location.origin}/app`;
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/app`,
+        emailRedirectTo: redirectTo,
       },
     });
     return { error: error as Error | null };
