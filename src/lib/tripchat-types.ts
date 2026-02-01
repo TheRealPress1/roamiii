@@ -145,6 +145,19 @@ export const VIBE_TAGS = [
 
 export const REACTION_EMOJIS = ['👍', '❤️', '🔥', '😂', '😮', '🙌', '✈️', '🏝️'] as const;
 
+// Proposal reaction types
+export type ReactionType = 'interested' | 'love' | 'nope';
+
+export interface ProposalReaction {
+  id: string;
+  proposal_id: string;
+  trip_id: string;
+  user_id: string;
+  reaction: ReactionType;
+  created_at: string;
+  updated_at: string;
+}
+
 // Notification types
 export type NotificationType = 'member_joined' | 'proposal_posted' | 'plan_locked' | 'mention';
 
