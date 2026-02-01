@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +18,15 @@ interface HeaderProps {
 
 export function Header({ transparent }: HeaderProps) {
   const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogin = () => {
+    navigate(user ? '/app' : '/auth');
+  };
+
+  const handleGetStarted = () => {
+    navigate(user ? '/app' : '/auth?mode=signup');
+  };
 
   return (
     <header className={`sticky top-0 z-50 w-full transition-colors ${
@@ -66,14 +75,16 @@ export function Header({ transparent }: HeaderProps) {
             </>
           ) : (
             <>
-              <Link to="/auth">
-                <Button variant="ghost" size="sm">Log in</Button>
-              </Link>
-              <Link to="/auth?mode=signup">
-                <Button size="sm" className="gradient-primary text-white shadow-md hover:shadow-lg transition-shadow">
-                  Get Started
-                </Button>
-              </Link>
+              <Button variant="ghost" size="sm" onClick={handleLogin}>
+                Log in
+              </Button>
+              <Button 
+                size="sm" 
+                className="gradient-primary text-white shadow-md hover:shadow-lg transition-shadow"
+                onClick={handleGetStarted}
+              >
+                Get Started
+              </Button>
             </>
           )}
         </nav>
