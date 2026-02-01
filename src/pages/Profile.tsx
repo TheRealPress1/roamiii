@@ -180,8 +180,12 @@ export default function Profile() {
             {/* Avatar Section */}
             <div className="flex flex-col items-center mb-8">
               <div className="relative group">
-                <Avatar className="h-28 w-28 ring-4 ring-background shadow-lg">
-                  <AvatarImage src={avatarUrl || undefined} alt="Profile photo" />
+                <Avatar className="h-28 w-28 ring-4 ring-primary/20 ring-offset-2 ring-offset-background shadow-lg">
+                  <AvatarImage 
+                    src={avatarUrl || undefined} 
+                    alt="Profile photo" 
+                    className="object-cover object-center"
+                  />
                   <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-white text-2xl font-medium">
                     {getInitials()}
                   </AvatarFallback>
