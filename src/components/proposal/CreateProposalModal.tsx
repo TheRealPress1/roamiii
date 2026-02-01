@@ -16,9 +16,10 @@ interface CreateProposalModalProps {
   onClose: () => void;
   tripId: string;
   onCreated: () => void;
+  memberCount: number;
 }
 
-export function CreateProposalModal({ open, onClose, tripId, onCreated }: CreateProposalModalProps) {
+export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCount }: CreateProposalModalProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +35,9 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated }: Create
   const [costTransport, setCostTransport] = useState('');
   const [costFood, setCostFood] = useState('');
   const [costActivities, setCostActivities] = useState('');
-  const [attendeeCount, setAttendeeCount] = useState('4');
+
+  // Auto-calculate split from actual trip members
+  const splitCount = Math.max(memberCount, 1);
 
   const totalCost = 
     (parseFloat(costLodging) || 0) + 
@@ -42,7 +45,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated }: Create
     (parseFloat(costFood) || 0) + 
     (parseFloat(costActivities) || 0);
   
-  const costPerPerson = attendeeCount ? Math.round(totalCost / parseInt(attendeeCount)) : 0;
+  const costPerPerson = Math.round(totalCost / splitCount);
 
   const addLodgingLink = () => {
     if (lodgingLinks.length < 3) {
@@ -86,7 +89,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated }: Create
           cost_food_total: parseFloat(costFood) || 0,
           cost_activities_total: parseFloat(costActivities) || 0,
           estimated_cost_per_person: costPerPerson,
-          attendee_count: parseInt(attendeeCount) || 1,
+          attendee_count: splitCount,
         })
         .select()
         .single();
@@ -124,7 +127,6 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated }: Create
     setCostTransport('');
     setCostFood('');
     setCostActivities('');
-    setAttendeeCount('4');
   };
 
   return (
@@ -301,17 +303,9 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated }: Create
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-border">
-              <div className="flex items-center gap-2">
-                <Label className="text-xs">Split between</Label>
-                <Input
-                  type="number"
-                  value={attendeeCount}
-                  onChange={(e) => setAttendeeCount(e.target.value)}
-                  className="w-16 h-8"
-                  min="1"
-                />
-                <span className="text-xs text-muted-foreground">people</span>
-              </div>
+              <span className="text-sm text-muted-foreground">
+                Split: {splitCount} {splitCount === 1 ? 'member' : 'members'}
+              </span>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Est. per person</p>
                 <p className="text-xl font-bold text-primary">${costPerPerson}</p>

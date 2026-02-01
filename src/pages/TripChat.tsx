@@ -163,6 +163,7 @@ export default function TripChat() {
           setProposalModalOpen(false);
           refetch();
         }}
+        memberCount={members.length}
       />
 
       <ProposalDetailModal
