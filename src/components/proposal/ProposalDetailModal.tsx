@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VibeTag } from '@/components/ui/VibeTag';
+import { ProposalReactions } from '@/components/proposal/ProposalReactions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { TripProposal, VoteType } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -195,6 +196,12 @@ export function ProposalDetailModal({
                 isActive={userVote?.vote === 'out'}
                 onClick={() => handleVote('out')}
               />
+            </div>
+
+            {/* Quick reactions */}
+            <div className="pt-2 border-t border-border">
+              <p className="text-sm text-muted-foreground mb-2">Quick reactions</p>
+              <ProposalReactions proposalId={proposal.id} tripId={tripId} />
             </div>
 
             {/* Cost Breakdown */}

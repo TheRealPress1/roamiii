@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { VibeTag } from '@/components/ui/VibeTag';
+import { ProposalReactions } from '@/components/proposal/ProposalReactions';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -151,6 +152,11 @@ export function ProposalMessage({ message, tripId, onViewDetails }: ProposalMess
               isActive={userVote?.vote === 'out'}
               onClick={() => handleVote('out')}
             />
+          </div>
+
+          {/* Quick reactions */}
+          <div className="mb-3">
+            <ProposalReactions proposalId={proposal.id} tripId={tripId} />
           </div>
 
           <Button
