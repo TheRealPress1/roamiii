@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { VibeTag } from '@/components/ui/VibeTag';
 import { ProposalReactions } from '@/components/proposal/ProposalReactions';
+import { CompareButton } from '@/components/compare/CompareButton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -15,9 +16,11 @@ interface ProposalMessageProps {
   message: Message;
   tripId: string;
   onViewDetails: (proposal: TripProposal) => void;
+  isComparing?: boolean;
+  onToggleCompare?: () => void;
 }
 
-export function ProposalMessage({ message, tripId, onViewDetails }: ProposalMessageProps) {
+export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare }: ProposalMessageProps) {
   const { user } = useAuth();
   const proposal = message.proposal;
 
@@ -158,6 +161,16 @@ export function ProposalMessage({ message, tripId, onViewDetails }: ProposalMess
           <div className="mb-3">
             <ProposalReactions proposalId={proposal.id} tripId={tripId} />
           </div>
+
+          {/* Compare button */}
+          {onToggleCompare && (
+            <div className="mb-3">
+              <CompareButton
+                isComparing={isComparing || false}
+                onToggle={onToggleCompare}
+              />
+            </div>
+          )}
 
           <Button
             variant="ghost"

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Settings, PanelRightOpen, PanelRightClose, Loader2, Copy, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, PanelRightOpen, PanelRightClose, Loader2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ChatFeed } from '@/components/chat/ChatFeed';
@@ -10,9 +10,13 @@ import { TripPanel } from '@/components/trip/TripPanel';
 import { CreateProposalModal } from '@/components/proposal/CreateProposalModal';
 import { ProposalDetailModal } from '@/components/proposal/ProposalDetailModal';
 import { InviteModal } from '@/components/invite/InviteModal';
+import { CompareTray } from '@/components/compare/CompareTray';
+import { CompareModal } from '@/components/compare/CompareModal';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
+import { useProposalCompare } from '@/hooks/useProposalCompare';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import type { TripProposal } from '@/lib/tripchat-types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -30,11 +34,17 @@ export default function TripChat() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<TripProposal | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [compareModalOpen, setCompareModalOpen] = useState(false);
+
+  // Compare hook
+  const { compareIds, compareCount, toggleCompare, clearCompare, isComparing } = useProposalCompare(tripId!);
 
   const isLoading = dataLoading || messagesLoading;
   const currentMember = members.find((m) => m.user_id === user?.id);
   const isAdmin = currentMember?.role === 'owner' || currentMember?.role === 'admin';
 
+  // Get compared proposals
+  const comparedProposals = proposals.filter(p => compareIds.includes(p.id));
   const handleCopyCode = async () => {
     if (!trip?.join_code) return;
     await navigator.clipboard.writeText(trip.join_code);
@@ -45,6 +55,24 @@ export default function TripChat() {
 
   const handleViewProposal = (proposal: TripProposal) => {
     setSelectedProposal(proposal);
+  };
+
+  // Handle winner selection from compare modal
+  const handleSelectWinner = async (proposalId: string) => {
+    const { error } = await supabase
+      .from('trips')
+      .update({ pinned_proposal_id: proposalId, status: 'decided' })
+      .eq('id', tripId);
+
+    if (error) {
+      toast.error('Failed to lock trip');
+      console.error('Error locking trip:', error);
+      return;
+    }
+
+    toast.success('Trip locked! 🎉');
+    setCompareModalOpen(false);
+    refetch();
   };
 
   if (isLoading) {
@@ -130,6 +158,8 @@ export default function TripChat() {
             loading={messagesLoading}
             tripId={tripId!}
             onViewProposal={handleViewProposal}
+            compareIds={compareIds}
+            onToggleCompare={toggleCompare}
           />
           <ChatComposer
             onSend={sendMessage}
@@ -180,6 +210,25 @@ export default function TripChat() {
         onClose={() => setInviteModalOpen(false)}
         tripId={tripId!}
         joinCode={trip.join_code}
+      />
+
+      {/* Compare Tray and Modal */}
+      <AnimatePresence>
+        <CompareTray 
+          count={compareCount} 
+          onClick={() => setCompareModalOpen(true)} 
+        />
+      </AnimatePresence>
+
+      <CompareModal
+        open={compareModalOpen}
+        onClose={() => setCompareModalOpen(false)}
+        proposals={comparedProposals}
+        tripId={tripId!}
+        isAdmin={isAdmin}
+        onRemove={toggleCompare}
+        onClearAll={clearCompare}
+        onSelectWinner={handleSelectWinner}
       />
     </div>
   );

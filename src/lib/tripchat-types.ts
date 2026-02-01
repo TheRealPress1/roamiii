@@ -78,6 +78,7 @@ export interface TripProposal {
   updated_at: string;
   creator?: Profile;
   votes?: TripVote[];
+  reactions?: ProposalReaction[];
 }
 
 export interface TripVote {
@@ -157,6 +158,21 @@ export interface ProposalReaction {
   created_at: string;
   updated_at: string;
 }
+
+// Proposal compare types
+export interface ProposalCompare {
+  id: string;
+  trip_id: string;
+  proposal_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+export type CompareSortOption = 
+  | 'cost_asc' 
+  | 'interested_desc' 
+  | 'love_desc' 
+  | 'score_desc';
 
 // Notification types
 export type NotificationType = 'member_joined' | 'proposal_posted' | 'plan_locked' | 'mention';
