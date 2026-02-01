@@ -1,4 +1,4 @@
-import { Compass } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface LogoProps {
@@ -23,11 +23,11 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
     <Link to="/" className="flex items-center gap-2 group">
       <div className="relative">
         <div className="absolute inset-0 bg-primary/20 rounded-full blur-lg group-hover:bg-primary/30 transition-colors" />
-        <Compass className={`${sizes[size]} text-primary relative z-10 group-hover:rotate-12 transition-transform`} />
+        <MessageCircle className={`${sizes[size]} text-primary relative z-10 group-hover:scale-110 transition-transform`} />
       </div>
       {showText && (
         <span className={`${textSizes[size]} font-display font-semibold text-foreground`}>
-          Trip Arena
+          TripChat
         </span>
       )}
     </Link>

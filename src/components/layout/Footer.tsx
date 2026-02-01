@@ -7,7 +7,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <Logo size="sm" />
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Trip Arena. Plan together, travel better.
+            © {new Date().getFullYear()} TripChat. Plan together, travel better.
           </p>
         </div>
       </div>
