@@ -536,10 +536,11 @@ export type Database = {
           accepted_at: string | null
           accepted_by: string | null
           created_at: string
-          email: string
+          email: string | null
           id: string
           invited_by: string
           message: string | null
+          phone_number: string | null
           status: Database["public"]["Enums"]["invite_status"]
           token: string
           trip_id: string
@@ -548,10 +549,11 @@ export type Database = {
           accepted_at?: string | null
           accepted_by?: string | null
           created_at?: string
-          email: string
+          email?: string | null
           id?: string
           invited_by: string
           message?: string | null
+          phone_number?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           trip_id: string
@@ -560,10 +562,11 @@ export type Database = {
           accepted_at?: string | null
           accepted_by?: string | null
           created_at?: string
-          email?: string
+          email?: string | null
           id?: string
           invited_by?: string
           message?: string | null
+          phone_number?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           trip_id?: string
