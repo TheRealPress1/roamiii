@@ -23,7 +23,14 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate(from, { replace: true });
+      // Check for pending join code after auth
+      const pendingJoinCode = sessionStorage.getItem('pendingJoinCode');
+      if (pendingJoinCode) {
+        sessionStorage.removeItem('pendingJoinCode');
+        navigate(`/join/${pendingJoinCode}`, { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
   }, [user, navigate, from]);
 

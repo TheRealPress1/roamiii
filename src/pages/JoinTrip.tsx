@@ -14,15 +14,35 @@ export default function JoinTrip() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const [joinCode, setJoinCode] = useState(searchParams.get('code') || '');
+  const [joinInput, setJoinInput] = useState(searchParams.get('code') || '');
   const [loading, setLoading] = useState(false);
 
+  // Extract code from link or use as-is
+  const extractCode = (input: string): string => {
+    const trimmed = input.trim();
+    
+    // Check if it's a URL with /join/ pattern
+    const urlMatch = trimmed.match(/\/join\/([A-Za-z0-9]+)/);
+    if (urlMatch) {
+      return urlMatch[1].toUpperCase();
+    }
+    
+    // Otherwise treat as plain code
+    return trimmed.toUpperCase();
+  };
+
   const handleJoin = async () => {
-    if (!user || !joinCode.trim()) return;
+    if (!user || !joinInput.trim()) return;
 
     setLoading(true);
     try {
-      const code = joinCode.trim().toUpperCase();
+      const code = extractCode(joinInput);
+
+      if (code.length < 6) {
+        toast.error('Invalid code. Please check and try again.');
+        setLoading(false);
+        return;
+      }
 
       // Find the trip by join code
       const { data: trip, error: tripError } = await supabase
@@ -117,27 +137,26 @@ export default function JoinTrip() {
                 Join a Trip
               </h1>
               <p className="text-muted-foreground">
-                Enter the 6-character code shared by your friend
+                Paste an invite link or enter the 6-character code
               </p>
             </div>
 
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="joinCode">Join Code</Label>
+                <Label htmlFor="joinInput">Invite Link or Code</Label>
                 <Input
-                  id="joinCode"
-                  placeholder="ABC123"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  className="text-center text-2xl font-mono tracking-widest uppercase"
-                  maxLength={6}
+                  id="joinInput"
+                  placeholder="Paste link or enter code (e.g., ABC123)"
+                  value={joinInput}
+                  onChange={(e) => setJoinInput(e.target.value)}
+                  className="text-center text-lg"
                   autoComplete="off"
                 />
               </div>
 
               <Button
                 onClick={handleJoin}
-                disabled={loading || joinCode.trim().length < 6}
+                disabled={loading || joinInput.trim().length < 6}
                 className="w-full gradient-primary text-white"
                 size="lg"
               >

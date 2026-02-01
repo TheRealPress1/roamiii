@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import CreateTrip from "./pages/CreateTrip";
 import JoinTrip from "./pages/JoinTrip";
+import JoinTripPreview from "./pages/JoinTripPreview";
 import TripChat from "./pages/TripChat";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/join/:code" element={<JoinTripPreview />} />
             <Route path="/app" element={
               <ProtectedRoute>
                 <Dashboard />
