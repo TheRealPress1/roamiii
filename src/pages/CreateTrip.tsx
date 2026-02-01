@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, Loader2, MapPin, Calendar, DollarSign, Users, Mail, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, MapPin, Calendar, DollarSign, Users, Copy, Link as LinkIcon, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,14 +13,23 @@ import { toast } from 'sonner';
 
 const STEPS = [
   { id: 'setup', title: 'Trip Setup', icon: MapPin },
-  { id: 'invite', title: 'Invite Crew', icon: Users },
+  { id: 'invite', title: 'Invite Friends', icon: Users },
 ];
+
+interface CreatedTrip {
+  id: string;
+  name: string;
+  join_code: string;
+}
 
 export default function CreateTrip() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [createdTrip, setCreatedTrip] = useState<CreatedTrip | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   
   // Form state
   const [name, setName] = useState('');
@@ -32,35 +40,25 @@ export default function CreateTrip() {
   const [budgetMin, setBudgetMin] = useState('');
   const [budgetMax, setBudgetMax] = useState('');
   const [decisionDeadline, setDecisionDeadline] = useState('');
-  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
-  const [emailInput, setEmailInput] = useState('');
-  const [inviteMessage, setInviteMessage] = useState('');
 
-  const addEmail = () => {
-    const email = emailInput.trim().toLowerCase();
-    if (!email) return;
-    
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error('Please enter a valid email address');
-      return;
-    }
-    
-    if (inviteEmails.includes(email)) {
-      toast.error('Email already added');
-      return;
-    }
-
-    if (inviteEmails.length >= 30) {
-      toast.error('Maximum 30 invites allowed');
-      return;
-    }
-    
-    setInviteEmails([...inviteEmails, email]);
-    setEmailInput('');
+  const getInviteLink = () => {
+    if (!createdTrip) return '';
+    return `${window.location.origin}/join/${createdTrip.join_code}`;
   };
 
-  const removeEmail = (email: string) => {
-    setInviteEmails(inviteEmails.filter(e => e !== email));
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(getInviteLink());
+    setCopiedLink(true);
+    toast.success('Invite link copied!');
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleCopyCode = async () => {
+    if (!createdTrip) return;
+    await navigator.clipboard.writeText(createdTrip.join_code);
+    setCopiedCode(true);
+    toast.success('Invite code copied!');
+    setTimeout(() => setCopiedCode(false), 2000);
   };
 
   const canProceed = () => {
@@ -68,13 +66,13 @@ export default function CreateTrip() {
       case 0:
         return name.trim().length >= 3;
       case 1:
-        return true; // Optional step
+        return true;
       default:
         return false;
     }
   };
 
-  const handleCreate = async () => {
+  const handleCreateTrip = async () => {
     if (!user) return;
     
     setLoading(true);
@@ -93,29 +91,10 @@ export default function CreateTrip() {
           budget_max: budgetMax ? parseInt(budgetMax) : null,
           decision_deadline: decisionDeadline || null,
         })
-        .select()
+        .select('id, name, join_code')
         .single();
 
       if (tripError) throw tripError;
-
-      // Create invites if any
-      if (inviteEmails.length > 0 && trip) {
-        const invites = inviteEmails.map(email => ({
-          trip_id: trip.id,
-          email,
-          invited_by: user.id,
-          message: inviteMessage.trim() || null,
-        }));
-
-        const { error: inviteError } = await supabase
-          .from('trip_invites')
-          .insert(invites);
-
-        if (inviteError) {
-          console.error('Error creating invites:', inviteError);
-          toast.warning('Trip created but some invites failed to send');
-        }
-      }
 
       // Post a welcome system message
       await supabase.from('messages').insert({
@@ -125,8 +104,9 @@ export default function CreateTrip() {
         body: `🎉 Trip chat created! Start planning your adventure.`,
       });
 
+      setCreatedTrip(trip);
+      setStep(1); // Move to invite step
       toast.success('Trip created!');
-      navigate(`/app/trip/${trip.id}`);
     } catch (error: any) {
       console.error('Error creating trip:', error);
       toast.error(error.message || 'Failed to create trip');
@@ -255,60 +235,75 @@ export default function CreateTrip() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            <div className="space-y-3">
-              <Label>Invite Friends by Email (up to 30)</Label>
+            {/* Success Header */}
+            <div className="text-center py-4">
+              <div className="w-16 h-16 rounded-full bg-vote-in-bg mx-auto mb-4 flex items-center justify-center">
+                <PartyPopper className="h-8 w-8 text-vote-in" />
+              </div>
+              <h2 className="text-xl font-display font-bold text-foreground">
+                Invite your friends
+              </h2>
+              <p className="text-muted-foreground mt-1">
+                Share this link or code in any group chat
+              </p>
+            </div>
+
+            {/* Invite Link */}
+            <div className="space-y-2">
+              <Label>Invite Link</Label>
               <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <div className="flex-1 relative">
+                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    type="email"
-                    placeholder="friend@example.com"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addEmail())}
-                    className="pl-9"
+                    value={getInviteLink()}
+                    readOnly
+                    className="pl-9 text-sm bg-muted"
                   />
                 </div>
-                <Button type="button" variant="secondary" onClick={addEmail}>
-                  Add
+                <Button
+                  variant="outline"
+                  onClick={handleCopyLink}
+                  className="shrink-0"
+                >
+                  {copiedLink ? (
+                    <Check className="h-4 w-4 text-vote-in" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
-
-              {inviteEmails.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {inviteEmails.map((email) => (
-                    <span
-                      key={email}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-secondary text-sm"
-                    >
-                      {email}
-                      <button
-                        type="button"
-                        onClick={() => removeEmail(email)}
-                        className="hover:text-destructive transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
 
+            {/* Invite Code */}
             <div className="space-y-2">
-              <Label htmlFor="inviteMessage">Personal Message (Optional)</Label>
-              <Textarea
-                id="inviteMessage"
-                placeholder="Hey! Join me in planning our next trip..."
-                value={inviteMessage}
-                onChange={(e) => setInviteMessage(e.target.value)}
-                rows={3}
-              />
+              <Label>Invite Code</Label>
+              <div className="flex items-center gap-4 p-4 bg-muted rounded-xl">
+                <div className="flex-1 text-center">
+                  <span className="text-3xl font-mono font-bold tracking-widest text-foreground">
+                    {createdTrip?.join_code}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleCopyCode}
+                >
+                  {copiedCode ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2 text-vote-in" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
-            <p className="text-sm text-muted-foreground">
-              Invites will be sent via email with a link to join.
-              {inviteEmails.length === 0 && " You can skip this step and invite people later."}
+            <p className="text-sm text-muted-foreground text-center">
+              Friends can paste the link or enter the code to join your trip.
             </p>
           </motion.div>
         );
@@ -346,9 +341,7 @@ export default function CreateTrip() {
             <div className="flex items-center justify-center mb-8">
               {STEPS.map((s, i) => (
                 <div key={s.id} className="flex items-center">
-                  <button
-                    onClick={() => i < step && setStep(i)}
-                    disabled={i > step}
+                  <div
                     className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
                       i === step
                         ? 'bg-primary text-primary-foreground'
@@ -363,7 +356,7 @@ export default function CreateTrip() {
                       <s.icon className="h-4 w-4" />
                     )}
                     <span className="font-medium">{s.title}</span>
-                  </button>
+                  </div>
                   {i < STEPS.length - 1 && (
                     <div className={`w-12 h-0.5 mx-2 ${i < step ? 'bg-vote-in' : 'bg-muted'}`} />
                   )}
@@ -380,42 +373,38 @@ export default function CreateTrip() {
 
             {/* Navigation Buttons */}
             <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                onClick={() => setStep(step - 1)}
-                disabled={step === 0}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-
-              {step < STEPS.length - 1 ? (
-                <Button
-                  onClick={() => setStep(step + 1)}
-                  disabled={!canProceed()}
-                  className="gradient-primary text-white"
-                >
-                  Continue
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
+              {step === 0 ? (
+                <>
+                  <div /> {/* Spacer */}
+                  <Button
+                    onClick={handleCreateTrip}
+                    disabled={loading || !canProceed()}
+                    className="gradient-primary text-white"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        Continue
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </>
               ) : (
-                <Button
-                  onClick={handleCreate}
-                  disabled={loading || !canProceed()}
-                  className="gradient-primary text-white"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Create Trip
-                    </>
-                  )}
-                </Button>
+                <>
+                  <div /> {/* Spacer */}
+                  <Button
+                    onClick={() => navigate(`/app/trip/${createdTrip?.id}`)}
+                    className="gradient-primary text-white"
+                  >
+                    Go to Trip Chat
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </>
               )}
             </div>
           </motion.div>
