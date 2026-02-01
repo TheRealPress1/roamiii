@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Users, Vote, CheckCircle, MessageCircle, Calendar, DollarSign, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { VibeTag } from '@/components/ui/VibeTag';
 import { VotePill } from '@/components/ui/VotePill';
+import { useAuth } from '@/contexts/AuthContext';
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -22,6 +23,16 @@ const staggerContainer = {
 };
 
 export default function Landing() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleGetStarted = () => {
+    navigate(user ? '/app' : '/auth?mode=signup');
+  };
+
+  const handleSignIn = () => {
+    navigate(user ? '/app' : '/auth');
+  };
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header transparent />
@@ -64,17 +75,22 @@ export default function Landing() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/auth?mode=signup">
-                <Button size="lg" className="gradient-primary text-white shadow-lg hover:shadow-xl transition-all text-base px-8">
-                  Create a Trip
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link to="/auth">
-                <Button size="lg" variant="outline" className="text-base px-8">
-                  Sign In
-                </Button>
-              </Link>
+              <Button 
+                size="lg" 
+                className="gradient-primary text-white shadow-lg hover:shadow-xl transition-all text-base px-8"
+                onClick={handleGetStarted}
+              >
+                Create a Trip
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="text-base px-8"
+                onClick={handleSignIn}
+              >
+                Sign In
+              </Button>
             </div>
           </motion.div>
 
@@ -230,12 +246,14 @@ export default function Landing() {
               TripChat combines the ease of group messaging with structured proposals, 
               cost breakdowns, and voting. Everyone's on the same page, and decisions actually happen.
             </p>
-            <Link to="/auth?mode=signup">
-              <Button size="lg" className="gradient-primary text-white shadow-lg">
-                Start Planning Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
+            <Button 
+              size="lg" 
+              className="gradient-primary text-white shadow-lg"
+              onClick={handleGetStarted}
+            >
+              Start Planning Free
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
           </div>
         </div>
       </section>
