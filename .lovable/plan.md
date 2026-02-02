@@ -1,259 +1,149 @@
 
+# Fix "Failed to Load Trips" and Notifications Errors
 
-# Frictionless Cover Image System
+## Root Cause Analysis
 
-Replace the manual URL input with a click-to-select preset gallery and intelligent auto-pick based on vibe tags.
+I found the exact errors from the console logs:
+
+### Error 1: Dashboard Trips Query
+```
+"Could not embed because more than one relationship was found for 'trips' and 'trip_proposals'"
+```
+
+**Cause:** There are two foreign key relationships between `trips` and `trip_proposals`:
+1. `trip_proposals.trip_id → trips.id` (FK: `trip_proposals_trip_id_fkey`)
+2. `trips.pinned_proposal_id → trip_proposals.id` (FK: `trips_pinned_proposal_fkey`)
+
+Supabase/PostgREST can't determine which relationship to use for the embedded query.
+
+### Error 2: Notifications Query
+```
+"Could not find a relationship between 'notifications' and 'profiles'"
+```
+
+**Cause:** The notifications table has no foreign key constraint from `actor_id` to `profiles.id`. The only FK on notifications is `trip_id → trips.id`.
 
 ---
 
-## Overview
+## Solution
 
-Transform the proposal creation experience by removing friction from cover image selection. Users will choose from beautiful preset images or let the system auto-select based on their vibe tag choices.
+### 1. Fix Dashboard Trips Query
+
+**File:** `src/pages/Dashboard.tsx`
+
+The current query:
+```typescript
+.select(`
+  *,
+  trip_members(count),
+  trip_proposals(count)
+`)
+```
+
+**Fixed query** - explicitly specify the foreign key:
+```typescript
+.select(`
+  *,
+  trip_members(count),
+  trip_proposals!trip_proposals_trip_id_fkey(count)
+`)
+```
+
+The `!trip_proposals_trip_id_fkey` syntax tells PostgREST which foreign key relationship to use.
+
+### 2. Add Better Error Logging
+
+**File:** `src/pages/Dashboard.tsx`
+
+Enhance the error handling to show specific error details:
+
+```typescript
+catch (err: any) {
+  const errorMessage = err?.message || 'Unknown error';
+  const errorCode = err?.code || '';
+  console.error('Error fetching trips:', { message: errorMessage, code: errorCode, details: err });
+  setError(`Failed to load trips: ${errorMessage}`);
+  toast.error(`Failed to load trips: ${errorMessage}`);
+}
+```
+
+### 3. Fix Notifications Query (Two Options)
+
+**Option A - Add Foreign Key (Database Migration)**
+
+Add a proper FK constraint from `notifications.actor_id` to `profiles.id`.
+
+```sql
+ALTER TABLE notifications 
+ADD CONSTRAINT notifications_actor_id_fkey 
+FOREIGN KEY (actor_id) REFERENCES profiles(id) ON DELETE SET NULL;
+```
+
+**Option B - Fetch Actor Separately (Code Fix)**
+
+Remove the embedded join and fetch actor profiles in a separate query. This is more robust.
+
+**Recommended:** Option A (add the FK), as the current design clearly intends `actor_id` to reference a profile.
 
 ---
 
-## Architecture
+## Changes Summary
 
-```text
-Cover Image Flow:
-┌────────────────────────────────────────────────────────────────┐
-│  CreateProposalModal                                           │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  Cover Image Section                                      │  │
-│  │  ┌─────────────────────────────────────────────────────┐  │  │
-│  │  │  Selected Preview (if any)                          │  │  │
-│  │  │  [Chosen image with checkmark overlay]              │  │  │
-│  │  └─────────────────────────────────────────────────────┘  │  │
-│  │                                                           │  │
-│  │  Choose a cover:             [✨ Auto pick]              │  │
-│  │  ┌────────────────────────────────────────────────────┐  │  │
-│  │  │ 🎿 Skiing │ 🏖️ Beach │ 🚢 Cruise │ 🏙️ City │ ... │  │  │
-│  │  └────────────────────────────────────────────────────┘  │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────┘
-```
+### File: `src/pages/Dashboard.tsx`
 
----
+| Line | Change |
+|------|--------|
+| 84-88 | Fix ambiguous `trip_proposals` join by specifying FK |
+| 128-131 | Add detailed error logging with error code/message |
 
-## Changes
+### Database Migration
 
-### 1. Create Cover Image Presets Data
-
-**File:** `src/lib/cover-presets.ts` (new)
-
-Define the preset cover images with categories and URLs:
-
-```text
-Categories:
-├── skiing      → Snowy mountain scene
-├── beach       → Tropical beach 
-├── cruise      → Ocean cruise ship
-├── city        → Urban skyline
-├── mountains   → Mountain landscape
-├── roadtrip    → Open road/car
-├── europe      → European architecture
-├── party       → Nightlife/celebration
-├── nature      → Forest/wilderness
-└── default     → Gradient fallback
-
-Structure:
-├── COVER_PRESETS: Array of { key, label, emoji, imageUrl }
-├── getPresetByKey(key): Get preset by key
-├── getAutoPickCover(vibeTags): Smart selection based on vibes
-└── DEFAULT_COVER_URL: Fallback gradient image
-```
-
-Vibe-to-Cover Mapping:
-| Vibe Tags | Suggested Cover |
-|-----------|-----------------|
-| adventure, nature | mountains |
-| beach, chill | beach |
-| city, culture, food | city |
-| party | party |
-| luxury | cruise or europe |
-| romantic | beach or europe |
-| Default | nature |
-
-### 2. Create CoverImagePicker Component
-
-**File:** `src/components/proposal/CoverImagePicker.tsx` (new)
-
-A reusable component for selecting cover images:
-
-```text
-Props:
-├── selectedKey: string | null
-├── onSelect: (key: string, url: string) => void
-├── vibeTags: string[] (for auto-pick)
-└── previewUrl?: string (current selection preview)
-
-Features:
-├── Horizontal scrolling gallery of presets
-├── Each preset shows:
-│   ├── Thumbnail image (aspect-[3/2], rounded)
-│   ├── Emoji + label below
-│   └── Ring highlight when selected
-├── "Auto pick" button that uses vibeTags to select
-└── Selected preview at top (aspect-video)
-```
-
-### 3. Update CreateProposalModal
-
-**File:** `src/components/proposal/CreateProposalModal.tsx`
-
-Replace the URL input with the new picker:
-
-```text
-Changes:
-├── Remove: coverImageUrl state + URL Input
-├── Add: coverImageKey state (string | null)
-├── Add: computed coverImageUrl from key or auto-pick
-├── Import: CoverImagePicker, getPresetByKey, getAutoPickCover
-├── Update validation: remove coverImageUrl requirement
-├── Update submit: use resolved coverImageUrl
-└── Add: Effect to auto-set cover when vibeTags change (optional)
-```
-
-Current validation:
-```text
-if (!user || !destination.trim() || !coverImageUrl.trim())
-```
-
-New validation:
-```text
-if (!user || !destination.trim())
-// coverImageUrl auto-resolves from key or auto-pick
-```
-
-Before submit, resolve final URL:
-```text
-const finalCoverUrl = coverImageKey 
-  ? getPresetByKey(coverImageKey)?.imageUrl 
-  : getAutoPickCover(vibeTags);
-```
-
-### 4. Update Form Layout
-
-Current layout (lines 215-236):
-```text
-{/* Cover Image URL */}
-<div className="space-y-2">
-  <Label htmlFor="coverImage">Cover Image URL *</Label>
-  <Input ... />
-  {coverImageUrl && <preview />}
-</div>
-```
-
-New layout:
-```text
-{/* Cover Image */}
-<div className="space-y-3">
-  <CoverImagePicker
-    selectedKey={coverImageKey}
-    onSelect={(key, url) => {
-      setCoverImageKey(key);
-      setCoverImageUrl(url);
-    }}
-    vibeTags={vibeTags}
-  />
-</div>
-```
+Add missing foreign key on notifications table for actor_id → profiles.id
 
 ---
 
 ## Technical Details
 
-### Preset Image URLs
-
-Using high-quality Unsplash photos (stable URLs):
-
-| Key | Image Theme | Unsplash URL |
-|-----|-------------|--------------|
-| skiing | Snow mountains | https://images.unsplash.com/photo-1551524559-8af4e6624178?w=800&h=450&fit=crop |
-| beach | Tropical beach | https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=450&fit=crop |
-| cruise | Cruise ship | https://images.unsplash.com/photo-1548574505-5e239809ee19?w=800&h=450&fit=crop |
-| city | City skyline | https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&h=450&fit=crop |
-| mountains | Mountain vista | https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&h=450&fit=crop |
-| roadtrip | Open road | https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&h=450&fit=crop |
-| europe | European town | https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800&h=450&fit=crop |
-| party | Night celebration | https://images.unsplash.com/photo-1496024840928-4c417adf211d?w=800&h=450&fit=crop |
-| nature | Forest/lake | https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=450&fit=crop |
-
-### Auto-Pick Algorithm
+### Why This Fixes It
 
 ```text
-function getAutoPickCover(vibeTags: string[]): string {
-  // Priority-based matching
-  if (hasAny(['adventure', 'nature'])) return presets.mountains.url;
-  if (hasAny(['beach', 'chill'])) return presets.beach.url;
-  if (hasAny(['city', 'culture', 'food'])) return presets.city.url;
-  if (hasAny(['party'])) return presets.party.url;
-  if (hasAny(['luxury'])) return presets.cruise.url;
-  if (hasAny(['romantic'])) return presets.europe.url;
-  return presets.nature.url; // Default fallback
-}
+Before (ambiguous):
+trips ←─────┐
+  │         │ trip_proposals_trip_id_fkey
+  │         │
+  ├─────────┤ trip_proposals (two paths!)
+  │         │
+  │         │ trips_pinned_proposal_fkey
+  └─────────┘
+
+After (explicit):
+trips ←── trip_proposals!trip_proposals_trip_id_fkey (one path)
 ```
 
-### Fallback Behavior
-
-1. User selects a preset → use that URL
-2. User doesn't select but has vibe tags → auto-pick based on vibes
-3. No selection, no vibes → use default (nature) cover
-
----
-
-## UI Component Details
-
-### CoverImagePicker Layout
+### Database Relationships After Fix
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  Selected Preview (when selection exists)                   │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │                                                       │  │
-│  │            [Cover Image Preview]                      │  │
-│  │               aspect-video                            │  │
-│  │                                                       │  │
-│  └───────────────────────────────────────────────────────┘  │
-│                                                             │
-│  Cover Image          [✨ Auto pick]                        │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │ Horizontal scroll →                                     ││
-│  │ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐        ││
-│  │ │  🎿 │ │  🏖️ │ │  🚢 │ │  🏙️ │ │  ⛰️  │ │  🚗 │ ...    ││
-│  │ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘        ││
-│  │ Skiing  Beach  Cruise  City  Mountains Roadtrip        ││
-│  └─────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
+notifications
+├── trip_id → trips.id (existing)
+└── actor_id → profiles.id (add this FK)
+
+trip_proposals
+├── trip_id → trips.id (use this with !trip_proposals_trip_id_fkey)
+└── created_by → profiles.id
+
+trips
+└── pinned_proposal_id → trip_proposals.id (separate relationship)
 ```
-
-Preset tile styling:
-- Thumbnail: 96x64px (aspect-[3/2]), rounded-lg
-- Selected: ring-2 ring-primary ring-offset-2
-- Hover: scale-105 transition
-- Label: text-xs text-center below image
-
----
-
-## Files Summary
-
-| File | Change |
-|------|--------|
-| `src/lib/cover-presets.ts` | New - Preset data and auto-pick logic |
-| `src/components/proposal/CoverImagePicker.tsx` | New - Picker UI component |
-| `src/components/proposal/CreateProposalModal.tsx` | Update - Replace URL input with picker |
 
 ---
 
 ## Acceptance Criteria
 
-1. URL input is removed from proposal form
-2. Horizontal gallery of 9 preset images shown
-3. Clicking a preset selects it with visual feedback
-4. Selected image shows as preview above gallery
-5. "Auto pick" button selects cover based on vibe tags
-6. Form submits without requiring manual image selection
-7. If no selection, system auto-picks based on vibes or defaults
-8. Proposal card always displays a cover image
-9. Existing proposal display code works unchanged (still uses cover_image_url)
-
+1. Dashboard no longer shows "Failed to load trips"
+2. Trips load with correct member and proposal counts
+3. Notifications load without error
+4. Console shows detailed error info if something fails
+5. Toast shows helpful error message to user
+6. Newly created trips appear immediately in "Your Trips"
+7. Trips persist after page refresh
+8. Trips persist after logout/login
