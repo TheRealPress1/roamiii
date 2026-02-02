@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ProfileGate } from "@/components/ProfileGate";
@@ -13,7 +13,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import CreateTrip from "./pages/CreateTrip";
 import JoinTrip from "./pages/JoinTrip";
-import JoinTripPreview from "./pages/JoinTripPreview";
+import InvitePage from "./pages/InvitePage";
 import TripChat from "./pages/TripChat";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -32,7 +32,9 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/join/:code" element={<JoinTripPreview />} />
+            {/* Invite routes - canonical /invite/:code with /join/:code as legacy route */}
+            <Route path="/invite/:code" element={<InvitePage />} />
+            <Route path="/join/:code" element={<InvitePage />} />
             {/* Profile page - protected but no ProfileGate (this IS the gate destination) */}
             <Route path="/app/profile" element={
               <ProtectedRoute>

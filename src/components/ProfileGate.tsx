@@ -30,7 +30,11 @@ export function ProfileGate({ children }: ProfileGateProps) {
 
     // Redirect to profile if incomplete
     if (!isComplete) {
-      const nextPath = location.pathname + location.search;
+      // Check for pending invite code
+      const pendingInviteCode = localStorage.getItem('pending_invite_code');
+      const nextPath = pendingInviteCode 
+        ? `/invite/${pendingInviteCode}`
+        : location.pathname + location.search;
       navigate(`/app/profile?next=${encodeURIComponent(nextPath)}`, { replace: true });
     }
   }, [authLoading, isLoading, isComplete, user, location.pathname, location.search, navigate]);

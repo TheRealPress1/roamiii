@@ -1,9 +1,10 @@
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, DollarSign, Users, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2 } from 'lucide-react';
+import { Calendar, DollarSign, Users, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield } from 'lucide-react';
 import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TripPanelProps {
   trip: Trip;
@@ -20,9 +22,11 @@ interface TripPanelProps {
   onViewProposal: (proposal: TripProposal) => void;
   isOwner?: boolean;
   onDeleteTrip?: () => void;
+  onRemoveMember?: (member: TripMember) => void;
 }
 
-export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, isOwner, onDeleteTrip }: TripPanelProps) {
+export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, isOwner, onDeleteTrip, onRemoveMember }: TripPanelProps) {
+  const { user } = useAuth();
   const hasDeadline = trip.decision_deadline && new Date(trip.decision_deadline) > new Date();
   
   // Sort proposals by vote count
@@ -37,6 +41,26 @@ export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, 
   const pinnedProposal = trip.pinned_proposal_id
     ? proposals.find((p) => p.id === trip.pinned_proposal_id)
     : null;
+
+  const getRoleBadge = (role: TripMember['role']) => {
+    if (role === 'owner') {
+      return (
+        <Badge variant="secondary" className="h-5 text-[10px] gap-0.5 px-1.5 bg-primary/10 text-primary border-0">
+          <Crown className="h-3 w-3" />
+          Owner
+        </Badge>
+      );
+    }
+    if (role === 'admin') {
+      return (
+        <Badge variant="secondary" className="h-5 text-[10px] gap-0.5 px-1.5">
+          <Shield className="h-3 w-3" />
+          Admin
+        </Badge>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="w-80 border-l border-border bg-card flex flex-col h-full">
@@ -111,16 +135,52 @@ export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, 
                 Invite
               </Button>
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="space-y-2">
               {members.map((member) => {
                 const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
+                const isCurrentUser = member.user_id === user?.id;
+                const canRemove = isOwner && !isCurrentUser && member.role !== 'owner';
+                
                 return (
-                  <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                    <AvatarImage src={member.profile?.avatar_url || undefined} />
-                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                      {name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div key={member.id} className="flex items-center gap-2 group">
+                    <Avatar className="h-8 w-8 border-2 border-background">
+                      <AvatarImage src={member.profile?.avatar_url || undefined} />
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                        {name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {name}
+                          {isCurrentUser && <span className="text-muted-foreground"> (you)</span>}
+                        </span>
+                        {getRoleBadge(member.role)}
+                      </div>
+                    </div>
+                    {canRemove && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => onRemoveMember?.(member)}
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                          >
+                            <UserMinus className="mr-2 h-4 w-4" />
+                            Remove from trip
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 );
               })}
             </div>

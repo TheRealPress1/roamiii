@@ -141,6 +141,10 @@ export default function Profile() {
 
       // Redirect based on next param or default to dashboard
       if (nextUrl) {
+        // Clear pending invite code if redirecting to invite page
+        if (nextUrl.includes('/invite/')) {
+          localStorage.removeItem('pending_invite_code');
+        }
         navigate(nextUrl);
       } else {
         navigate('/app');

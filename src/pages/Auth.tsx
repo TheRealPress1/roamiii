@@ -38,10 +38,12 @@ export default function Auth() {
     if (authLoading) return;
     
     if (user) {
-      const pendingJoinCode = sessionStorage.getItem('pendingJoinCode');
-      if (pendingJoinCode) {
+      // Check for pending invite code from localStorage (new) or sessionStorage (legacy)
+      const pendingInviteCode = localStorage.getItem('pending_invite_code') || sessionStorage.getItem('pendingJoinCode');
+      if (pendingInviteCode) {
+        // Clear legacy storage
         sessionStorage.removeItem('pendingJoinCode');
-        navigate(`/join/${pendingJoinCode}`, { replace: true });
+        navigate(`/invite/${pendingInviteCode}`, { replace: true });
       } else {
         navigate(from, { replace: true });
       }

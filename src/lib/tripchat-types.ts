@@ -3,6 +3,7 @@ export type TripStatus = 'planning' | 'decided';
 export type TripRole = 'owner' | 'admin' | 'member';
 export type MessageType = 'text' | 'proposal' | 'system';
 export type VoteType = 'in' | 'maybe' | 'out';
+export type MemberStatus = 'active' | 'removed';
 
 export interface Profile {
   id: string;
@@ -36,10 +37,13 @@ export interface TripMember {
   trip_id: string;
   user_id: string;
   role: TripRole;
+  status: MemberStatus;
   budget_min: number | null;
   budget_max: number | null;
   availability_json: unknown;
   created_at: string;
+  removed_at: string | null;
+  removed_by: string | null;
   profile?: Profile;
 }
 

@@ -21,14 +21,15 @@ export function useTripData(tripId: string) {
       if (tripError) throw tripError;
       setTrip(tripData as Trip);
 
-      // Fetch members with profiles
+      // Fetch members with profiles (only active members)
       const { data: membersData, error: membersError } = await supabase
         .from('trip_members')
         .select(`
           *,
           profile:profiles(*)
         `)
-        .eq('trip_id', tripId);
+        .eq('trip_id', tripId)
+        .eq('status', 'active');
 
       if (membersError) throw membersError;
       setMembers(membersData as unknown as TripMember[]);
