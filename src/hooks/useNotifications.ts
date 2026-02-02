@@ -22,7 +22,7 @@ export function useNotifications() {
         .from('notifications')
         .select(`
           *,
-          actor:profiles!actor_id(id, email, name, avatar_url)
+          actor:profiles!notifications_actor_id_fkey(id, email, name, avatar_url)
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })

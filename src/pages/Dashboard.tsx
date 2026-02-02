@@ -84,7 +84,7 @@ export default function Dashboard() {
         .select(`
           *,
           trip_members(count),
-          trip_proposals(count)
+          trip_proposals!trip_proposals_trip_id_fkey(count)
         `)
         .order('updated_at', { ascending: false });
 
@@ -125,10 +125,12 @@ export default function Dashboard() {
       });
 
       setTrips(tripsWithDetails);
-    } catch (err) {
-      console.error('Error fetching trips:', err);
-      setError('Failed to load trips. Please try again.');
-      toast.error('Failed to load trips');
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Unknown error';
+      const errorCode = err?.code || '';
+      console.error('Error fetching trips:', { message: errorMessage, code: errorCode, details: err });
+      setError(`Failed to load trips: ${errorMessage}`);
+      toast.error(`Failed to load trips: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

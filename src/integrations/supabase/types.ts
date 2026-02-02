@@ -371,6 +371,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notifications_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
