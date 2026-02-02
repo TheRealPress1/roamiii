@@ -1,4 +1,4 @@
-// TripChat type definitions
+// Roamiii type definitions
 export type TripStatus = 'planning' | 'decided';
 export type TripRole = 'owner' | 'admin' | 'member';
 export type MessageType = 'text' | 'proposal' | 'system';

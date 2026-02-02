@@ -117,7 +117,7 @@ export default function Dashboard() {
               {profile?.name ? `Hey, ${profile.name.split(' ')[0]}!` : 'Dashboard'}
             </h1>
             <p className="text-muted-foreground">
-              Your trip chats
+              Your Roamiii trips
             </p>
           </motion.div>
 

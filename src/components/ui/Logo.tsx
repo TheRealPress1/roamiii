@@ -26,8 +26,8 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
         <MessageCircle className={`${sizes[size]} text-primary relative z-10 group-hover:scale-110 transition-transform`} />
       </div>
       {showText && (
-        <span className={`${textSizes[size]} font-display font-semibold text-foreground`}>
-          TripChat
+        <span className={`${textSizes[size]} font-display font-semibold text-foreground tracking-tight`}>
+          Roamiii
         </span>
       )}
     </Link>
