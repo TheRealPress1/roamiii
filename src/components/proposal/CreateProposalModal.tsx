@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Loader2, MapPin, Calendar, DollarSign, X, Upload, Plus } from 'lucide-react';
+import { Loader2, MapPin, DollarSign, X, Plus } from 'lucide-react';
+import { CoverImagePicker } from '@/components/proposal/CoverImagePicker';
+import { getAutoPickCover } from '@/lib/cover-presets';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [flexibleDates, setFlexibleDates] = useState(false);
+  const [coverImageKey, setCoverImageKey] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [vibeTags, setVibeTags] = useState<string[]>([]);
   const [lodgingLinks, setLodgingLinks] = useState<string[]>(['']);
@@ -86,10 +88,13 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   };
 
   const handleSubmit = async () => {
-    if (!user || !destination.trim() || !coverImageUrl.trim()) {
+    if (!user || !destination.trim()) {
       toast.error('Please fill in required fields');
       return;
     }
+
+    // Resolve cover image URL (selected preset or auto-pick)
+    const finalCoverUrl = coverImageUrl || getAutoPickCover(vibeTags);
 
     setLoading(true);
     try {
@@ -103,7 +108,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
           date_start: dateStart || null,
           date_end: dateEnd || null,
           flexible_dates: flexibleDates,
-          cover_image_url: coverImageUrl.trim(),
+          cover_image_url: finalCoverUrl,
           vibe_tags: vibeTags,
           lodging_links: lodgingLinks.filter((l) => l.trim()),
           cost_lodging_total: parseFloat(costLodging) || 0,
@@ -146,6 +151,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
     setDateStart('');
     setDateEnd('');
     setFlexibleDates(false);
+    setCoverImageKey(null);
     setCoverImageUrl('');
     setVibeTags([]);
     setLodgingLinks(['']);
@@ -212,28 +218,16 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
             </Label>
           </div>
 
-          {/* Cover Image URL */}
-          <div className="space-y-2">
-            <Label htmlFor="coverImage">Cover Image URL *</Label>
-            <Input
-              id="coverImage"
-              placeholder="https://images.unsplash.com/..."
-              value={coverImageUrl}
-              onChange={(e) => setCoverImageUrl(e.target.value)}
-            />
-            {coverImageUrl && (
-              <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                <img
-                  src={coverImageUrl}
-                  alt="Cover preview"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              </div>
-            )}
-          </div>
+          {/* Cover Image Picker */}
+          <CoverImagePicker
+            selectedKey={coverImageKey}
+            onSelect={(key, url) => {
+              setCoverImageKey(key);
+              setCoverImageUrl(url);
+            }}
+            vibeTags={vibeTags}
+            previewUrl={coverImageUrl}
+          />
 
           {/* Vibe Tags */}
           <div className="space-y-2">
@@ -342,7 +336,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
           {/* Submit */}
           <Button
             onClick={handleSubmit}
-            disabled={loading || !destination.trim() || !coverImageUrl.trim()}
+            disabled={loading || !destination.trim()}
             className="w-full gradient-primary text-white"
             size="lg"
           >
