@@ -57,9 +57,10 @@ interface TripWithDetails {
 }
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [trips, setTrips] = useState<TripWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Memoized greeting - computed once per render, persists for the day
@@ -69,13 +70,16 @@ export default function Dashboard() {
   }, [profile?.name]);
 
   useEffect(() => {
-    fetchTrips();
-  }, []);
+    if (user) {
+      fetchTrips();
+    }
+  }, [user]);
 
   const fetchTrips = async () => {
+    setError(null);
     try {
       // Fetch trips with member count, proposal count
-      const { data: tripData, error } = await supabase
+      const { data: tripData, error: fetchError } = await supabase
         .from('trips')
         .select(`
           *,
@@ -84,26 +88,31 @@ export default function Dashboard() {
         `)
         .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
 
-      // Get last message for each trip
+      // Get last message for each trip (wrapped in try-catch for robustness)
       const tripsWithDetails: TripWithDetails[] = await Promise.all(
         (tripData || []).map(async (trip: any) => {
-          // Fetch latest message for this trip
-          const { data: messageData } = await supabase
-            .from('messages')
-            .select('body, created_at, type')
-            .eq('trip_id', trip.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          let lastMessageData = null;
+          try {
+            const { data } = await supabase
+              .from('messages')
+              .select('body, created_at, type')
+              .eq('trip_id', trip.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            lastMessageData = data;
+          } catch {
+            // Silently fail - message preview is optional
+          }
 
           return {
             ...trip,
             member_count: trip.trip_members?.[0]?.count || 0,
             proposal_count: trip.trip_proposals?.[0]?.count || 0,
-            last_message: messageData?.body || null,
-            last_message_at: messageData?.created_at || null,
+            last_message: lastMessageData?.body || null,
+            last_message_at: lastMessageData?.created_at || null,
           };
         })
       );
@@ -116,8 +125,10 @@ export default function Dashboard() {
       });
 
       setTrips(tripsWithDetails);
-    } catch (error) {
-      console.error('Error fetching trips:', error);
+    } catch (err) {
+      console.error('Error fetching trips:', err);
+      setError('Failed to load trips. Please try again.');
+      toast.error('Failed to load trips');
     } finally {
       setLoading(false);
     }
