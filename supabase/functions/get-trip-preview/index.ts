@@ -27,7 +27,17 @@ serve(async (req: Request) => {
 
   try {
     const url = new URL(req.url);
-    const joinCode = url.searchParams.get("code");
+    
+    // Support both query param (GET) and body (POST)
+    let joinCode = url.searchParams.get("code");
+    if (!joinCode && req.method === "POST") {
+      try {
+        const body = await req.json();
+        joinCode = body.code;
+      } catch {
+        // Body parsing failed, continue with null joinCode
+      }
+    }
 
     if (!joinCode) {
       return new Response(

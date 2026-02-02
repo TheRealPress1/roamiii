@@ -34,7 +34,7 @@ export default function InvitePage() {
   const [trip, setTrip] = useState<TripPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch trip by invite code
+  // Fetch trip by invite code using edge function (bypasses RLS)
   useEffect(() => {
     if (!code) {
       setState('invalid');
@@ -44,18 +44,17 @@ export default function InvitePage() {
     const fetchTrip = async () => {
       const normalizedCode = code.toUpperCase();
       
-      const { data, error: fetchError } = await supabase
-        .from('trips')
-        .select('id, name')
-        .eq('join_code', normalizedCode)
-        .single();
+      const { data, error: fetchError } = await supabase.functions.invoke(
+        'get-trip-preview',
+        { body: { code: normalizedCode } }
+      );
 
       if (fetchError || !data) {
         setState('invalid');
         return;
       }
 
-      setTrip(data);
+      setTrip({ id: data.id, name: data.name });
       // Continue to auth check
     };
 
