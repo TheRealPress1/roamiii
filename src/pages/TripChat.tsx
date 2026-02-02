@@ -12,6 +12,7 @@ import { ProposalDetailModal } from '@/components/proposal/ProposalDetailModal';
 import { InviteModal } from '@/components/invite/InviteModal';
 import { CompareTray } from '@/components/compare/CompareTray';
 import { CompareModal } from '@/components/compare/CompareModal';
+import { DeleteTripDialog } from '@/components/trip/DeleteTripDialog';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
@@ -35,6 +36,8 @@ export default function TripChat() {
   const [selectedProposal, setSelectedProposal] = useState<TripProposal | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
   const [compareModalOpen, setCompareModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Compare hook
   const { compareIds, compareCount, toggleCompare, clearCompare, isComparing } = useProposalCompare(tripId!);
@@ -42,6 +45,7 @@ export default function TripChat() {
   const isLoading = dataLoading || messagesLoading;
   const currentMember = members.find((m) => m.user_id === user?.id);
   const isAdmin = currentMember?.role === 'owner' || currentMember?.role === 'admin';
+  const isOwner = currentMember?.role === 'owner';
 
   // Get compared proposals
   const comparedProposals = proposals.filter(p => compareIds.includes(p.id));
@@ -73,6 +77,25 @@ export default function TripChat() {
     toast.success('Trip locked! 🎉');
     setCompareModalOpen(false);
     refetch();
+  };
+
+  const handleDeleteTrip = async () => {
+    setDeleteLoading(true);
+    
+    const { error } = await supabase
+      .from('trips')
+      .delete()
+      .eq('id', tripId);
+
+    if (error) {
+      toast.error('Failed to delete trip');
+      console.error('Error deleting trip:', error);
+      setDeleteLoading(false);
+      return;
+    }
+
+    toast.success('Trip deleted');
+    navigate('/app');
   };
 
   if (isLoading) {
@@ -144,6 +167,8 @@ export default function TripChat() {
               proposals={proposals}
               onInvite={() => setInviteModalOpen(true)}
               onViewProposal={handleViewProposal}
+              isOwner={isOwner}
+              onDeleteTrip={() => setDeleteModalOpen(true)}
             />
           </SheetContent>
         </Sheet>
@@ -180,6 +205,8 @@ export default function TripChat() {
             proposals={proposals}
             onInvite={() => setInviteModalOpen(true)}
             onViewProposal={handleViewProposal}
+            isOwner={isOwner}
+            onDeleteTrip={() => setDeleteModalOpen(true)}
           />
         </motion.div>
       </div>
@@ -229,6 +256,14 @@ export default function TripChat() {
         onRemove={toggleCompare}
         onClearAll={clearCompare}
         onSelectWinner={handleSelectWinner}
+      />
+
+      <DeleteTripDialog
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        tripName={trip.name}
+        onConfirm={handleDeleteTrip}
+        loading={deleteLoading}
       />
     </div>
   );
