@@ -53,8 +53,8 @@ export function Header() {
     <div className="sticky top-4 z-50 w-full px-4">
       <header className={`mx-auto max-w-[1120px] transition-all duration-300 backdrop-blur-xl rounded-2xl ${
         isScrolled 
-          ? 'bg-white/80 dark:bg-black/70 shadow-lg border border-black/[0.08] dark:border-white/[0.12]' 
-          : 'bg-white/75 dark:bg-black/60 shadow-md border border-black/[0.06] dark:border-white/10'
+          ? 'bg-white/65 dark:bg-white/15 shadow-navbar-scrolled border border-white/30 dark:border-white/20' 
+          : 'bg-white/55 dark:bg-white/10 shadow-navbar border border-white/25 dark:border-white/15'
       }`}>
         <div className="flex h-14 items-center justify-between px-4 sm:px-6">
           <Logo />

@@ -169,4 +169,12 @@
   .shadow-card-hover {
     box-shadow: var(--shadow-card-hover);
   }
+
+  .shadow-navbar {
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  .shadow-navbar-scrolled {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  }
 }
