@@ -1,118 +1,98 @@
 
-# Continuous Background & Enhanced Glassmorphism
+# Hide Global Header on Create Trip Flow
 
-Remove the white band at the top and enhance the navbar's glass effect for a more seamless, premium look.
+Remove the floating navbar from the Create Trip page for a cleaner, focused experience.
 
 ---
 
 ## Overview
 
-Two coordinated changes:
-
-1. **Continuous Background**: Extend the warm gradient to cover the entire page top, eliminating the visible "white band" behind the navbar
-2. **Enhanced Glassmorphism**: Make the navbar more translucent (55% opacity vs current 75%) with adjusted blur and softer shadow
+The Create Trip flow should be a focused, distraction-free experience without the full global navigation. The page already has its own "Back" button, so removing the navbar is straightforward.
 
 ---
 
 ## Changes
 
-### 1. Update Landing Page Background
+### 1. Remove Header from CreateTrip Page
 
-**File:** `src/pages/Landing.tsx`
+**File:** `src/pages/CreateTrip.tsx`
 
-Change the outer wrapper from plain background to the gradient:
+**Changes:**
+- Remove the `<Header />` import
+- Remove the `<Header />` component from the JSX
 
 **Current:**
 ```text
+import { Header } from '@/components/layout/Header';
+...
 <div className="min-h-screen flex flex-col bg-background">
+  <Header />
+  <main className="flex-1">
+    <div className="container max-w-2xl py-8">
+      <Button ... onClick={() => navigate('/app')}>Back</Button>
 ```
 
 **New:**
 ```text
-<div className="min-h-screen flex flex-col gradient-hero">
+// No Header import
+...
+<div className="min-h-screen flex flex-col bg-background">
+  {/* No Header component */}
+  <main className="flex-1">
+    <div className="container max-w-2xl py-8">
+      <Button ... onClick={() => navigate('/app')}>Back</Button>
 ```
 
-This makes the entire page (including behind the floating navbar) use the warm beige gradient, creating one continuous surface.
+### 2. Adjust Top Spacing
 
-Also update the hero section to remove its own gradient since the parent now has it:
+Since we're removing the navbar, update the container padding to start appropriately from the top:
 
 **Current:**
 ```text
-<section className="relative overflow-hidden gradient-hero">
+<div className="container max-w-2xl py-8">
 ```
 
 **New:**
 ```text
-<section className="relative overflow-hidden">
+<div className="container max-w-2xl pt-8 pb-8">
 ```
 
-### 2. Enhance Navbar Glassmorphism
-
-**File:** `src/components/layout/Header.tsx`
-
-Update the header styling for stronger glass effect:
-
-| Property | Current | New |
-|----------|---------|-----|
-| Background (default) | `bg-white/75` | `bg-white/55` |
-| Background (scrolled) | `bg-white/80` | `bg-white/65` |
-| Border | `border-black/[0.06]` | `border-white/25` |
-| Border (scrolled) | `border-black/[0.08]` | `border-white/30` |
-| Shadow (default) | `shadow-md` | Custom softer shadow |
-| Shadow (scrolled) | `shadow-lg` | Slightly enhanced |
-
-**Updated Styling:**
-```text
-Default State:
-├── bg-white/55 dark:bg-white/10
-├── backdrop-blur-xl (keep)
-├── border border-white/25 dark:border-white/15
-└── shadow: 0 6px 24px rgba(0,0,0,0.06)
-
-Scrolled State:
-├── bg-white/65 dark:bg-white/15
-├── backdrop-blur-xl
-├── border border-white/30 dark:border-white/20
-└── shadow: 0 8px 32px rgba(0,0,0,0.08)
-```
-
-### 3. Add Custom Shadow Utility (Optional Enhancement)
-
-**File:** `src/index.css`
-
-Add a custom utility class for the navbar's soft floating shadow:
-
-```css
-.shadow-navbar {
-  box-shadow: 0 6px 24px rgba(0,0,0,0.06);
-}
-
-.shadow-navbar-scrolled {
-  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-}
-```
+The padding stays the same since `py-8` is equivalent to `pt-8 pb-8`. The content will now start ~32px from the top, which is appropriate for a focused flow page.
 
 ---
 
 ## Technical Details
 
-### Background Continuity
+### Why This Approach
 
-By moving `gradient-hero` to the outer wrapper, the Header (positioned absolutely within the document flow) now floats over the gradient instead of over a white background. The hero section no longer needs its own gradient.
+| Approach | Pros | Cons |
+|----------|------|------|
+| Remove Header from page | Simple, single file | N/A |
+| Route-based conditional in Header | Centralized logic | More complex, requires location hook |
+| Layout wrapper pattern | Reusable | Over-engineered for one page |
 
-### Glassmorphism Values
+The simplest approach wins: just don't render what you don't need.
 
-| Property | Light Mode | Dark Mode |
-|----------|------------|-----------|
-| Background (default) | rgba(255,255,255,0.55) | rgba(255,255,255,0.10) |
-| Background (scrolled) | rgba(255,255,255,0.65) | rgba(255,255,255,0.15) |
-| Border (default) | rgba(255,255,255,0.25) | rgba(255,255,255,0.15) |
-| Border (scrolled) | rgba(255,255,255,0.30) | rgba(255,255,255,0.20) |
-| Blur | 16px (xl) | 16px (xl) |
+### Layout After Change
 
-### Dark Mode Consideration
-
-In dark mode, we use lower white opacity for a subtle frosted effect that works on dark backgrounds, rather than black opacity which wouldn't look glassy.
+```text
+┌─────────────────────────────────┐
+│         (no navbar)             │
+├─────────────────────────────────┤
+│  ← Back                         │  ← Existing button
+│                                 │
+│  Create a Trip                  │
+│  Set up your trip...            │
+│                                 │
+│  [Step Indicator]               │
+│                                 │
+│  ┌─────────────────────────┐    │
+│  │     Form Content        │    │
+│  └─────────────────────────┘    │
+│                                 │
+│         [Continue →]            │
+└─────────────────────────────────┘
+```
 
 ---
 
@@ -120,19 +100,14 @@ In dark mode, we use lower white opacity for a subtle frosted effect that works 
 
 | File | Change |
 |------|--------|
-| `src/pages/Landing.tsx` | Move gradient to outer wrapper, remove from hero section |
-| `src/components/layout/Header.tsx` | Increase transparency, update border to white-based, add softer shadows |
-| `src/index.css` | Add navbar shadow utility classes |
+| `src/pages/CreateTrip.tsx` | Remove Header import and component |
 
 ---
 
 ## Acceptance Criteria
 
-1. No visible white band at the top of the Landing page
-2. Navbar appears to float over a continuous warm gradient background
-3. Navbar is more translucent (can see background through it more clearly)
-4. Text and icons remain fully readable
-5. Border has a subtle white/frosted appearance
-6. Shadow is softer and more diffuse
-7. Scroll state still triggers slightly more opaque appearance
-8. Works correctly in both light and dark modes
+1. Global floating navbar is completely hidden on `/app/create`
+2. "Back" button at top of page still works and navigates to dashboard
+3. No layout jump or weird spacing - content starts near top
+4. Navbar remains visible on dashboard and trip chat pages
+5. Works when navigating to create from any entry point
