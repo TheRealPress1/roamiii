@@ -74,7 +74,7 @@ export default function Landing() {
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Roamiii is where friends chat, propose destinations, vote on ideas, 
+              roamiii is where friends chat, propose destinations, vote on ideas, 
               and lock in the perfect trip. No more endless group texts.
             </p>
             
@@ -179,7 +179,7 @@ export default function Landing() {
             {...fadeIn}
           >
             <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
-              How <span className="text-primary">Roamiii</span> Works
+              How <span className="text-primary">roamiii</span> Works
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               From group chat chaos to booked and ready in three steps
@@ -247,7 +247,7 @@ export default function Landing() {
               Finally, A Trip Gets Planned
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
-              Roamiii combines the ease of group messaging with structured proposals, 
+              roamiii combines the ease of group messaging with structured proposals, 
               cost breakdowns, and voting. Everyone's on the same page, and decisions actually happen.
             </p>
             <Button 
