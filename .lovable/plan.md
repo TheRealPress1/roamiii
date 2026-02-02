@@ -1,107 +1,126 @@
 
-# Floating Pill Navbar with Custom Wordmark
+# Dashboard Hero Spacing & Rotating Greetings
 
-Transform the navbar into a floating, translucent pill-style container and update the "roamiii" wordmark to use a playful, rounded display font matching the Campfire style.
+Fix the cramped hero section under the floating navbar and add dynamic rotating greetings that change daily.
 
 ---
 
 ## Overview
 
-This update involves two main changes:
+Two changes needed:
 
-1. **Floating Navbar**: Convert the full-width sticky header into a centered, floating pill/card with rounded corners, translucent background, and subtle shadow
-2. **Wordmark Typography**: Update the "roamiii" text to use a thick, rounded display font (Fredoka) that matches the attached reference image
+1. **Spacing Fix**: Add proper top padding to account for the floating navbar (which sits 16px from top + 56px height = ~72px total)
+2. **Rotating Greetings**: Replace static "Hey, {name}!" with a daily-rotating one-liner from a curated list
 
 ---
 
 ## Changes
 
-### 1. Add Custom Font
+### 1. Fix Hero Spacing
 
-**File:** `src/index.css`
+**File:** `src/pages/Dashboard.tsx`
 
-Add Fredoka font import for the brand wordmark:
-- Import from Google Fonts: `Fredoka` (thick, rounded display font)
-- This font closely matches the "Campfire" style with its playful, rounded letterforms
+Update the main content container padding:
 
-### 2. Update Tailwind Config
-
-**File:** `tailwind.config.ts`
-
-Add a new font family for the brand wordmark:
-- Add `brand: ["Fredoka", ...]` to the font families
-- Keep existing `display` and `sans` fonts unchanged
-
-### 3. Restructure Header Component
-
-**File:** `src/components/layout/Header.tsx`
-
-Transform the header into a floating pill navbar:
-
-**Structure:**
+**Current:**
 ```text
-<div> (sticky outer wrapper)
-  └── <header> (floating pill container)
-        ├── Logo
-        └── Nav items
+<div className="container max-w-4xl py-8">
 ```
 
-**Outer Wrapper:**
-- `position: sticky; top: 16px; z-index: 50;`
-- Adds horizontal padding for mobile (16px each side)
-- Full width, acts as positioning context
+**New:**
+```text
+<div className="container max-w-4xl pt-20 md:pt-16 pb-8">
+```
 
-**Inner Floating Container:**
-- `max-width: 1120px` centered
-- `width: calc(100% - 32px)` with `mx-auto`
-- Rounded corners: `rounded-2xl` (16px)
-- Translucent background: `bg-white/75` (light) / `bg-black/60` (dark)
-- Backdrop blur: `backdrop-blur-xl`
-- Border: `border border-black/[0.06]` (light) / `border-white/10` (dark)
-- Shadow: subtle drop shadow
-- Padding: `px-4 sm:px-6`
+This adds:
+- Mobile: `pt-20` = 80px top padding
+- Desktop: `pt-16` = 64px top padding (navbar is more compact on larger screens)
+- Keep `pb-8` for bottom padding
 
-### 4. Update Logo Component
+### 2. Add Rotating Greetings System
 
-**File:** `src/components/ui/Logo.tsx`
+**File:** `src/pages/Dashboard.tsx`
 
-Apply the new brand font to the wordmark:
-- Change `font-display` to `font-brand`
-- Adjust font weight to `font-medium` (Fredoka looks best at medium weight)
-- Keep existing sizing logic
+Add greeting selection logic with daily persistence:
+
+**Greetings Array:**
+```text
+1. "Time to move, {name}."
+2. "Get the gang together, {name}."
+3. "Let's lock it in, {name}."
+4. "Where to next, {name}?"
+5. "Round up the crew, {name}."
+6. "Pick a place, {name}."
+7. "Group chat → booked, {name}."
+8. "Let's roam, {name}."
+```
+
+**Selection Logic:**
+```text
+getDailyKey()
+├── Get current date
+└── Return "YYYY-MM-DD" string
+
+pickGreeting(name)
+├── Build storage key: "roamiii_greeting_{dayKey}"
+├── Check localStorage for cached greeting
+├── If found → return with {name} interpolated
+├── If not found:
+│   ├── Pick random greeting from array
+│   ├── Store in localStorage
+│   └── Return with {name} interpolated
+```
+
+**Usage in Component:**
+- Use `useMemo` to compute greeting once per render cycle
+- Depends on `profile?.name`
+- Falls back to "there" if name not available
+
+### 3. Update Headline Render
+
+**Current:**
+```text
+<h1>
+  {profile?.name ? `Hey, ${profile.name.split(' ')[0]}!` : 'Dashboard'}
+</h1>
+```
+
+**New:**
+```text
+<h1>
+  {headline}
+</h1>
+```
+
+Where `headline` is the memoized greeting with the user's first name interpolated.
 
 ---
 
 ## Technical Details
 
-### Font Import
+### Spacing Calculation
 
-```css
-@import url('...&family=Fredoka:wght@400;500;600&display=swap');
-```
+| Element | Value |
+|---------|-------|
+| Navbar top offset | 16px (top-4) |
+| Navbar height | 56px (h-14) |
+| Additional gap | ~8-24px for breathing room |
+| **Total top padding** | 80px mobile / 64px desktop |
 
-### Navbar Dimensions
+### LocalStorage Behavior
 
-| Breakpoint | Width | Horizontal Margin |
-|------------|-------|-------------------|
-| Mobile | calc(100% - 32px) | 16px each side |
-| Desktop | max 1120px | auto-centered |
+| Scenario | Behavior |
+|----------|----------|
+| First visit of day | Random greeting selected, stored |
+| Page refresh same day | Same greeting retrieved |
+| Next day visit | New random greeting selected |
+| Login/logout same day | Same greeting (tied to date, not session) |
 
-### Styling Tokens
+### No Flicker Guarantee
 
-| Property | Light Mode | Dark Mode |
-|----------|------------|-----------|
-| Background | rgba(255,255,255,0.75) | rgba(0,0,0,0.6) |
-| Border | rgba(0,0,0,0.06) | rgba(255,255,255,0.1) |
-| Blur | 16px (backdrop-blur-xl) | 16px |
-| Shadow | soft drop shadow | slightly reduced |
-| Border Radius | 16px (rounded-2xl) | 16px |
-
-### Scroll Behavior
-
-Keep existing scroll state logic but adjust:
-- Default: slightly more transparent
-- Scrolled: increase opacity, enhance shadow
+- Greeting computed synchronously on first render using `useMemo`
+- LocalStorage is synchronous, so value is available immediately
+- No async state updates that would cause re-renders
 
 ---
 
@@ -109,21 +128,16 @@ Keep existing scroll state logic but adjust:
 
 | File | Change |
 |------|--------|
-| `src/index.css` | Add Fredoka font import |
-| `tailwind.config.ts` | Add `brand` font family |
-| `src/components/layout/Header.tsx` | Restructure to floating pill navbar |
-| `src/components/ui/Logo.tsx` | Apply brand font to wordmark |
+| `src/pages/Dashboard.tsx` | Add top padding, implement rotating greetings with localStorage |
 
 ---
 
 ## Acceptance Criteria
 
-1. Navbar floats with ~16px gap from viewport top
-2. Navbar has rounded corners (pill/card appearance)
-3. Translucent background with visible backdrop blur effect
-4. Subtle border and shadow visible
-5. Navbar remains centered and doesn't clip on mobile
-6. "roamiii" wordmark uses the new thick, rounded font
-7. No layout shift or jitter while scrolling
-8. Works correctly in both light and dark modes
-9. Scroll-aware styling still applies (enhanced shadow when scrolled)
+1. Hero headline has clear separation from floating navbar (no cramping)
+2. Greeting displays one of 8 curated one-liners
+3. Same greeting persists throughout the day (localStorage)
+4. New greeting appears on the next calendar day
+5. User's first name is interpolated into the greeting
+6. No flicker or loading state for the greeting
+7. Works on both mobile and desktop viewports
