@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { NotificationDrawer } from '@/components/notifications/NotificationDrawer';
 import { useNotifications } from '@/hooks/useNotifications';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface HeaderProps {
   transparent?: boolean;
@@ -50,6 +51,7 @@ export function Header({ transparent }: HeaderProps) {
         <Logo />
 
         <nav className="flex items-center gap-2">
+          <ThemeToggle />
           {user ? (
             <>
               <Link to="/app">
