@@ -746,7 +746,10 @@ export type Database = {
           budget_min: number | null
           created_at: string
           id: string
+          removed_at: string | null
+          removed_by: string | null
           role: Database["public"]["Enums"]["trip_role"]
+          status: Database["public"]["Enums"]["member_status"]
           trip_id: string
           user_id: string
         }
@@ -756,7 +759,10 @@ export type Database = {
           budget_min?: number | null
           created_at?: string
           id?: string
+          removed_at?: string | null
+          removed_by?: string | null
           role?: Database["public"]["Enums"]["trip_role"]
+          status?: Database["public"]["Enums"]["member_status"]
           trip_id: string
           user_id: string
         }
@@ -766,11 +772,21 @@ export type Database = {
           budget_min?: number | null
           created_at?: string
           id?: string
+          removed_at?: string | null
+          removed_by?: string | null
           role?: Database["public"]["Enums"]["trip_role"]
+          status?: Database["public"]["Enums"]["member_status"]
           trip_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trip_members_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trip_members_trip_id_fkey"
             columns: ["trip_id"]
@@ -1086,6 +1102,7 @@ export type Database = {
       board_role: "owner" | "admin" | "member"
       board_status: "active" | "decided" | "archived"
       invite_status: "pending" | "accepted" | "expired"
+      member_status: "active" | "removed"
       message_type: "text" | "proposal" | "system"
       trip_role: "owner" | "admin" | "member"
       trip_status: "planning" | "decided"
@@ -1220,6 +1237,7 @@ export const Constants = {
       board_role: ["owner", "admin", "member"],
       board_status: ["active", "decided", "archived"],
       invite_status: ["pending", "accepted", "expired"],
+      member_status: ["active", "removed"],
       message_type: ["text", "proposal", "system"],
       trip_role: ["owner", "admin", "member"],
       trip_status: ["planning", "decided"],

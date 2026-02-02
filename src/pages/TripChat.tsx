@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, PanelRightOpen, PanelRightClose, Loader2, Copy, Check } from 'lucide-react';
@@ -13,12 +13,13 @@ import { InviteModal } from '@/components/invite/InviteModal';
 import { CompareTray } from '@/components/compare/CompareTray';
 import { CompareModal } from '@/components/compare/CompareModal';
 import { DeleteTripDialog } from '@/components/trip/DeleteTripDialog';
+import { RemoveMemberDialog } from '@/components/trip/RemoveMemberDialog';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import type { TripProposal } from '@/lib/tripchat-types';
+import type { TripProposal, TripMember } from '@/lib/tripchat-types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +28,7 @@ export default function TripChat() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const { trip, members, proposals, loading: dataLoading, refetch } = useTripData(tripId!);
+  const { trip, members, proposals, loading: dataLoading, error: dataError, refetch } = useTripData(tripId!);
   const { messages, loading: messagesLoading, sendMessage } = useTripMessages(tripId!);
   
   const [showPanel, setShowPanel] = useState(true);
@@ -38,6 +39,8 @@ export default function TripChat() {
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<TripMember | null>(null);
+  const [removeLoading, setRemoveLoading] = useState(false);
 
   // Compare hook
   const { compareIds, compareCount, toggleCompare, clearCompare, isComparing } = useProposalCompare(tripId!);
@@ -46,6 +49,15 @@ export default function TripChat() {
   const currentMember = members.find((m) => m.user_id === user?.id);
   const isAdmin = currentMember?.role === 'owner' || currentMember?.role === 'admin';
   const isOwner = currentMember?.role === 'owner';
+
+  // Check if user has been removed (access denied)
+  useEffect(() => {
+    if (!dataLoading && !dataError && !trip && !isLoading) {
+      // Trip not found or no access - check if user was kicked
+      toast.error('You no longer have access to this trip.');
+      navigate('/app', { replace: true });
+    }
+  }, [dataLoading, dataError, trip, isLoading, navigate]);
 
   // Get compared proposals
   const comparedProposals = proposals.filter(p => compareIds.includes(p.id));
@@ -96,6 +108,34 @@ export default function TripChat() {
 
     toast.success('Trip deleted');
     navigate('/app');
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove || !user) return;
+    
+    setRemoveLoading(true);
+    
+    const { error } = await supabase
+      .from('trip_members')
+      .update({ 
+        status: 'removed',
+        removed_at: new Date().toISOString(),
+        removed_by: user.id,
+      })
+      .eq('id', memberToRemove.id);
+
+    if (error) {
+      toast.error('Failed to remove member');
+      console.error('Error removing member:', error);
+      setRemoveLoading(false);
+      return;
+    }
+
+    const memberName = memberToRemove.profile?.name || memberToRemove.profile?.email?.split('@')[0] || 'Member';
+    toast.success(`${memberName} has been removed from the trip`);
+    setMemberToRemove(null);
+    setRemoveLoading(false);
+    refetch();
   };
 
   if (isLoading) {
@@ -169,6 +209,7 @@ export default function TripChat() {
               onViewProposal={handleViewProposal}
               isOwner={isOwner}
               onDeleteTrip={() => setDeleteModalOpen(true)}
+              onRemoveMember={(member) => setMemberToRemove(member)}
             />
           </SheetContent>
         </Sheet>
@@ -207,6 +248,7 @@ export default function TripChat() {
             onViewProposal={handleViewProposal}
             isOwner={isOwner}
             onDeleteTrip={() => setDeleteModalOpen(true)}
+            onRemoveMember={(member) => setMemberToRemove(member)}
           />
         </motion.div>
       </div>
@@ -264,6 +306,14 @@ export default function TripChat() {
         tripName={trip.name}
         onConfirm={handleDeleteTrip}
         loading={deleteLoading}
+      />
+
+      <RemoveMemberDialog
+        open={!!memberToRemove}
+        onClose={() => setMemberToRemove(null)}
+        memberName={memberToRemove?.profile?.name || memberToRemove?.profile?.email?.split('@')[0] || 'Member'}
+        onConfirm={handleRemoveMember}
+        loading={removeLoading}
       />
     </div>
   );

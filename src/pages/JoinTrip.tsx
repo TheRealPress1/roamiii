@@ -57,17 +57,23 @@ export default function JoinTrip() {
         return;
       }
 
-      // Check if already a member
+      // Check if already a member (including removed status)
       const { data: existingMember } = await supabase
         .from('trip_members')
-        .select('id')
+        .select('id, status')
         .eq('trip_id', trip.id)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (existingMember) {
+      if (existingMember?.status === 'active') {
         toast.info('You\'re already a member of this trip!');
         navigate(`/app/trip/${trip.id}`);
+        return;
+      }
+
+      if (existingMember?.status === 'removed') {
+        toast.error('You were removed from this trip. Ask the owner to re-invite you.');
+        setLoading(false);
         return;
       }
 

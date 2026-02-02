@@ -17,7 +17,7 @@ export function InviteModal({ open, onClose, tripId, joinCode }: InviteModalProp
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  const inviteLink = `${window.location.origin}/join/${joinCode}`;
+  const inviteLink = `${window.location.origin}/invite/${joinCode}`;
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(inviteLink);
