@@ -44,18 +44,19 @@ export default function JoinTrip() {
         return;
       }
 
-      // Find the trip by join code
-      const { data: trip, error: tripError } = await supabase
-        .from('trips')
-        .select('id, name')
-        .eq('join_code', code)
-        .single();
+      // Find the trip by join code using edge function (bypasses RLS)
+      const { data: tripData, error: tripError } = await supabase.functions.invoke(
+        'get-trip-preview',
+        { body: { code } }
+      );
 
-      if (tripError || !trip) {
+      if (tripError || !tripData) {
         toast.error('Invalid join code. Please check and try again.');
         setLoading(false);
         return;
       }
+
+      const trip = { id: tripData.id, name: tripData.name };
 
       // Check if already a member (including removed status)
       const { data: existingMember } = await supabase
