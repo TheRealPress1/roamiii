@@ -1,173 +1,136 @@
 
-# Rebranding: TripChat to Roamiii
+# Rebrand: Roamiii → roamiii (all lowercase)
 
-This plan renames all visible instances of "TripChat" to "Roamiii" and updates the typography system to use Agrandir Wide for brand/headline elements while keeping Inter for body text. No changes to layout, routing, colors, or backend logic.
+This plan updates all visible instances of "Roamiii" to "roamiii" to match the modern, lowercase brand style inspired by partiful and luma. No changes to colors, layout, spacing, or icons.
 
 ---
 
 ## Summary of Changes
 
-### 1. Typography System Update
-
-**Current state:**
-- Display font: Playfair Display (serif)
-- Body font: Inter
-
-**New state:**
-- Brand/Display font: Agrandir Wide (with fallbacks to Agrandir, Poppins, system-ui)
-- Body font: Inter (unchanged)
-
-**Files to update:**
-- `src/index.css` - Add Agrandir Wide font import or self-host, update CSS variables
-- `tailwind.config.ts` - Update `fontFamily.display` to use Agrandir Wide
+All instances of capitalized "Roamiii" become lowercase "roamiii". The browser tab title gets a new format with an em-dash separator.
 
 ---
 
-### 2. Logo Component Update
+## Part 1: Logo Component
 
 **File:** `src/components/ui/Logo.tsx`
 
 **Changes:**
-- Replace "TripChat" text with "Roamiii"
-- Add tracking class for tight letter spacing (-1% to -2%)
-- Ensure font-display utility applies Agrandir Wide
+- Line 30: Replace `Roamiii` with `roamiii`
+- Remove `tracking-tight` class (no letter spacing as per instructions)
+- Keep `font-semibold` (600-700 weight as requested)
 
 ```text
-Before: TripChat
-After:  Roamiii
+Before: Roamiii
+After:  roamiii
 ```
 
 ---
 
-### 3. Footer Update
-
-**File:** `src/components/layout/Footer.tsx`
-
-**Changes:**
-- Replace "TripChat" with "Roamiii" in copyright text
-
-```text
-Before: © 2026 TripChat. Plan together, travel better.
-After:  © 2026 Roamiii. Plan together, travel better.
-```
-
----
-
-### 4. Landing Page Updates
-
-**File:** `src/pages/Landing.tsx`
-
-**Changes (3 instances):**
-- Line 77: "TripChat is where friends chat..." becomes "Roamiii is where friends chat..."
-- Line 182: "How TripChat Works" becomes "How Roamiii Works"
-- Line 250: "TripChat combines the ease..." becomes "Roamiii combines the ease..."
-
----
-
-### 5. Dashboard Updates
-
-**File:** `src/pages/Dashboard.tsx`
-
-**Changes (1 instance):**
-- Line 120: "Your trip chats" becomes "Your Roamiii trips" (microcopy alignment)
-
----
-
-### 6. HTML Meta Tags Update
+## Part 2: HTML Meta Tags
 
 **File:** `index.html`
 
 **Changes:**
-- Update `<title>` from "Lovable App" to "Roamiii"
-- Update `og:title` meta tag to "Roamiii"
-- Update `description` meta tag to reflect Roamiii branding
+- Line 6: `<title>Roamiii</title>` → `<title>roamiii — plan trips together</title>`
+- Line 7: Update description to use lowercase "roamiii"
+- Line 8: `<meta name="author" content="Roamiii" />` → `<meta name="author" content="roamiii" />`
+- Line 10: `<meta property="og:title" content="Roamiii" />` → `<meta property="og:title" content="roamiii — plan trips together" />`
 
 ---
 
-### 7. Types File Comment Update
+## Part 3: Footer
+
+**File:** `src/components/layout/Footer.tsx`
+
+**Changes:**
+- Line 10: Replace `Roamiii` with `roamiii` in copyright text
+
+```text
+Before: © 2026 Roamiii. Plan together, travel better.
+After:  © 2026 roamiii. Plan together, travel better.
+```
+
+---
+
+## Part 4: Dashboard
+
+**File:** `src/pages/Dashboard.tsx`
+
+**Changes:**
+- Line 120: Replace `Your Roamiii trips` with `Your roamiii trips`
+
+```text
+Before: Your Roamiii trips
+After:  Your roamiii trips
+```
+
+---
+
+## Part 5: Landing Page
+
+**File:** `src/pages/Landing.tsx`
+
+**Changes (3 instances):**
+- Line 77: `Roamiii is where friends chat...` → `roamiii is where friends chat...`
+- Line 182: `<span className="text-primary">Roamiii</span>` → `<span className="text-primary">roamiii</span>`
+- Line 250: `Roamiii combines the ease...` → `roamiii combines the ease...`
+
+---
+
+## Part 6: Types File Comment
 
 **File:** `src/lib/tripchat-types.ts`
 
 **Changes:**
-- Line 1: Update comment from "TripChat type definitions" to "Roamiii type definitions"
+- Line 1: `// Roamiii type definitions` → `// roamiii type definitions`
 
-(Note: File name stays the same to avoid breaking imports - this is a non-visual change)
+(Internal comment only, not user-facing)
 
 ---
 
 ## Files Summary
 
-| File | Changes |
-|------|---------|
-| `src/index.css` | Add Agrandir Wide font, update comment |
-| `tailwind.config.ts` | Update display font family |
-| `src/components/ui/Logo.tsx` | Change "TripChat" to "Roamiii", add letter-spacing |
-| `src/components/layout/Footer.tsx` | Update copyright text |
+| File | Change |
+|------|--------|
+| `src/components/ui/Logo.tsx` | "Roamiii" → "roamiii", remove tracking-tight |
+| `index.html` | Title, meta tags all lowercase with new format |
+| `src/components/layout/Footer.tsx` | Copyright lowercase |
+| `src/pages/Dashboard.tsx` | "Your roamiii trips" |
 | `src/pages/Landing.tsx` | 3 text replacements |
-| `src/pages/Dashboard.tsx` | 1 text replacement |
-| `index.html` | Update meta title and descriptions |
-| `src/lib/tripchat-types.ts` | Update comment only |
+| `src/lib/tripchat-types.ts` | Comment update |
 
 ---
 
-## Font Loading Strategy
+## Typography Notes
 
-Agrandir Wide will be loaded via a web font service. If Agrandir Wide is not freely available, the implementation will:
-
-1. First attempt: Use a CDN/Google Fonts-style import if available
-2. Fallback: Use Poppins (available on Google Fonts) as a similar geometric sans-serif alternative
-3. Final fallback: system-ui
-
-The font stack will be:
-```css
-font-family: "Agrandir Wide", "Agrandir", "Poppins", system-ui, sans-serif;
-```
+The Logo component will have:
+- `font-display` (Poppins - clean geometric sans-serif)
+- `font-semibold` (weight 600)
+- No `tracking-tight` (natural letter spacing)
+- No `text-transform` applied
 
 ---
 
 ## Non-Changes (Confirmed)
 
-These items will NOT be touched:
-- Database tables and routes
-- Color palette and spacing system
-- Component logic and behavior
-- File names (e.g., `tripchat-types.ts`, `TripChat.tsx` page component)
-- Internal variable names
+- Colors remain unchanged
+- Layout and spacing remain unchanged
+- Icons remain unchanged
+- Button text remains as-is ("Create a Trip", "Join a Trip" - not brand names)
+- Internal file names and routes unchanged
 
 ---
 
 ## Acceptance Criteria
 
-1. No visible "TripChat" text anywhere in the UI
-2. "Roamiii" appears in:
+1. No visible "Roamiii" (capitalized) anywhere in the UI
+2. "roamiii" appears consistently across:
    - Navbar logo
    - Footer copyright
    - Landing page (3 locations)
-   - Meta title in browser tab
-3. Headlines and brand text use Agrandir Wide (or Poppins fallback)
-4. Body text continues to use Inter
+   - Dashboard subtitle
+   - Browser tab: "roamiii — plan trips together"
+3. Font weight remains semibold (600)
+4. No letter spacing on wordmark
 5. All app functionality unchanged
-6. No console errors
-
----
-
-## Technical Notes
-
-### Typography Classes
-
-Headlines and brand elements will use:
-```html
-<h1 class="font-display tracking-tight">...</h1>
-```
-
-Where `font-display` now maps to Agrandir Wide.
-
-### Letter Spacing
-
-The Logo component will get an additional tracking utility:
-```tsx
-// Slightly tighter tracking for brand wordmark
-className="font-display font-semibold tracking-tight"
-```
-
-The existing Tailwind `tracking-tight` provides approximately -2.5% letter spacing, which aligns with the -1% to -2% requirement.
