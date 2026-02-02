@@ -100,11 +100,14 @@ export default function Profile() {
       const urlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
       setAvatarUrl(urlWithTimestamp);
 
-      // Update profile immediately
+      // Update profile immediately (upsert in case profile doesn't exist)
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: urlWithTimestamp })
-        .eq('id', user.id);
+        .upsert({
+          id: user.id,
+          email: user.email!,
+          avatar_url: urlWithTimestamp,
+        });
 
       if (updateError) throw updateError;
 
@@ -126,13 +129,14 @@ export default function Profile() {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: user.id,
+          email: user.email!,
           name: name.trim() || null,
           phone: phone.trim() || null,
           tagline: tagline.trim() || null,
           avatar_url: avatarUrl,
-        })
-        .eq('id', user.id);
+        });
 
       if (error) throw error;
 

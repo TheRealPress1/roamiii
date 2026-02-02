@@ -15,3 +15,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+// Verify Supabase connection on initialization
+supabase.auth.getSession().then(({ data, error }) => {
+  if (error) {
+    console.error('[Supabase] Connection error:', error.message);
+  } else {
+    console.log('[Supabase] Connected successfully', data.session ? '(authenticated)' : '(anonymous)');
+  }
+});
