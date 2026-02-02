@@ -39,7 +39,7 @@ export default function Landing() {
   };
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header transparent />
+      <Header />
       
       {/* Hero Section */}
       <section className="relative overflow-hidden gradient-hero">
