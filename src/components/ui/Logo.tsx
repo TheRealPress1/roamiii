@@ -7,15 +7,15 @@ interface LogoProps {
 
 export function Logo({ size = 'md', showText = true }: LogoProps) {
   const iconSizes = {
-    sm: 'h-6 w-6',
-    md: 'h-7 w-7',
-    lg: 'h-8 w-8',
+    sm: 'h-8 w-8',
+    md: 'h-10 w-10',
+    lg: 'h-12 w-12',
   };
 
   const textSizes = {
-    sm: 'text-lg',
-    md: 'text-xl',
-    lg: 'text-2xl',
+    sm: 'text-xl',
+    md: 'text-2xl',
+    lg: 'text-3xl',
   };
 
   return (
