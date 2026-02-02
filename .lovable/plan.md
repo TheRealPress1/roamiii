@@ -1,140 +1,158 @@
 
 
-# Debug & Improve Create Trip Flow
+# Trip Delete Feature
 
-After investigating the codebase and database, the core trip creation logic is working correctly. However, I found opportunities to improve robustness and ensure trips always appear reliably.
+Add ability for trip owners to delete a trip with confirmation, removing all related data.
 
 ---
 
-## Investigation Findings
+## Overview
 
-**Working Correctly:**
-- `handle_new_trip` trigger automatically adds creator as owner
-- RLS policies properly filter trips by membership
-- 6 trips exist in database with proper member associations
-- Trip creation flow saves all fields correctly
+Enable trip owners to delete their trips via a settings menu in the TripPanel sidebar. Deletion requires typing "delete" to confirm, then removes the trip and all associated data, redirects to dashboard with a success toast.
 
-**Areas for Improvement:**
-- Dashboard doesn't refetch when user changes (stale data after login)
-- No error handling visible to users on fetch failures
-- No explicit user ID filter in Dashboard query (relies entirely on RLS)
+---
+
+## Architecture
+
+```text
+Trip Settings Flow:
+┌───────────────────────────────────────────────────┐
+│  TripPanel Sidebar                                │
+│  ┌─────────────────────────────────────────────┐  │
+│  │ Trip Details          [⋯ Settings Menu]     │  │
+│  │                        ├─ Delete Trip (owner)│ │
+│  └─────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────┘
+                      │
+                      ▼
+┌───────────────────────────────────────────────────┐
+│  DeleteTripDialog (controlled by TripChat)        │
+│  ┌─────────────────────────────────────────────┐  │
+│  │  ⚠️ Delete Trip                              │  │
+│  │  This will permanently delete...            │  │
+│  │  [Type "delete" to confirm]                 │  │
+│  │  [Cancel]              [Delete Trip]        │  │
+│  └─────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────┘
+                      │
+                      ▼ (on confirm)
+          supabase.from('trips').delete()
+                      │
+                      ▼ (CASCADE deletes all related data)
+          navigate('/app') + toast("Trip deleted")
+```
+
+---
+
+## Database
+
+**No migrations needed.** The existing RLS policy already handles owner-only deletion:
+
+```sql
+-- Existing policy on trips table
+Policy Name: Owners can delete trips
+Command: DELETE
+Using Expression: is_trip_owner(id, auth.uid())
+```
+
+All related tables have `ON DELETE CASCADE`:
+- trip_members
+- messages (and message_reactions via cascade)
+- trip_proposals (and trip_votes, proposal_comments, proposal_reactions via cascade)
+- trip_invites
+- proposal_compare
+- notifications
 
 ---
 
 ## Changes
 
-### 1. Add User Dependency to Dashboard Fetch
+### 1. Create DeleteTripDialog Component
 
-**File:** `src/pages/Dashboard.tsx`
+**File:** `src/components/trip/DeleteTripDialog.tsx` (new)
 
-The `fetchTrips` function runs once on mount but doesn't react to user changes. After login or if the user state changes, trips won't refetch.
+A confirmation dialog that:
+- Shows warning about permanent deletion
+- Requires typing "delete" (case-insensitive) to enable the delete button
+- Calls onConfirm when user confirms
 
-**Current:**
 ```text
-useEffect(() => {
-  fetchTrips();
-}, []);
+Props:
+├── open: boolean
+├── onClose: () => void
+├── tripName: string
+├── onConfirm: () => void
+└── loading: boolean
 ```
 
-**New:**
+### 2. Update TripPanel Component
+
+**File:** `src/components/trip/TripPanel.tsx`
+
+Add a settings dropdown menu to the Trip Details section header:
+
 ```text
-useEffect(() => {
-  if (user) {
-    fetchTrips();
-  }
-}, [user]);
+Changes:
+├── Add props: isOwner, onDeleteTrip
+├── Import: DropdownMenu components, Settings, Trash2 icons
+└── Add: Settings kebab menu button (visible only when isOwner)
+         └── "Delete Trip" menu item (red, destructive styling)
 ```
 
-This ensures trips are fetched when the user is available and refetched if the user changes.
+### 3. Update TripChat Page
 
-### 2. Add Error State and User Feedback
+**File:** `src/pages/TripChat.tsx`
 
-**File:** `src/pages/Dashboard.tsx`
+Wire up the delete functionality:
 
-Add visible error handling so users know if something went wrong:
-
-- Add error state tracking
-- Show toast on fetch errors
-- Provide retry button in error state
-
-### 3. Wrap Message Fetch in Try-Catch
-
-**File:** `src/pages/Dashboard.tsx`
-
-The current message fetch inside the Promise.all can fail silently. Ensure individual message fetches don't break the entire trips list:
-
-**Current:**
 ```text
-const { data: messageData } = await supabase
-  .from('messages')
-  .select('body, created_at, type')
-  .eq('trip_id', trip.id)
-  ...
-```
-
-**New:**
-```text
-let lastMessageData = null;
-try {
-  const { data } = await supabase
-    .from('messages')
-    .select('body, created_at, type')
-    .eq('trip_id', trip.id)
-    ...
-  lastMessageData = data;
-} catch {
-  // Silently fail - message preview is optional
-}
-```
-
-### 4. Add AuthContext User to useAuth Import
-
-**File:** `src/pages/Dashboard.tsx`
-
-Currently only `profile` is destructured from useAuth. Add `user` to ensure we have the authenticated user available:
-
-**Current:**
-```text
-const { profile } = useAuth();
-```
-
-**New:**
-```text
-const { user, profile } = useAuth();
+Changes:
+├── Add state: deleteModalOpen, deleteLoading
+├── Add: isOwner check (currentMember?.role === 'owner')
+├── Add: handleDeleteTrip function
+│   ├── Call supabase.from('trips').delete().eq('id', tripId)
+│   ├── On success: navigate('/app'), toast.success('Trip deleted')
+│   └── On error: toast.error('Failed to delete trip')
+├── Pass isOwner, onDeleteTrip to TripPanel
+└── Render DeleteTripDialog
 ```
 
 ---
 
 ## Technical Details
 
-### Why User Dependency Matters
+### Permission Check
 
 ```text
-Without user dependency:
-┌─────────────────────────┐
-│ User logs in            │
-│ Dashboard mounts        │
-│ fetchTrips() runs       │  ← user might not be set yet
-│ Empty results?          │
-└─────────────────────────┘
-
-With user dependency:
-┌─────────────────────────┐
-│ User logs in            │
-│ Dashboard mounts        │
-│ useEffect waits for user│
-│ fetchTrips() runs       │  ← user is definitely set
-│ Correct results         │
-└─────────────────────────┘
+// In TripChat.tsx
+const isOwner = currentMember?.role === 'owner';
 ```
 
-### RLS Verification
+This uses the existing `currentMember` lookup and is backed by the database RLS policy which enforces `is_trip_owner()` on DELETE operations.
 
-The RLS policies on trips table are correct:
-- `Members can view trips` - uses `is_trip_member(id, auth.uid())`
-- `Creator can view own trips` - uses `auth.uid() = created_by`
+### Delete Flow
 
-Both are permissive SELECT policies, so either condition allows access.
+1. Owner clicks Settings (⋯) > Delete Trip
+2. DeleteTripDialog opens
+3. User types "delete" (case-insensitive match)
+4. Delete button becomes enabled
+5. On click: 
+   - Set loading state
+   - Call Supabase delete
+   - RLS validates ownership
+   - CASCADE deletes all related data
+   - Navigate to dashboard
+   - Show success toast
+
+### Security Layers
+
+| Layer | Check |
+|-------|-------|
+| UI | Menu only shown if `isOwner === true` |
+| Client | isOwner check before delete call |
+| Database RLS | `is_trip_owner(id, auth.uid())` policy |
+
+Non-owners cannot see the delete option, and even if they somehow trigger a delete request, RLS will reject it.
 
 ---
 
@@ -142,16 +160,21 @@ Both are permissive SELECT policies, so either condition allows access.
 
 | File | Change |
 |------|--------|
-| `src/pages/Dashboard.tsx` | Add user dependency to useEffect, add error handling, improve message fetch robustness |
+| `src/components/trip/DeleteTripDialog.tsx` | New component for delete confirmation |
+| `src/components/trip/TripPanel.tsx` | Add settings menu with delete option |
+| `src/pages/TripChat.tsx` | Add delete state, handler, and dialog |
 
 ---
 
 ## Acceptance Criteria
 
-1. Create trip -> redirect to trip chat -> works (already working)
-2. Navigate to Dashboard -> trip shows immediately (will improve)
-3. Refresh browser -> trip still appears (will ensure)
-4. Log out + in -> trip still appears (fixing with user dependency)
-5. Error during fetch -> user sees feedback
-6. Message fetch failure -> doesn't break trip list
+1. Settings menu (⋯) visible in TripPanel sidebar for owners only
+2. "Delete Trip" option in menu with destructive styling
+3. Confirmation dialog requires typing "delete" (case-insensitive)
+4. Delete button disabled until confirmation text matches
+5. On delete: all related data removed via CASCADE
+6. After delete: redirect to /app with "Trip deleted" toast
+7. Non-owners cannot see or trigger delete
+8. Deleted trips don't appear in My Trips
+9. Attempting to open deleted trip URL shows "Trip not found"
 
