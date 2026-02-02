@@ -1,84 +1,80 @@
 
-# Add Dark Mode Toggle
+# Sticky Frosted Glass Navbar
 
-Add a theme toggle to the app that allows users to switch between light and dark modes, persisting their preference.
+Enhance the main navbar with a premium sticky translucent design featuring scroll-aware styling.
 
 ---
 
 ## Overview
 
-The project already has dark mode CSS variables defined and Tailwind configured for class-based dark mode. The `next-themes` package is installed but not configured. We need to:
-
-1. Set up the ThemeProvider wrapper
-2. Create a theme toggle component
-3. Add the toggle to the Header navigation
+The Header component already has `sticky top-0 z-50` positioning. We'll enhance it with:
+- Consistent frosted glass background (translucent with blur)
+- Scroll-aware shadow that appears after scrolling
+- Subtle bottom border for definition
+- Works seamlessly in both light and dark modes
 
 ---
 
 ## Changes
 
-### 1. Create Theme Provider Component
-
-**File:** `src/components/ThemeProvider.tsx` (new)
-
-Create a wrapper component using `next-themes` that:
-- Wraps the app with ThemeProvider
-- Sets `attribute="class"` for Tailwind compatibility
-- Enables `storageKey` for localStorage persistence
-- Defaults to system preference
-
-### 2. Create Theme Toggle Component
-
-**File:** `src/components/ThemeToggle.tsx` (new)
-
-Create a toggle button that:
-- Uses Sun/Moon icons from lucide-react
-- Shows current theme state visually
-- Cycles between light and dark modes
-- Has smooth icon transition animation
-- Styled as a ghost button to match existing nav items
-
-### 3. Update App.tsx
-
-**File:** `src/App.tsx`
-
-Wrap the entire app with the ThemeProvider component.
-
-### 4. Update Header Component
+### 1. Update Header Component
 
 **File:** `src/components/layout/Header.tsx`
 
-Add the ThemeToggle button to the navigation bar:
-- For logged-in users: Add before the notification bell
-- For logged-out users: Add before the "Log in" button
-- Maintains existing layout and spacing
+Add scroll state tracking and enhanced styling:
+
+- Add `useState` for tracking scroll position
+- Add `useEffect` with scroll listener (threshold: 8px)
+- Apply dynamic classes based on scroll state:
+  - Always: translucent background with backdrop blur
+  - On scroll: add shadow and slightly more opaque background
+- Remove the `transparent` prop logic in favor of consistent frosted glass appearance
+
+### 2. Updated Styling Logic
+
+```text
+Default State (not scrolled):
+├── bg-background/60 (60% opacity)
+├── backdrop-blur-xl (strong blur)
+├── border-b border-transparent
+└── shadow-none
+
+Scrolled State (after 8px):
+├── bg-background/80 (80% opacity)
+├── backdrop-blur-xl
+├── border-b border-border/50 (subtle border)
+└── shadow-sm (soft shadow)
+```
+
+### 3. Dark Mode Compatibility
+
+The styling uses CSS variables (`bg-background`) which automatically adapt to dark mode. The opacity and blur values work well in both themes.
 
 ---
 
 ## Technical Details
 
-### ThemeProvider Setup
+### Scroll Listener Hook
 
 ```text
-App
-  └── ThemeProvider (attribute="class", defaultTheme="system")
-        └── QueryClientProvider
-              └── ... rest of app
+useEffect:
+├── Define handleScroll function
+├── Check window.scrollY > 8
+├── Set isScrolled state
+├── Add 'scroll' event listener with { passive: true }
+└── Cleanup: remove listener on unmount
 ```
 
-### Toggle Button Behavior
+### CSS Classes Applied
 
-| Current Theme | Click Action | Icon Shown |
-|--------------|--------------|------------|
-| Light        | Switch to dark | Sun icon |
-| Dark         | Switch to light | Moon icon |
-| System       | Follows OS preference | Current state icon |
+| State | Background | Blur | Border | Shadow |
+|-------|-----------|------|--------|--------|
+| Default | bg-background/60 | backdrop-blur-xl | border-transparent | none |
+| Scrolled | bg-background/80 | backdrop-blur-xl | border-border/50 | shadow-sm |
 
-### Storage
+### Transition
 
-- Theme preference stored in localStorage under key `theme`
-- Persists across sessions
-- Falls back to system preference if not set
+Smooth transition between states using `transition-all duration-300` for a polished feel.
 
 ---
 
@@ -86,18 +82,17 @@ App
 
 | File | Change |
 |------|--------|
-| `src/components/ThemeProvider.tsx` | New - Theme context wrapper |
-| `src/components/ThemeToggle.tsx` | New - Toggle button component |
-| `src/App.tsx` | Wrap with ThemeProvider |
-| `src/components/layout/Header.tsx` | Add ThemeToggle to nav |
+| `src/components/layout/Header.tsx` | Add scroll listener and enhanced frosted glass styling |
 
 ---
 
 ## Acceptance Criteria
 
-1. Toggle button visible in header navigation (all pages)
-2. Clicking toggle switches between light and dark themes
-3. Theme preference persists after page refresh
-4. All UI components properly styled in both themes
-5. Smooth transition when switching themes
-6. Works for both logged-in and logged-out users
+1. Navbar stays pinned at top while scrolling (sticky)
+2. Translucent frosted glass effect visible on all pages
+3. Shadow appears smoothly after scrolling 8px
+4. Content beneath does not jump (height preserved at h-16)
+5. Works on both desktop and mobile
+6. Existing nav items remain aligned right
+7. Smooth transition between default and scrolled states
+8. Works correctly in both light and dark modes
