@@ -1,7 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Users, Loader2, MessageCircle, ChevronRight, Crown, Copy, Check, MapPin } from 'lucide-react';
+import { Plus, Users, Loader2, MessageCircle, ChevronRight, Crown, Copy, Check } from 'lucide-react';
+
+// Rotating greetings system
+const GREETINGS = [
+  "Time to move, {name}.",
+  "Get the gang together, {name}.",
+  "Let's lock it in, {name}.",
+  "Where to next, {name}?",
+  "Round up the crew, {name}.",
+  "Pick a place, {name}.",
+  "Group chat → booked, {name}.",
+  "Let's roam, {name}.",
+];
+
+function getDailyKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function pickGreeting(name: string): string {
+  const dayKey = getDailyKey();
+  const storageKey = `roamiii_greeting_${dayKey}`;
+  const cached = localStorage.getItem(storageKey);
+  if (cached) return cached.replace("{name}", name);
+
+  const idx = Math.floor(Math.random() * GREETINGS.length);
+  const chosen = GREETINGS[idx];
+  localStorage.setItem(storageKey, chosen);
+  return chosen.replace("{name}", name);
+}
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -32,6 +61,12 @@ export default function Dashboard() {
   const [trips, setTrips] = useState<TripWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Memoized greeting - computed once per render, persists for the day
+  const headline = useMemo(() => {
+    const firstName = profile?.name?.split(' ')[0] || 'there';
+    return pickGreeting(firstName);
+  }, [profile?.name]);
 
   useEffect(() => {
     fetchTrips();
@@ -106,7 +141,7 @@ export default function Dashboard() {
       <Header />
       
       <main className="flex-1">
-        <div className="container max-w-4xl py-8">
+        <div className="container max-w-4xl pt-20 md:pt-16 pb-8">
           {/* Welcome Section */}
           <motion.div 
             className="text-center mb-10"
@@ -114,7 +149,7 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
           >
             <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
-              {profile?.name ? `Hey, ${profile.name.split(' ')[0]}!` : 'Dashboard'}
+              {headline}
             </h1>
             <p className="text-muted-foreground">
               Your roamiii trips
