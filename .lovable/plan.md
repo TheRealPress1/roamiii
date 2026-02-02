@@ -1,80 +1,107 @@
 
-# Sticky Frosted Glass Navbar
+# Floating Pill Navbar with Custom Wordmark
 
-Enhance the main navbar with a premium sticky translucent design featuring scroll-aware styling.
+Transform the navbar into a floating, translucent pill-style container and update the "roamiii" wordmark to use a playful, rounded display font matching the Campfire style.
 
 ---
 
 ## Overview
 
-The Header component already has `sticky top-0 z-50` positioning. We'll enhance it with:
-- Consistent frosted glass background (translucent with blur)
-- Scroll-aware shadow that appears after scrolling
-- Subtle bottom border for definition
-- Works seamlessly in both light and dark modes
+This update involves two main changes:
+
+1. **Floating Navbar**: Convert the full-width sticky header into a centered, floating pill/card with rounded corners, translucent background, and subtle shadow
+2. **Wordmark Typography**: Update the "roamiii" text to use a thick, rounded display font (Fredoka) that matches the attached reference image
 
 ---
 
 ## Changes
 
-### 1. Update Header Component
+### 1. Add Custom Font
+
+**File:** `src/index.css`
+
+Add Fredoka font import for the brand wordmark:
+- Import from Google Fonts: `Fredoka` (thick, rounded display font)
+- This font closely matches the "Campfire" style with its playful, rounded letterforms
+
+### 2. Update Tailwind Config
+
+**File:** `tailwind.config.ts`
+
+Add a new font family for the brand wordmark:
+- Add `brand: ["Fredoka", ...]` to the font families
+- Keep existing `display` and `sans` fonts unchanged
+
+### 3. Restructure Header Component
 
 **File:** `src/components/layout/Header.tsx`
 
-Add scroll state tracking and enhanced styling:
+Transform the header into a floating pill navbar:
 
-- Add `useState` for tracking scroll position
-- Add `useEffect` with scroll listener (threshold: 8px)
-- Apply dynamic classes based on scroll state:
-  - Always: translucent background with backdrop blur
-  - On scroll: add shadow and slightly more opaque background
-- Remove the `transparent` prop logic in favor of consistent frosted glass appearance
-
-### 2. Updated Styling Logic
-
+**Structure:**
 ```text
-Default State (not scrolled):
-├── bg-background/60 (60% opacity)
-├── backdrop-blur-xl (strong blur)
-├── border-b border-transparent
-└── shadow-none
-
-Scrolled State (after 8px):
-├── bg-background/80 (80% opacity)
-├── backdrop-blur-xl
-├── border-b border-border/50 (subtle border)
-└── shadow-sm (soft shadow)
+<div> (sticky outer wrapper)
+  └── <header> (floating pill container)
+        ├── Logo
+        └── Nav items
 ```
 
-### 3. Dark Mode Compatibility
+**Outer Wrapper:**
+- `position: sticky; top: 16px; z-index: 50;`
+- Adds horizontal padding for mobile (16px each side)
+- Full width, acts as positioning context
 
-The styling uses CSS variables (`bg-background`) which automatically adapt to dark mode. The opacity and blur values work well in both themes.
+**Inner Floating Container:**
+- `max-width: 1120px` centered
+- `width: calc(100% - 32px)` with `mx-auto`
+- Rounded corners: `rounded-2xl` (16px)
+- Translucent background: `bg-white/75` (light) / `bg-black/60` (dark)
+- Backdrop blur: `backdrop-blur-xl`
+- Border: `border border-black/[0.06]` (light) / `border-white/10` (dark)
+- Shadow: subtle drop shadow
+- Padding: `px-4 sm:px-6`
+
+### 4. Update Logo Component
+
+**File:** `src/components/ui/Logo.tsx`
+
+Apply the new brand font to the wordmark:
+- Change `font-display` to `font-brand`
+- Adjust font weight to `font-medium` (Fredoka looks best at medium weight)
+- Keep existing sizing logic
 
 ---
 
 ## Technical Details
 
-### Scroll Listener Hook
+### Font Import
 
-```text
-useEffect:
-├── Define handleScroll function
-├── Check window.scrollY > 8
-├── Set isScrolled state
-├── Add 'scroll' event listener with { passive: true }
-└── Cleanup: remove listener on unmount
+```css
+@import url('...&family=Fredoka:wght@400;500;600&display=swap');
 ```
 
-### CSS Classes Applied
+### Navbar Dimensions
 
-| State | Background | Blur | Border | Shadow |
-|-------|-----------|------|--------|--------|
-| Default | bg-background/60 | backdrop-blur-xl | border-transparent | none |
-| Scrolled | bg-background/80 | backdrop-blur-xl | border-border/50 | shadow-sm |
+| Breakpoint | Width | Horizontal Margin |
+|------------|-------|-------------------|
+| Mobile | calc(100% - 32px) | 16px each side |
+| Desktop | max 1120px | auto-centered |
 
-### Transition
+### Styling Tokens
 
-Smooth transition between states using `transition-all duration-300` for a polished feel.
+| Property | Light Mode | Dark Mode |
+|----------|------------|-----------|
+| Background | rgba(255,255,255,0.75) | rgba(0,0,0,0.6) |
+| Border | rgba(0,0,0,0.06) | rgba(255,255,255,0.1) |
+| Blur | 16px (backdrop-blur-xl) | 16px |
+| Shadow | soft drop shadow | slightly reduced |
+| Border Radius | 16px (rounded-2xl) | 16px |
+
+### Scroll Behavior
+
+Keep existing scroll state logic but adjust:
+- Default: slightly more transparent
+- Scrolled: increase opacity, enhance shadow
 
 ---
 
@@ -82,17 +109,21 @@ Smooth transition between states using `transition-all duration-300` for a polis
 
 | File | Change |
 |------|--------|
-| `src/components/layout/Header.tsx` | Add scroll listener and enhanced frosted glass styling |
+| `src/index.css` | Add Fredoka font import |
+| `tailwind.config.ts` | Add `brand` font family |
+| `src/components/layout/Header.tsx` | Restructure to floating pill navbar |
+| `src/components/ui/Logo.tsx` | Apply brand font to wordmark |
 
 ---
 
 ## Acceptance Criteria
 
-1. Navbar stays pinned at top while scrolling (sticky)
-2. Translucent frosted glass effect visible on all pages
-3. Shadow appears smoothly after scrolling 8px
-4. Content beneath does not jump (height preserved at h-16)
-5. Works on both desktop and mobile
-6. Existing nav items remain aligned right
-7. Smooth transition between default and scrolled states
+1. Navbar floats with ~16px gap from viewport top
+2. Navbar has rounded corners (pill/card appearance)
+3. Translucent background with visible backdrop blur effect
+4. Subtle border and shadow visible
+5. Navbar remains centered and doesn't clip on mobile
+6. "roamiii" wordmark uses the new thick, rounded font
+7. No layout shift or jitter while scrolling
 8. Works correctly in both light and dark modes
+9. Scroll-aware styling still applies (enhanced shadow when scrolled)
