@@ -30,7 +30,7 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
         style={{ imageRendering: 'crisp-edges' }}
       />
       {showText && (
-        <span className={`${textSizes[size]} font-display font-semibold text-foreground`}>
+        <span className={`${textSizes[size]} font-brand font-medium text-foreground`}>
           roamiii
         </span>
       )}
