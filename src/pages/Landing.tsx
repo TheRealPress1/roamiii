@@ -38,11 +38,11 @@ export default function Landing() {
     navigate(user ? '/app' : '/auth');
   };
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col gradient-hero">
       <Header />
       
       {/* Hero Section */}
-      <section className="relative overflow-hidden gradient-hero">
+      <section className="relative overflow-hidden">
         {/* Decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-primary/5 blur-3xl" />
