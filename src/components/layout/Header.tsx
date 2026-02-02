@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/button';
@@ -17,14 +17,20 @@ import { NotificationDrawer } from '@/components/notifications/NotificationDrawe
 import { useNotifications } from '@/hooks/useNotifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
-interface HeaderProps {
-  transparent?: boolean;
-}
-
-export function Header({ transparent }: HeaderProps) {
+export function Header() {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 8);
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const { notifications, loading, unreadCount, markAsRead, markAllAsRead } =
     useNotifications();
@@ -44,8 +50,10 @@ export function Header({ transparent }: HeaderProps) {
   };
 
   return (
-    <header className={`sticky top-0 z-50 w-full transition-colors ${
-      transparent ? 'bg-transparent' : 'bg-background/80 backdrop-blur-lg border-b border-border'
+    <header className={`sticky top-0 z-50 w-full transition-all duration-300 backdrop-blur-xl ${
+      isScrolled 
+        ? 'bg-background/80 border-b border-border/50 shadow-sm' 
+        : 'bg-background/60 border-b border-transparent'
     }`}>
       <div className="container flex h-16 items-center justify-between">
         <Logo />
