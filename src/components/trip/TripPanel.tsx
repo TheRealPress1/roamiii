@@ -1,9 +1,15 @@
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, DollarSign, Users, MapPin, Clock, Trophy, ChevronRight } from 'lucide-react';
+import { Calendar, DollarSign, Users, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2 } from 'lucide-react';
 import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 interface TripPanelProps {
@@ -12,9 +18,11 @@ interface TripPanelProps {
   proposals: TripProposal[];
   onInvite: () => void;
   onViewProposal: (proposal: TripProposal) => void;
+  isOwner?: boolean;
+  onDeleteTrip?: () => void;
 }
 
-export function TripPanel({ trip, members, proposals, onInvite, onViewProposal }: TripPanelProps) {
+export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, isOwner, onDeleteTrip }: TripPanelProps) {
   const hasDeadline = trip.decision_deadline && new Date(trip.decision_deadline) > new Date();
   
   // Sort proposals by vote count
@@ -36,9 +44,30 @@ export function TripPanel({ trip, members, proposals, onInvite, onViewProposal }
         <div className="p-4 space-y-6">
           {/* Trip Basics */}
           <section>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              Trip Details
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Trip Details
+              </h3>
+              {isOwner && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <MoreVertical className="h-4 w-4" />
+                      <span className="sr-only">Trip settings</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={onDeleteTrip}
+                      className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Trip
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
             <div className="space-y-2.5">
               {(trip.date_start || trip.date_end) && (
                 <div className="flex items-center gap-2 text-sm">
