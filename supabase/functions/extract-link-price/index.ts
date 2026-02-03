@@ -8,6 +8,9 @@ const corsHeaders = {
 interface ExtractRequest {
   url: string;
   nights?: number;
+  checkIn?: string;  // YYYY-MM-DD format
+  checkOut?: string; // YYYY-MM-DD format
+  guests?: number;
 }
 
 interface ExtractedPrice {
@@ -32,9 +35,35 @@ function detectSource(url: string): string {
   return "unknown";
 }
 
-function buildExtractionPrompt(html: string, source: string, url: string): string {
+// Modify Airbnb URL to include check-in/check-out dates for accurate total pricing
+function buildAirbnbUrlWithDates(url: string, checkIn?: string, checkOut?: string, guests?: number): string {
+  try {
+    const urlObj = new URL(url);
+
+    // Add or update check_in and check_out params
+    if (checkIn) {
+      urlObj.searchParams.set("check_in", checkIn);
+    }
+    if (checkOut) {
+      urlObj.searchParams.set("check_out", checkOut);
+    }
+    if (guests && guests > 0) {
+      urlObj.searchParams.set("adults", guests.toString());
+    }
+
+    return urlObj.toString();
+  } catch {
+    return url;
+  }
+}
+
+function buildExtractionPrompt(html: string, source: string, url: string, hasDates: boolean): string {
   // Truncate HTML to avoid token limits
   const truncatedHtml = html.substring(0, 50000);
+
+  const airbnbGuidelines = hasDates
+    ? `- For Airbnb: Look for the TOTAL price for the stay (not per-night). This includes cleaning fees, service fees, and taxes. Look for text like "Total before taxes", "Total", or the final price shown in the booking summary. The URL has check_in/check_out dates so the page shows total pricing.`
+    : `- For Airbnb: Look for the nightly rate, often near "per night". Look for data in JSON-LD scripts or price elements.`;
 
   return `Extract pricing information from this ${source} listing HTML.
 
@@ -52,10 +81,10 @@ Extract and return ONLY valid JSON with this exact structure:
 }
 
 Guidelines:
-- For Airbnb/VRBO/Booking: Look for nightly rate, often near "per night" or in price breakdown. Look for data in JSON-LD scripts or price elements.
+${airbnbGuidelines}
+- For VRBO/Booking: Look for total price if dates are in URL, otherwise nightly rate.
 - For Viator/GetYourGuide: Look for activity price, often "per person" or "from $X"
-- Extract the base price, not prices with fees added
-- If you find multiple prices, use the primary/displayed price
+- If you find multiple prices, use the primary/displayed price (usually the larger, more prominent one)
 - Return null for price if you cannot find a clear price
 
 Return ONLY the JSON, no explanation.`;
@@ -104,6 +133,8 @@ async function fetchDirect(url: string): Promise<string> {
 }
 
 serve(async (req: Request) => {
+  console.log("[extract-link-price] Request received:", req.method);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -112,11 +143,19 @@ serve(async (req: Request) => {
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
     const browserlessKey = Deno.env.get("BROWSERLESS_API_KEY");
 
+    console.log("[extract-link-price] ANTHROPIC_API_KEY present:", !!anthropicKey);
+    console.log("[extract-link-price] BROWSERLESS_API_KEY present:", !!browserlessKey);
+
     if (!anthropicKey) {
       throw new Error("ANTHROPIC_API_KEY not configured");
     }
 
-    const { url, nights }: ExtractRequest = await req.json();
+    const { url, nights, checkIn, checkOut, guests }: ExtractRequest = await req.json();
+    console.log("[extract-link-price] URL:", url);
+    console.log("[extract-link-price] Nights:", nights);
+    console.log("[extract-link-price] Check-in:", checkIn);
+    console.log("[extract-link-price] Check-out:", checkOut);
+    console.log("[extract-link-price] Guests:", guests);
 
     if (!url || !url.startsWith("http")) {
       return new Response(
@@ -126,26 +165,45 @@ serve(async (req: Request) => {
     }
 
     const source = detectSource(url);
+    console.log("[extract-link-price] Detected source:", source);
+
+    // For Airbnb, modify URL to include dates if provided
+    let fetchUrl = url;
+    const hasDates = !!(checkIn && checkOut);
+    if (source === "airbnb" && hasDates) {
+      fetchUrl = buildAirbnbUrlWithDates(url, checkIn, checkOut, guests);
+      console.log("[extract-link-price] Modified Airbnb URL with dates:", fetchUrl);
+    }
+
     let html: string;
 
     // Use Browserless for sites that need JavaScript rendering (like Airbnb)
     const needsBrowser = ["airbnb", "vrbo", "booking"].includes(source);
+    console.log("[extract-link-price] Needs browser rendering:", needsBrowser);
 
     if (needsBrowser && browserlessKey) {
-      console.log("Using Browserless for:", source);
+      console.log("[extract-link-price] Using Browserless for:", source);
       try {
-        html = await fetchWithBrowserless(url, browserlessKey);
-      } catch (browserlessError) {
-        console.error("Browserless failed, trying direct fetch:", browserlessError);
-        html = await fetchDirect(url);
+        html = await fetchWithBrowserless(fetchUrl, browserlessKey);
+        console.log("[extract-link-price] Browserless HTML length:", html.length);
+      } catch (browserlessError: any) {
+        console.error("[extract-link-price] Browserless failed:", browserlessError.message);
+        console.log("[extract-link-price] Falling back to direct fetch");
+        html = await fetchDirect(fetchUrl);
+        console.log("[extract-link-price] Direct fetch HTML length:", html.length);
       }
     } else {
-      console.log("Using direct fetch for:", source);
-      html = await fetchDirect(url);
+      console.log("[extract-link-price] Using direct fetch for:", source);
+      if (needsBrowser && !browserlessKey) {
+        console.warn("[extract-link-price] WARNING: Site needs browser but BROWSERLESS_API_KEY not set!");
+      }
+      html = await fetchDirect(fetchUrl);
+      console.log("[extract-link-price] Direct fetch HTML length:", html.length);
     }
 
     // Use Claude to extract price from HTML
-    const prompt = buildExtractionPrompt(html, source, url);
+    console.log("[extract-link-price] Calling Claude to extract price...");
+    const prompt = buildExtractionPrompt(html, source, fetchUrl, hasDates);
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -161,14 +219,17 @@ serve(async (req: Request) => {
       }),
     });
 
+    console.log("[extract-link-price] Claude API status:", response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Anthropic API error:", errorText);
+      console.error("[extract-link-price] Anthropic API error:", errorText);
       throw new Error(`Anthropic API error: ${response.status}`);
     }
 
     const data = await response.json();
     const content = data.content?.[0]?.text;
+    console.log("[extract-link-price] Claude response:", content);
 
     if (!content) {
       throw new Error("No response from AI");
@@ -178,18 +239,22 @@ serve(async (req: Request) => {
     let extracted: { price: number | null; currency: string; priceType: string; title: string | null };
     try {
       extracted = JSON.parse(content);
+      console.log("[extract-link-price] Parsed extraction:", JSON.stringify(extracted));
     } catch {
-      console.error("Failed to parse AI response:", content);
+      console.error("[extract-link-price] Failed to parse AI response:", content);
       extracted = { price: null, currency: "USD", priceType: "unknown", title: null };
     }
 
     // Calculate total if we have per-night price and nights
+    // Skip multiplication if we already fetched Airbnb with dates (should already be total)
     let finalPrice = extracted.price;
     let finalPriceType = extracted.priceType;
 
-    if (extracted.price && extracted.priceType === "per_night" && nights && nights > 0) {
+    const alreadyHasTotal = source === "airbnb" && hasDates && extracted.priceType === "total";
+    if (extracted.price && extracted.priceType === "per_night" && nights && nights > 0 && !alreadyHasTotal) {
       finalPrice = extracted.price * nights;
       finalPriceType = "total";
+      console.log("[extract-link-price] Calculated total from per-night:", finalPrice);
     }
 
     const result: ExtractedPrice = {
@@ -200,12 +265,13 @@ serve(async (req: Request) => {
       source,
     };
 
+    console.log("[extract-link-price] Final result:", JSON.stringify(result));
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
-    console.error("Error extracting price:", error);
+    console.error("[extract-link-price] Error:", error.message);
     return new Response(
       JSON.stringify({
         price: null,

@@ -107,7 +107,13 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
 
     try {
       const { data, error } = await supabase.functions.invoke('extract-link-price', {
-        body: { url: url.trim(), nights },
+        body: {
+          url: url.trim(),
+          nights,
+          checkIn: dateStart || undefined,
+          checkOut: dateEnd || undefined,
+          guests: splitCount,
+        },
       });
 
       if (error) throw error;
@@ -186,7 +192,13 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
 
           try {
             const { data, error } = await supabase.functions.invoke('extract-link-price', {
-              body: { url: link.trim(), nights },
+              body: {
+                url: link.trim(),
+                nights,
+                checkIn: dateStart || undefined,
+                checkOut: dateEnd || undefined,
+                guests: splitCount,
+              },
             });
 
             if (error) throw error;
