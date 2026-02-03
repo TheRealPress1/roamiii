@@ -163,7 +163,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-display">Propose a Trip</DialogTitle>
         </DialogHeader>
