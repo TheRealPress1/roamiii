@@ -10,34 +10,33 @@ export function useTripMessages(tripId: string) {
   const [error, setError] = useState<Error | null>(null);
 
   // Common select query for messages with all relations
+  // Note: reply_to join removed temporarily until migration is applied
   const messageSelectQuery = `
     *,
     author:profiles!messages_user_id_fkey(*),
     proposal:trip_proposals(
       *,
       votes:trip_votes(*)
-    ),
-    reply_to:messages!messages_reply_to_id_fkey(
-      id,
-      type,
-      body,
-      user_id,
-      author:profiles!messages_user_id_fkey(id, name, avatar_url),
-      proposal:trip_proposals(id, destination)
     )
   `;
 
   const fetchMessages = useCallback(async () => {
     try {
+      console.log('[useTripMessages] Fetching messages for trip:', tripId);
       const { data, error: fetchError } = await supabase
         .from('messages')
         .select(messageSelectQuery)
         .eq('trip_id', tripId)
         .order('created_at', { ascending: true });
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('[useTripMessages] Fetch error:', fetchError);
+        throw fetchError;
+      }
+      console.log('[useTripMessages] Fetched messages:', data?.length || 0);
       setMessages(data as unknown as Message[]);
     } catch (err) {
+      console.error('[useTripMessages] Error:', err);
       setError(err as Error);
     } finally {
       setLoading(false);
