@@ -26,13 +26,17 @@ export function useTripData(tripId: string) {
         .from('trip_members')
         .select(`
           *,
-          profile:profiles(*)
+          profile:profiles(id, name, email, avatar_url)
         `)
         .eq('trip_id', tripId)
         .eq('status', 'active');
 
-      if (membersError) throw membersError;
-      setMembers(membersData as unknown as TripMember[]);
+      if (membersError) {
+        console.error('Error fetching members:', membersError);
+        throw membersError;
+      }
+      console.log('Fetched members:', membersData);
+      setMembers((membersData || []) as unknown as TripMember[]);
 
       // Fetch proposals with votes
       const { data: proposalsData, error: proposalsError } = await supabase
@@ -75,8 +79,27 @@ export function useTripData(tripId: string) {
       )
       .subscribe();
 
+    // Subscribe to member changes
+    const membersChannel = supabase
+      .channel(`trip-members-${tripId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'trip_members',
+          filter: `trip_id=eq.${tripId}`,
+        },
+        () => {
+          // Refetch when members change
+          fetchTrip();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(votesChannel);
+      supabase.removeChannel(membersChannel);
     };
   }, [tripId, fetchTrip]);
 
