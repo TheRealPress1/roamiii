@@ -239,21 +239,31 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
       return;
     }
 
+    console.log('[AI Estimate] Starting request for:', destination);
     setEstimating(true);
     try {
+      const requestBody = {
+        destination: destination.trim(),
+        dateStart: dateStart || null,
+        dateEnd: dateEnd || null,
+        attendeeCount: splitCount,
+        vibeTags,
+      };
+      console.log('[AI Estimate] Request body:', requestBody);
+
       const { data, error } = await supabase.functions.invoke('estimate-trip-costs', {
-        body: {
-          destination: destination.trim(),
-          dateStart: dateStart || null,
-          dateEnd: dateEnd || null,
-          attendeeCount: splitCount,
-          vibeTags,
-        },
+        body: requestBody,
       });
+
+      console.log('[AI Estimate] Response data:', data);
+      console.log('[AI Estimate] Response error:', error);
 
       if (error) throw error;
 
       if (data) {
+        if (data.error) {
+          throw new Error(data.error);
+        }
         setCostLodging(data.lodging?.toString() || '');
         setCostTransport(data.transport?.toString() || '');
         setCostFood(data.food?.toString() || '');
@@ -261,8 +271,8 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
         toast.success('Cost estimates applied!');
       }
     } catch (error: any) {
-      console.error('Error getting AI estimate:', error);
-      toast.error('Failed to get AI estimate. Please try again.');
+      console.error('[AI Estimate] Error:', error);
+      toast.error(error.message || 'Failed to get AI estimate. Please try again.');
     } finally {
       setEstimating(false);
     }
