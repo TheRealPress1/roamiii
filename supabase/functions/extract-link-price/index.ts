@@ -33,12 +33,15 @@ function detectSource(url: string): string {
 }
 
 function buildExtractionPrompt(html: string, source: string, url: string): string {
+  // Truncate HTML to avoid token limits
+  const truncatedHtml = html.substring(0, 50000);
+
   return `Extract pricing information from this ${source} listing HTML.
 
 URL: ${url}
 
 HTML content (truncated):
-${html.substring(0, 30000)}
+${truncatedHtml}
 
 Extract and return ONLY valid JSON with this exact structure:
 {
@@ -49,7 +52,7 @@ Extract and return ONLY valid JSON with this exact structure:
 }
 
 Guidelines:
-- For Airbnb/VRBO/Booking: Look for nightly rate, often near "per night" or in price breakdown
+- For Airbnb/VRBO/Booking: Look for nightly rate, often near "per night" or in price breakdown. Look for data in JSON-LD scripts or price elements.
 - For Viator/GetYourGuide: Look for activity price, often "per person" or "from $X"
 - Extract the base price, not prices with fees added
 - If you find multiple prices, use the primary/displayed price
@@ -58,14 +61,58 @@ Guidelines:
 Return ONLY the JSON, no explanation.`;
 }
 
+async function fetchWithBrowserless(url: string, apiKey: string): Promise<string> {
+  const browserlessUrl = `https://chrome.browserless.io/content?token=${apiKey}`;
+
+  const response = await fetch(browserlessUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      url: url,
+      waitFor: 3000, // Wait 3 seconds for page to load
+      gotoOptions: {
+        waitUntil: "networkidle2",
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Browserless error:", errorText);
+    throw new Error(`Browserless error: ${response.status}`);
+  }
+
+  return await response.text();
+}
+
+async function fetchDirect(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.5",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Direct fetch failed: ${response.status}`);
+  }
+
+  return await response.text();
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) {
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const browserlessKey = Deno.env.get("BROWSERLESS_API_KEY");
+
+    if (!anthropicKey) {
       throw new Error("ANTHROPIC_API_KEY not configured");
     }
 
@@ -79,32 +126,23 @@ serve(async (req: Request) => {
     }
 
     const source = detectSource(url);
+    let html: string;
 
-    // Fetch the page with browser-like headers
-    const pageResponse = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Cache-Control": "no-cache",
-      },
-    });
+    // Use Browserless for sites that need JavaScript rendering (like Airbnb)
+    const needsBrowser = ["airbnb", "vrbo", "booking"].includes(source);
 
-    if (!pageResponse.ok) {
-      return new Response(
-        JSON.stringify({
-          price: null,
-          currency: "USD",
-          priceType: "unknown",
-          title: null,
-          source,
-          error: `Failed to fetch page: ${pageResponse.status}`
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (needsBrowser && browserlessKey) {
+      console.log("Using Browserless for:", source);
+      try {
+        html = await fetchWithBrowserless(url, browserlessKey);
+      } catch (browserlessError) {
+        console.error("Browserless failed, trying direct fetch:", browserlessError);
+        html = await fetchDirect(url);
+      }
+    } else {
+      console.log("Using direct fetch for:", source);
+      html = await fetchDirect(url);
     }
-
-    const html = await pageResponse.text();
 
     // Use Claude to extract price from HTML
     const prompt = buildExtractionPrompt(html, source, url);
@@ -113,7 +151,7 @@ serve(async (req: Request) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
+        "x-api-key": anthropicKey,
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
