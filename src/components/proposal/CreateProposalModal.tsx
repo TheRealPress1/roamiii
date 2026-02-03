@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, MapPin, DollarSign, X, Plus, Sparkles, Link2, Check } from 'lucide-react';
+import { Loader2, DollarSign, X, Plus, Sparkles, Link2, Check } from 'lucide-react';
 import { CoverImagePicker } from '@/components/proposal/CoverImagePicker';
 import { getAutoPickCover } from '@/lib/cover-presets';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { VibeTagSelector } from '@/components/ui/VibeTag';
+import { DestinationAutocomplete } from '@/components/ui/DestinationAutocomplete';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -353,16 +354,11 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
           {/* Destination */}
           <div className="space-y-2">
             <Label htmlFor="destination">Destination *</Label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="destination"
-                placeholder="e.g., Cancún, Mexico"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+            <DestinationAutocomplete
+              value={destination}
+              onChange={setDestination}
+              placeholder="e.g., Cancún, Mexico"
+            />
           </div>
 
           {/* Dates */}
