@@ -1,6 +1,7 @@
 import { format, formatDistanceToNow } from 'date-fns';
 import { Calendar, DollarSign, Users, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon } from 'lucide-react';
 import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
+import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -198,18 +199,29 @@ export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, 
                 <Trophy className="h-3.5 w-3.5 text-vote-in" />
                 Final Pick
               </h3>
-              <button
-                onClick={() => onViewProposal(pinnedProposal)}
-                className="w-full p-3 bg-vote-in-bg rounded-lg border border-vote-in/20 hover:border-vote-in/40 transition-colors text-left"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <MapPin className="h-4 w-4 text-vote-in" />
-                  <span className="font-semibold text-foreground">{pinnedProposal.destination}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  ${pinnedProposal.estimated_cost_per_person}/person
-                </p>
-              </button>
+              {(() => {
+                const pinnedType = pinnedProposal.type || 'full_itinerary';
+                const pinnedTypeInfo = PROPOSAL_TYPES.find(t => t.value === pinnedType);
+                const pinnedDisplayName = pinnedProposal.name || pinnedProposal.destination;
+                const isPinnedFullItinerary = pinnedType === 'full_itinerary';
+
+                return (
+                  <button
+                    onClick={() => onViewProposal(pinnedProposal)}
+                    className="w-full p-3 bg-vote-in-bg rounded-lg border border-vote-in/20 hover:border-vote-in/40 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span>{pinnedTypeInfo?.emoji}</span>
+                      <span className="font-semibold text-foreground">{pinnedDisplayName}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {isPinnedFullItinerary
+                        ? `$${pinnedProposal.estimated_cost_per_person}/person`
+                        : pinnedProposal.price_range || pinnedProposal.destination}
+                    </p>
+                  </button>
+                );
+              })()}
             </section>
           )}
 
@@ -225,7 +237,11 @@ export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, 
                 {sortedProposals.slice(0, 5).map((proposal, index) => {
                   const inCount = (proposal.votes || []).filter((v) => v.vote === 'in').length;
                   const isPinned = proposal.id === trip.pinned_proposal_id;
-                  
+                  const proposalType = proposal.type || 'full_itinerary';
+                  const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
+                  const displayName = proposal.name || proposal.destination;
+                  const isFullItinerary = proposalType === 'full_itinerary';
+
                   return (
                     <button
                       key={proposal.id}
@@ -243,10 +259,12 @@ export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, 
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">
-                          {proposal.destination}
+                          {typeInfo?.emoji} {displayName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          ${proposal.estimated_cost_per_person} · {inCount} in
+                          {isFullItinerary ? `$${proposal.estimated_cost_per_person} · ` : ''}
+                          {proposal.price_range && proposalType === 'food_spot' ? `${proposal.price_range} · ` : ''}
+                          {inCount} in
                         </p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />

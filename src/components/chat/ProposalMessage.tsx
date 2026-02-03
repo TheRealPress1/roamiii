@@ -1,7 +1,8 @@
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, DollarSign, ExternalLink, Reply } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon } from 'lucide-react';
 import type { Message, TripProposal, VoteType } from '@/lib/tripchat-types';
+import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,21 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
   const authorName = message.author?.name || message.author?.email?.split('@')[0] || 'Unknown';
   const authorInitials = authorName.slice(0, 2).toUpperCase();
 
+  // Get proposal type info
+  const proposalType = proposal.type || 'full_itinerary';
+  const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
+  const isFullItinerary = proposalType === 'full_itinerary';
+  const displayTitle = proposal.name || proposal.destination;
+
+  const getActionText = () => {
+    switch (proposalType) {
+      case 'place': return 'suggested a place';
+      case 'activity': return 'suggested an activity';
+      case 'food_spot': return 'suggested a food spot';
+      default: return 'proposed a trip';
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -79,7 +95,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
           </AvatarFallback>
         </Avatar>
         <span className="text-sm font-medium text-foreground">{authorName}</span>
-        <span className="text-xs text-muted-foreground">proposed a trip</span>
+        <span className="text-xs text-muted-foreground">{getActionText()}</span>
         <span className="text-xs text-muted-foreground">
           {format(new Date(message.created_at), 'h:mm a')}
         </span>
@@ -92,7 +108,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
           {proposal.cover_image_url ? (
             <img
               src={proposal.cover_image_url}
-              alt={proposal.destination}
+              alt={displayTitle}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -100,8 +116,15 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
               <MapPin className="h-12 w-12 text-primary/40" />
             </div>
           )}
-          {/* Vibe tags */}
-          {proposal.vibe_tags && proposal.vibe_tags.length > 0 && (
+          {/* Type badge */}
+          {typeInfo && (
+            <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium flex items-center gap-1">
+              <span>{typeInfo.emoji}</span>
+              <span>{typeInfo.label}</span>
+            </div>
+          )}
+          {/* Vibe tags - only for full itinerary */}
+          {isFullItinerary && proposal.vibe_tags && proposal.vibe_tags.length > 0 && (
             <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
               {proposal.vibe_tags.slice(0, 3).map((vibe) => (
                 <VibeTag key={vibe} vibe={vibe as any} size="sm" />
@@ -114,8 +137,18 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
         <div className="p-4">
           <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary" />
-            {proposal.destination}
+            {displayTitle}
           </h3>
+
+          {/* Show destination as subtitle if name is present and different */}
+          {proposal.name && proposal.destination && proposal.name !== proposal.destination && (
+            <p className="text-sm text-muted-foreground mb-2">{proposal.destination}</p>
+          )}
+
+          {/* Description for quick posts */}
+          {!isFullItinerary && proposal.description && (
+            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{proposal.description}</p>
+          )}
 
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-4">
             {(proposal.date_start || proposal.date_end) && (
@@ -130,10 +163,15 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             {proposal.flexible_dates && (
               <span className="text-xs bg-muted px-2 py-0.5 rounded">Flexible</span>
             )}
-            <span className="flex items-center gap-1 font-medium text-foreground">
-              <DollarSign className="h-3.5 w-3.5" />
-              ${proposal.estimated_cost_per_person}/person
-            </span>
+            {/* Price range for food spots, cost per person for full itineraries */}
+            {proposalType === 'food_spot' && proposal.price_range ? (
+              <span className="font-medium text-foreground">{proposal.price_range}</span>
+            ) : isFullItinerary && (
+              <span className="flex items-center gap-1 font-medium text-foreground">
+                <DollarSign className="h-3.5 w-3.5" />
+                ${proposal.estimated_cost_per_person}/person
+              </span>
+            )}
           </div>
 
           {/* Vote buttons */}
@@ -170,6 +208,21 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
                 isComparing={isComparing || false}
                 onToggle={onToggleCompare}
               />
+            </div>
+          )}
+
+          {/* View Link button for quick posts with URL */}
+          {!isFullItinerary && proposal.url && (
+            <div className="mb-3">
+              <a
+                href={proposal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 hover:bg-muted rounded-lg text-sm text-primary transition-colors"
+              >
+                <LinkIcon className="h-3.5 w-3.5" />
+                View Link
+              </a>
             </div>
           )}
 

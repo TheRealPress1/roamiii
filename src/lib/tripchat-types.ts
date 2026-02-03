@@ -4,6 +4,14 @@ export type TripRole = 'owner' | 'admin' | 'member';
 export type MessageType = 'text' | 'proposal' | 'system';
 export type VoteType = 'in' | 'maybe' | 'out';
 export type MemberStatus = 'active' | 'removed';
+export type ProposalType = 'place' | 'activity' | 'food_spot' | 'full_itinerary';
+
+export const PROPOSAL_TYPES = [
+  { value: 'place', label: 'Place', emoji: '📍', description: 'A destination to visit' },
+  { value: 'activity', label: 'Activity', emoji: '🎯', description: 'Something to do' },
+  { value: 'food_spot', label: 'Food Spot', emoji: '🍽️', description: 'Restaurant, cafe, bar' },
+  { value: 'full_itinerary', label: 'Full Itinerary', emoji: '🗺️', description: 'Complete trip plan' },
+] as const;
 
 export interface Profile {
   id: string;
@@ -80,7 +88,13 @@ export interface TripProposal {
   id: string;
   trip_id: string;
   created_by: string;
+  type: ProposalType;
   destination: string;
+  name: string | null;
+  description: string | null;
+  address: string | null;
+  url: string | null;
+  price_range: string | null;
   date_start: string | null;
   date_end: string | null;
   flexible_dates: boolean;
