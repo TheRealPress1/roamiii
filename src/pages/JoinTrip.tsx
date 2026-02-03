@@ -44,11 +44,9 @@ export default function JoinTrip() {
         return;
       }
 
-      // Find the trip by join code using edge function (bypasses RLS)
-      const { data: tripData, error: tripError } = await supabase.functions.invoke(
-        'get-trip-preview',
-        { body: { code } }
-      );
+      // Find the trip by join code using database function (bypasses RLS)
+      const { data: tripData, error: tripError } = await supabase
+        .rpc('get_trip_by_code', { join_code_param: code });
 
       if (tripError || !tripData) {
         toast.error('Invalid join code. Please check and try again.');
