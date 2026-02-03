@@ -8,11 +8,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VibeTagSelector } from '@/components/ui/VibeTag';
 import { DestinationAutocomplete } from '@/components/ui/DestinationAutocomplete';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+type CostCategory = 'lodging' | 'transport' | 'food' | 'activities';
+
+interface LinkEntry {
+  url: string;
+  price: string;
+  category: CostCategory;
+}
 
 // Notification helper - notify all trip members about new proposal
 const notifyTripMembers = async (
@@ -57,8 +66,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   const [coverImageKey, setCoverImageKey] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [vibeTags, setVibeTags] = useState<string[]>([]);
-  const [lodgingLinks, setLodgingLinks] = useState<string[]>(['']);
-  const [linkPrices, setLinkPrices] = useState<string[]>(['']);
+  const [links, setLinks] = useState<LinkEntry[]>([{ url: '', price: '', category: 'lodging' }]);
   const [costLodging, setCostLodging] = useState('');
   const [costTransport, setCostTransport] = useState('');
   const [costFood, setCostFood] = useState('');
@@ -75,39 +83,37 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   
   const costPerPerson = Math.round(totalCost / splitCount);
 
-  // Auto-sum link prices to lodging total
+  // Auto-sum link prices by category
   useEffect(() => {
-    const total = linkPrices.reduce((sum, price) => {
-      const num = parseFloat(price) || 0;
-      return sum + num;
-    }, 0);
-    if (total > 0) {
-      setCostLodging(total.toString());
+    const totals = links.reduce(
+      (acc, link) => {
+        const price = parseFloat(link.price) || 0;
+        acc[link.category] += price;
+        return acc;
+      },
+      { lodging: 0, transport: 0, food: 0, activities: 0 }
+    );
+
+    if (totals.lodging > 0) setCostLodging(totals.lodging.toString());
+    if (totals.transport > 0) setCostTransport(totals.transport.toString());
+    if (totals.food > 0) setCostFood(totals.food.toString());
+    if (totals.activities > 0) setCostActivities(totals.activities.toString());
+  }, [links]);
+
+  const addLink = () => {
+    if (links.length < 5) {
+      setLinks([...links, { url: '', price: '', category: 'lodging' }]);
     }
-  }, [linkPrices]);
-
-  const addLodgingLink = () => {
-    if (lodgingLinks.length < 3) {
-      setLodgingLinks([...lodgingLinks, '']);
-      setLinkPrices([...linkPrices, '']);
-    }
   };
 
-  const updateLodgingLink = (index: number, value: string) => {
-    const updated = [...lodgingLinks];
-    updated[index] = value;
-    setLodgingLinks(updated);
+  const updateLink = (index: number, field: keyof LinkEntry, value: string) => {
+    const updated = [...links];
+    updated[index] = { ...updated[index], [field]: value };
+    setLinks(updated);
   };
 
-  const updateLinkPrice = (index: number, value: string) => {
-    const updated = [...linkPrices];
-    updated[index] = value;
-    setLinkPrices(updated);
-  };
-
-  const removeLodgingLink = (index: number) => {
-    setLodgingLinks(lodgingLinks.filter((_, i) => i !== index));
-    setLinkPrices(linkPrices.filter((_, i) => i !== index));
+  const removeLink = (index: number) => {
+    setLinks(links.filter((_, i) => i !== index));
   };
 
   const getAiEstimate = async () => {
@@ -178,7 +184,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
           flexible_dates: flexibleDates,
           cover_image_url: finalCoverUrl,
           vibe_tags: vibeTags,
-          lodging_links: lodgingLinks.filter((l) => l.trim()),
+          lodging_links: links.filter((l) => l.url.trim()).map((l) => l.url),
           cost_lodging_total: parseFloat(costLodging) || 0,
           cost_transport_total: parseFloat(costTransport) || 0,
           cost_food_total: parseFloat(costFood) || 0,
@@ -222,8 +228,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
     setCoverImageKey(null);
     setCoverImageUrl('');
     setVibeTags([]);
-    setLodgingLinks(['']);
-    setLinkPrices(['']);
+    setLinks([{ url: '', price: '', category: 'lodging' }]);
     setCostLodging('');
     setCostTransport('');
     setCostFood('');
@@ -232,12 +237,13 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-display">Propose a Trip</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden p-0">
+        <div className="overflow-y-auto max-h-[85vh] p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-display">Propose a Trip</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-5 pt-4">
+          <div className="space-y-5 pt-4">
           {/* Destination */}
           <div className="space-y-2">
             <Label htmlFor="destination">Destination *</Label>
@@ -299,40 +305,55 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
             <VibeTagSelector selected={vibeTags} onChange={setVibeTags} />
           </div>
 
-          {/* Lodging Links */}
+          {/* Booking Links */}
           <div className="space-y-2">
-            <Label>Lodging Links</Label>
-            {lodgingLinks.map((link, index) => (
-              <div key={index} className="flex gap-2">
+            <Label>Booking Links</Label>
+            {links.map((link, index) => (
+              <div key={index} className="flex gap-2 items-center">
+                <Select
+                  value={link.category}
+                  onValueChange={(value) => updateLink(index, 'category', value)}
+                >
+                  <SelectTrigger className="w-28 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lodging">Lodging</SelectItem>
+                    <SelectItem value="transport">Transport</SelectItem>
+                    <SelectItem value="food">Food</SelectItem>
+                    <SelectItem value="activities">Activities</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input
-                  placeholder="https://airbnb.com/..."
-                  value={link}
-                  onChange={(e) => updateLodgingLink(index, e.target.value)}
-                  className="flex-1"
+                  placeholder="https://..."
+                  value={link.url}
+                  onChange={(e) => updateLink(index, 'url', e.target.value)}
+                  className="flex-1 h-9"
                 />
                 <div className="relative w-24">
                   <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
                     type="number"
                     placeholder="0"
-                    value={linkPrices[index] || ''}
-                    onChange={(e) => updateLinkPrice(index, e.target.value)}
-                    className="pl-7"
+                    value={link.price}
+                    onChange={(e) => updateLink(index, 'price', e.target.value)}
+                    className="pl-7 h-9"
                   />
                 </div>
-                {lodgingLinks.length > 1 && (
+                {links.length > 1 && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => removeLodgingLink(index)}
+                    className="h-9 w-9"
+                    onClick={() => removeLink(index)}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 )}
               </div>
             ))}
-            {lodgingLinks.length < 3 && (
-              <Button variant="outline" size="sm" onClick={addLodgingLink}>
+            {links.length < 5 && (
+              <Button variant="outline" size="sm" onClick={addLink}>
                 <Plus className="h-4 w-4 mr-1" />
                 Add Link
               </Button>
@@ -468,6 +489,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
               'Post Proposal'
             )}
           </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
