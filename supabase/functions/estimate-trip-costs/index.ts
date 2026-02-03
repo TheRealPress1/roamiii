@@ -1,9 +1,27 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const allowedOrigins = [
+  "http://localhost:8080",
+  "http://localhost:3000",
+  "http://localhost:5173",
+];
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") || "";
+  const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN");
+
+  // Check if origin is allowed
+  const isAllowed =
+    allowedOrigins.includes(origin) ||
+    origin.endsWith(".vercel.app") ||
+    (allowedOrigin && origin === allowedOrigin);
+
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
 
 interface EstimateRequest {
   destination: string;
@@ -73,6 +91,8 @@ Respond ONLY with valid JSON in this exact format, no additional text:
 
 serve(async (req: Request) => {
   console.log("[estimate-trip-costs] Request received:", req.method, req.url);
+
+  const corsHeaders = getCorsHeaders(req);
 
   // Handle CORS preflight
   if (req.method === "OPTIONS") {

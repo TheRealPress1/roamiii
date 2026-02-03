@@ -1,9 +1,27 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const allowedOrigins = [
+  "http://localhost:8080",
+  "http://localhost:3000",
+  "http://localhost:5173",
+];
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") || "";
+  const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN");
+
+  // Check if origin is allowed
+  const isAllowed =
+    allowedOrigins.includes(origin) ||
+    origin.endsWith(".vercel.app") ||
+    (allowedOrigin && origin === allowedOrigin);
+
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
 
 interface ExtractRequest {
   url: string;
@@ -91,7 +109,8 @@ Return ONLY the JSON, no explanation.`;
 }
 
 async function fetchWithBrowserless(url: string, apiKey: string): Promise<string> {
-  const browserlessUrl = `https://chrome.browserless.io/content?token=${apiKey}`;
+  // Use stealth mode to evade bot detection
+  const browserlessUrl = `https://chrome.browserless.io/content?token=${apiKey}&stealth`;
 
   const response = await fetch(browserlessUrl, {
     method: "POST",
@@ -100,9 +119,11 @@ async function fetchWithBrowserless(url: string, apiKey: string): Promise<string
     },
     body: JSON.stringify({
       url: url,
-      waitFor: 3000, // Wait 3 seconds for page to load
+      bestAttempt: true, // Return whatever we get even if page has errors
+      waitFor: 8000, // Wait 8 seconds for dynamic content to load
       gotoOptions: {
-        waitUntil: "networkidle2",
+        waitUntil: "networkidle0", // Wait until no network activity
+        timeout: 30000,
       },
     }),
   });
@@ -134,6 +155,8 @@ async function fetchDirect(url: string): Promise<string> {
 
 serve(async (req: Request) => {
   console.log("[extract-link-price] Request received:", req.method);
+
+  const corsHeaders = getCorsHeaders(req);
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
