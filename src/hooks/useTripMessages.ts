@@ -77,15 +77,15 @@ export function useTripMessages(tripId: string) {
     };
   }, [tripId, fetchMessages]);
 
-  const sendMessage = async (body: string, replyToId?: string) => {
+  const sendMessage = async (body: string, _replyToId?: string) => {
     if (!user) return { error: new Error('Not authenticated') };
 
+    // Note: reply_to_id disabled until migration is applied
     const { error } = await supabase.from('messages').insert({
       trip_id: tripId,
       user_id: user.id,
       type: 'text',
       body,
-      reply_to_id: replyToId || null,
     });
 
     return { error };
