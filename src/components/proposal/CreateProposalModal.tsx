@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Loader2, DollarSign, X, Plus, Sparkles, Link2, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Loader2, DollarSign, X, Plus, Sparkles } from 'lucide-react';
 import { CoverImagePicker } from '@/components/proposal/CoverImagePicker';
+import { PriceScreenshotAnalyzer } from '@/components/proposal/PriceScreenshotAnalyzer';
 import { getAutoPickCover } from '@/lib/cover-presets';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -47,9 +48,6 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   const { user, profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [estimating, setEstimating] = useState(false);
-  const [extractingPrices, setExtractingPrices] = useState(false);
-  const [extractingIndex, setExtractingIndex] = useState<number | null>(null);
-  const [extractedPrices, setExtractedPrices] = useState<Record<number, { price: number | null; title: string | null; error?: string }>>({});
 
   // Form state
   const [destination, setDestination] = useState('');
@@ -60,6 +58,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [vibeTags, setVibeTags] = useState<string[]>([]);
   const [lodgingLinks, setLodgingLinks] = useState<string[]>(['']);
+  const [linkPrices, setLinkPrices] = useState<string[]>(['']);
   const [costLodging, setCostLodging] = useState('');
   const [costTransport, setCostTransport] = useState('');
   const [costFood, setCostFood] = useState('');
@@ -76,173 +75,39 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   
   const costPerPerson = Math.round(totalCost / splitCount);
 
+  // Auto-sum link prices to lodging total
+  useEffect(() => {
+    const total = linkPrices.reduce((sum, price) => {
+      const num = parseFloat(price) || 0;
+      return sum + num;
+    }, 0);
+    if (total > 0) {
+      setCostLodging(total.toString());
+    }
+  }, [linkPrices]);
+
   const addLodgingLink = () => {
     if (lodgingLinks.length < 3) {
       setLodgingLinks([...lodgingLinks, '']);
+      setLinkPrices([...linkPrices, '']);
     }
   };
 
   const updateLodgingLink = (index: number, value: string) => {
     const updated = [...lodgingLinks];
-    const previousValue = updated[index];
     updated[index] = value;
     setLodgingLinks(updated);
-
-    // Auto-extract if a valid URL was just pasted (value changed significantly and is a URL)
-    const isNewUrl = value.trim().startsWith('http') &&
-                     value.length > 15 &&
-                     (!previousValue || previousValue.length < 10);
-
-    if (isNewUrl && !extractedPrices[index]) {
-      extractSingleLink(index, value);
-    }
   };
 
-  // Extract price from a single link
-  const extractSingleLink = async (index: number, url: string) => {
-    if (!url.trim().startsWith('http')) return;
-
-    setExtractingIndex(index);
-    const nights = calculateNights();
-
-    try {
-      const { data, error } = await supabase.functions.invoke('extract-link-price', {
-        body: {
-          url: url.trim(),
-          nights,
-          checkIn: dateStart || undefined,
-          checkOut: dateEnd || undefined,
-          guests: splitCount,
-        },
-      });
-
-      if (error) throw error;
-
-      setExtractedPrices((prev) => {
-        const updated = {
-          ...prev,
-          [index]: {
-            price: data?.price || null,
-            title: data?.title || null,
-            error: data?.error,
-          },
-        };
-
-        // Auto-update lodging total
-        const totalLodging = Object.values(updated).reduce(
-          (sum, item) => sum + (item.price || 0),
-          0
-        );
-        if (totalLodging > 0) {
-          setCostLodging(totalLodging.toString());
-        }
-
-        return updated;
-      });
-
-      if (data?.price) {
-        toast.success(`Extracted $${data.price.toLocaleString()} from link`);
-      }
-    } catch (err: any) {
-      console.error('Error extracting price:', err);
-      setExtractedPrices((prev) => ({
-        ...prev,
-        [index]: { price: null, title: null, error: err.message },
-      }));
-    } finally {
-      setExtractingIndex(null);
-    }
+  const updateLinkPrice = (index: number, value: string) => {
+    const updated = [...linkPrices];
+    updated[index] = value;
+    setLinkPrices(updated);
   };
 
   const removeLodgingLink = (index: number) => {
     setLodgingLinks(lodgingLinks.filter((_, i) => i !== index));
-    // Also remove extracted price for this index
-    const newExtracted = { ...extractedPrices };
-    delete newExtracted[index];
-    setExtractedPrices(newExtracted);
-  };
-
-  // Calculate nights from dates
-  const calculateNights = (): number => {
-    if (!dateStart || !dateEnd) return 4; // Default
-    const start = new Date(dateStart);
-    const end = new Date(dateEnd);
-    const diffTime = end.getTime() - start.getTime();
-    return Math.max(Math.ceil(diffTime / (1000 * 60 * 60 * 24)), 1);
-  };
-
-  const extractPricesFromLinks = async () => {
-    const validLinks = lodgingLinks.filter((link) => link.trim().startsWith('http'));
-    if (validLinks.length === 0) {
-      toast.error('Please add at least one valid link');
-      return;
-    }
-
-    setExtractingPrices(true);
-    const nights = calculateNights();
-    const newExtracted: Record<number, { price: number | null; title: string | null; error?: string }> = {};
-
-    try {
-      // Process all links in parallel
-      const results = await Promise.all(
-        lodgingLinks.map(async (link, index) => {
-          if (!link.trim().startsWith('http')) {
-            return { index, price: null, title: null };
-          }
-
-          try {
-            const { data, error } = await supabase.functions.invoke('extract-link-price', {
-              body: {
-                url: link.trim(),
-                nights,
-                checkIn: dateStart || undefined,
-                checkOut: dateEnd || undefined,
-                guests: splitCount,
-              },
-            });
-
-            if (error) throw error;
-
-            return {
-              index,
-              price: data?.price || null,
-              title: data?.title || null,
-              error: data?.error,
-            };
-          } catch (err: any) {
-            return { index, price: null, title: null, error: err.message };
-          }
-        })
-      );
-
-      // Collect results
-      let totalLodging = 0;
-      results.forEach((result) => {
-        newExtracted[result.index] = {
-          price: result.price,
-          title: result.title,
-          error: result.error,
-        };
-        if (result.price) {
-          totalLodging += result.price;
-        }
-      });
-
-      setExtractedPrices(newExtracted);
-
-      // Auto-fill lodging cost if we found prices
-      if (totalLodging > 0) {
-        setCostLodging(totalLodging.toString());
-        toast.success(`Extracted prices from ${results.filter((r) => r.price).length} link(s)`);
-      } else {
-        toast.error('Could not extract prices. Sites may be blocking or require login.');
-      }
-    } catch (error: any) {
-      console.error('Error extracting prices:', error);
-      toast.error('Failed to extract prices');
-    } finally {
-      setExtractingPrices(false);
-    }
+    setLinkPrices(linkPrices.filter((_, i) => i !== index));
   };
 
   const getAiEstimate = async () => {
@@ -358,11 +223,11 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
     setCoverImageUrl('');
     setVibeTags([]);
     setLodgingLinks(['']);
+    setLinkPrices(['']);
     setCostLodging('');
     setCostTransport('');
     setCostFood('');
     setCostActivities('');
-    setExtractedPrices({});
   };
 
   return (
@@ -438,77 +303,40 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
           <div className="space-y-2">
             <Label>Lodging Links</Label>
             {lodgingLinks.map((link, index) => (
-              <div key={index} className="space-y-1">
-                <div className="flex gap-2">
+              <div key={index} className="flex gap-2">
+                <Input
+                  placeholder="https://airbnb.com/..."
+                  value={link}
+                  onChange={(e) => updateLodgingLink(index, e.target.value)}
+                  className="flex-1"
+                />
+                <div className="relative w-24">
+                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    placeholder="https://airbnb.com/..."
-                    value={link}
-                    onChange={(e) => updateLodgingLink(index, e.target.value)}
+                    type="number"
+                    placeholder="0"
+                    value={linkPrices[index] || ''}
+                    onChange={(e) => updateLinkPrice(index, e.target.value)}
+                    className="pl-7"
                   />
-                  {lodgingLinks.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeLodgingLink(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
                 </div>
-                {extractingIndex === index ? (
-                  <div className="text-xs ml-1 text-muted-foreground flex items-center gap-1">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Extracting price...
-                  </div>
-                ) : extractedPrices[index] ? (
-                  <div className="text-xs ml-1">
-                    {extractedPrices[index].price ? (
-                      <span className="text-green-600 flex items-center gap-1">
-                        <Check className="h-3 w-3" />
-                        ${extractedPrices[index].price?.toLocaleString()}
-                        {extractedPrices[index].title && (
-                          <span className="text-muted-foreground truncate max-w-[200px]">
-                            — {extractedPrices[index].title}
-                          </span>
-                        )}
-                      </span>
-                    ) : (
-                      <span className="text-amber-600">
-                        Could not extract price
-                      </span>
-                    )}
-                  </div>
-                ) : null}
+                {lodgingLinks.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeLodgingLink(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             ))}
-            <div className="flex gap-2">
-              {lodgingLinks.length < 3 && (
-                <Button variant="outline" size="sm" onClick={addLodgingLink}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Link
-                </Button>
-              )}
-              {lodgingLinks.some((link) => link.trim().startsWith('http')) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={extractPricesFromLinks}
-                  disabled={extractingPrices}
-                >
-                  {extractingPrices ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      Extracting...
-                    </>
-                  ) : (
-                    <>
-                      <Link2 className="h-4 w-4 mr-1" />
-                      Extract Prices
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
+            {lodgingLinks.length < 3 && (
+              <Button variant="outline" size="sm" onClick={addLodgingLink}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Link
+              </Button>
+            )}
           </div>
 
           {/* AI Estimate Button */}
@@ -537,53 +365,77 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Lodging Total</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={costLodging}
-                    onChange={(e) => setCostLodging(e.target.value)}
-                    className="pl-7 h-9"
+                <div className="flex gap-1">
+                  <div className="relative flex-1">
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={costLodging}
+                      onChange={(e) => setCostLodging(e.target.value)}
+                      className="pl-7 h-9"
+                    />
+                  </div>
+                  <PriceScreenshotAnalyzer
+                    label="lodging"
+                    onPriceExtracted={(price) => setCostLodging(price.toString())}
                   />
                 </div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Transport</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={costTransport}
-                    onChange={(e) => setCostTransport(e.target.value)}
-                    className="pl-7 h-9"
+                <div className="flex gap-1">
+                  <div className="relative flex-1">
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={costTransport}
+                      onChange={(e) => setCostTransport(e.target.value)}
+                      className="pl-7 h-9"
+                    />
+                  </div>
+                  <PriceScreenshotAnalyzer
+                    label="transport"
+                    onPriceExtracted={(price) => setCostTransport(price.toString())}
                   />
                 </div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Food</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={costFood}
-                    onChange={(e) => setCostFood(e.target.value)}
-                    className="pl-7 h-9"
+                <div className="flex gap-1">
+                  <div className="relative flex-1">
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={costFood}
+                      onChange={(e) => setCostFood(e.target.value)}
+                      className="pl-7 h-9"
+                    />
+                  </div>
+                  <PriceScreenshotAnalyzer
+                    label="food"
+                    onPriceExtracted={(price) => setCostFood(price.toString())}
                   />
                 </div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Activities</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={costActivities}
-                    onChange={(e) => setCostActivities(e.target.value)}
-                    className="pl-7 h-9"
+                <div className="flex gap-1">
+                  <div className="relative flex-1">
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={costActivities}
+                      onChange={(e) => setCostActivities(e.target.value)}
+                      className="pl-7 h-9"
+                    />
+                  </div>
+                  <PriceScreenshotAnalyzer
+                    label="activities"
+                    onPriceExtracted={(price) => setCostActivities(price.toString())}
                   />
                 </div>
               </div>
