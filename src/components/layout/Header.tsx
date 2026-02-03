@@ -15,7 +15,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { NotificationDrawer } from '@/components/notifications/NotificationDrawer';
 import { useNotifications } from '@/hooks/useNotifications';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function Header() {
   const { user, profile, signOut } = useAuth();
@@ -52,15 +51,14 @@ export function Header() {
   return (
     <div className="sticky top-4 z-50 w-full px-4">
       <header className={`mx-auto max-w-[1120px] transition-all duration-300 backdrop-blur-xl rounded-2xl ${
-        isScrolled 
-          ? 'bg-white/65 dark:bg-white/15 shadow-navbar-scrolled border border-white/30 dark:border-white/20' 
-          : 'bg-white/55 dark:bg-white/10 shadow-navbar border border-white/25 dark:border-white/15'
+        isScrolled
+          ? 'bg-white/65 shadow-navbar-scrolled border border-white/30'
+          : 'bg-white/55 shadow-navbar border border-white/25'
       }`}>
         <div className="flex h-14 items-center justify-between px-4 sm:px-6">
           <Logo />
 
           <nav className="flex items-center gap-2">
-            <ThemeToggle />
             {user ? (
               <>
                 <Link to="/app">

@@ -160,8 +160,8 @@ export default function Onboarding() {
 
                 {emailSent ? (
                   <div className="text-center py-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
-                      <Mail className="h-8 w-8 text-green-600 dark:text-green-400" />
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+                      <Mail className="h-8 w-8 text-green-600" />
                     </div>
                     <h2 className="text-xl font-semibold text-foreground mb-2">Check your email</h2>
                     <p className="text-muted-foreground mb-4">

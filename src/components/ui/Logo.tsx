@@ -26,7 +26,7 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
       <img 
         src="/roamiii-logo-temp.png" 
         alt="roamiii" 
-        className={`${iconSizes[size]} object-contain block bg-transparent mix-blend-multiply dark:mix-blend-normal`}
+        className={`${iconSizes[size]} object-contain block bg-transparent mix-blend-multiply`}
         style={{ imageRendering: 'crisp-edges' }}
       />
       {showText && (
