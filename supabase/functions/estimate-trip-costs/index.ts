@@ -72,18 +72,25 @@ Respond ONLY with valid JSON in this exact format, no additional text:
 }
 
 serve(async (req: Request) => {
+  console.log("[estimate-trip-costs] Request received:", req.method, req.url);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
+    console.log("[estimate-trip-costs] Handling CORS preflight");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    console.log("[estimate-trip-costs] API key present:", !!apiKey);
+
     if (!apiKey) {
       throw new Error("ANTHROPIC_API_KEY not configured");
     }
 
-    const { destination, dateStart, dateEnd, attendeeCount, vibeTags }: EstimateRequest = await req.json();
+    const body = await req.json();
+    console.log("[estimate-trip-costs] Request body:", JSON.stringify(body));
+    const { destination, dateStart, dateEnd, attendeeCount, vibeTags }: EstimateRequest = body;
 
     if (!destination || destination.trim() === "") {
       return new Response(
@@ -97,6 +104,7 @@ serve(async (req: Request) => {
     const tags = vibeTags || [];
 
     const prompt = buildPrompt(destination, nights, groupSize, tags);
+    console.log("[estimate-trip-costs] Calling Anthropic API for:", destination);
 
     // Call Anthropic API
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -118,14 +126,17 @@ serve(async (req: Request) => {
       }),
     });
 
+    console.log("[estimate-trip-costs] Anthropic response status:", response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Anthropic API error:", errorText);
+      console.error("[estimate-trip-costs] Anthropic API error:", errorText);
       throw new Error(`Anthropic API error: ${response.status}`);
     }
 
     const data = await response.json();
     const content = data.content?.[0]?.text;
+    console.log("[estimate-trip-costs] AI response content:", content);
 
     if (!content) {
       throw new Error("No response from AI");
@@ -150,12 +161,13 @@ serve(async (req: Request) => {
       throw new Error("Invalid cost estimate format");
     }
 
+    console.log("[estimate-trip-costs] Returning estimate:", JSON.stringify(estimate));
     return new Response(JSON.stringify(estimate), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
-    console.error("Error estimating trip costs:", error);
+    console.error("[estimate-trip-costs] Error:", error.message);
     return new Response(
       JSON.stringify({ error: error.message || "Failed to estimate costs" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
