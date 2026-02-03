@@ -14,6 +14,7 @@ import { CompareTray } from '@/components/compare/CompareTray';
 import { CompareModal } from '@/components/compare/CompareModal';
 import { DeleteTripDialog } from '@/components/trip/DeleteTripDialog';
 import { RemoveMemberDialog } from '@/components/trip/RemoveMemberDialog';
+import { EditTripCoverModal } from '@/components/trip/EditTripCoverModal';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
@@ -42,6 +43,7 @@ export default function TripChat() {
   const [memberToRemove, setMemberToRemove] = useState<TripMember | null>(null);
   const [removeLoading, setRemoveLoading] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [editCoverModalOpen, setEditCoverModalOpen] = useState(false);
 
   // Compare hook
   const { compareIds, compareCount, toggleCompare, clearCompare, isComparing } = useProposalCompare(tripId!);
@@ -211,6 +213,7 @@ export default function TripChat() {
               isOwner={isOwner}
               onDeleteTrip={() => setDeleteModalOpen(true)}
               onRemoveMember={(member) => setMemberToRemove(member)}
+              onEditCover={() => setEditCoverModalOpen(true)}
             />
           </SheetContent>
         </Sheet>
@@ -253,6 +256,7 @@ export default function TripChat() {
             isOwner={isOwner}
             onDeleteTrip={() => setDeleteModalOpen(true)}
             onRemoveMember={(member) => setMemberToRemove(member)}
+            onEditCover={() => setEditCoverModalOpen(true)}
           />
         </motion.div>
       </div>
@@ -322,6 +326,15 @@ export default function TripChat() {
         memberName={memberToRemove?.profile?.name || memberToRemove?.profile?.email?.split('@')[0] || 'Member'}
         onConfirm={handleRemoveMember}
         loading={removeLoading}
+      />
+
+      <EditTripCoverModal
+        open={editCoverModalOpen}
+        onOpenChange={setEditCoverModalOpen}
+        trip={trip}
+        onUpdate={(updatedTrip) => {
+          refetch();
+        }}
       />
     </div>
   );

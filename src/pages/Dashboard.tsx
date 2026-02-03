@@ -121,7 +121,8 @@ export default function Dashboard() {
             proposal_count: proposals.length,
             last_message: lastMessageData?.body || null,
             last_message_at: lastMessageData?.created_at || null,
-            cover_image_url: firstProposal?.cover_image_url || null,
+            // Prefer trip's own cover_image_url, fall back to first proposal's image
+            cover_image_url: trip.cover_image_url || firstProposal?.cover_image_url || null,
             top_destination: firstProposal?.destination || null,
           };
         })

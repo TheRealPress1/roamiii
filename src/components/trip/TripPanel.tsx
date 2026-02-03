@@ -1,5 +1,5 @@
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, DollarSign, Users, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield } from 'lucide-react';
+import { Calendar, DollarSign, Users, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon } from 'lucide-react';
 import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -23,9 +23,10 @@ interface TripPanelProps {
   isOwner?: boolean;
   onDeleteTrip?: () => void;
   onRemoveMember?: (member: TripMember) => void;
+  onEditCover?: () => void;
 }
 
-export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, isOwner, onDeleteTrip, onRemoveMember }: TripPanelProps) {
+export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, isOwner, onDeleteTrip, onRemoveMember, onEditCover }: TripPanelProps) {
   const { user } = useAuth();
   const hasDeadline = trip.decision_deadline && new Date(trip.decision_deadline) > new Date();
   
@@ -81,6 +82,10 @@ export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, 
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={onEditCover}>
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Edit Cover Image
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={onDeleteTrip}
                       className="text-destructive focus:text-destructive focus:bg-destructive/10"
