@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Users, Loader2, MessageCircle, ChevronRight, Crown, Copy, Check } from 'lucide-react';
+import { Plus, Users, Loader2, MessageCircle } from 'lucide-react';
+import { TripCard } from '@/components/TripCard';
 
 // Rotating greetings system
 const GREETINGS = [
@@ -36,7 +37,6 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 interface TripWithDetails {
@@ -54,6 +54,8 @@ interface TripWithDetails {
   proposal_count: number;
   last_message: string | null;
   last_message_at: string | null;
+  cover_image_url: string | null;
+  top_destination: string | null;
 }
 
 export default function Dashboard() {
@@ -78,13 +80,16 @@ export default function Dashboard() {
   const fetchTrips = async () => {
     setError(null);
     try {
-      // Fetch trips with member count, proposal count
+      // Fetch trips with member count, proposal count, and first proposal image
       const { data: tripData, error: fetchError } = await supabase
         .from('trips')
         .select(`
           *,
           trip_members(count),
-          trip_proposals!trip_proposals_trip_id_fkey(count)
+          trip_proposals!trip_proposals_trip_id_fkey(
+            cover_image_url,
+            destination
+          )
         `)
         .order('updated_at', { ascending: false });
 
@@ -107,12 +112,17 @@ export default function Dashboard() {
             // Silently fail - message preview is optional
           }
 
+          const proposals = trip.trip_proposals || [];
+          const firstProposal = proposals[0];
+
           return {
             ...trip,
             member_count: trip.trip_members?.[0]?.count || 0,
-            proposal_count: trip.trip_proposals?.[0]?.count || 0,
+            proposal_count: proposals.length,
             last_message: lastMessageData?.body || null,
             last_message_at: lastMessageData?.created_at || null,
+            cover_image_url: firstProposal?.cover_image_url || null,
+            top_destination: firstProposal?.destination || null,
           };
         })
       );
@@ -154,7 +164,7 @@ export default function Dashboard() {
       <Header />
       
       <main className="flex-1">
-        <div className="container max-w-4xl pt-20 md:pt-16 pb-8">
+        <div className="container max-w-5xl pt-20 md:pt-16 pb-8">
           {/* Welcome Section */}
           <motion.div 
             className="text-center mb-10"
@@ -227,7 +237,7 @@ export default function Dashboard() {
                 </div>
               </motion.div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {trips.map((trip, i) => (
                   <motion.div
                     key={trip.id}
@@ -235,74 +245,11 @@ export default function Dashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                   >
-                    <Link to={`/app/trip/${trip.id}`}>
-                      <div className="group flex items-center gap-4 p-4 bg-card rounded-xl border border-border hover:shadow-card-hover hover:border-primary/20 transition-all">
-                        {/* Icon */}
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
-                          <MessageCircle className="h-6 w-6 text-primary" />
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-base font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                              {trip.name}
-                            </h3>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${
-                              trip.status === 'decided' 
-                                ? 'bg-vote-in text-white' 
-                                : 'bg-primary/10 text-primary'
-                            }`}>
-                              {trip.status === 'decided' && <Crown className="h-3 w-3" />}
-                              {trip.status === 'decided' ? 'Decided' : 'Planning'}
-                            </span>
-                          </div>
-                          
-                          {/* Trip details */}
-                          <div className="flex items-center gap-3 text-sm text-muted-foreground mb-1">
-                            {(trip.date_start || trip.date_end) ? (
-                              <span>
-                                {trip.date_start && format(new Date(trip.date_start), 'MMM d')}
-                                {trip.date_end && ` - ${format(new Date(trip.date_end), 'MMM d')}`}
-                              </span>
-                            ) : trip.flexible_dates ? (
-                              <span>Flexible dates</span>
-                            ) : null}
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3.5 w-3.5" />
-                              {trip.member_count} {trip.member_count === 1 ? 'member' : 'members'}
-                            </span>
-                            {trip.proposal_count > 0 && (
-                              <span className="text-primary font-medium">
-                                {trip.proposal_count} proposal{trip.proposal_count !== 1 ? 's' : ''}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Last message preview */}
-                          <p className="text-sm text-muted-foreground truncate">
-                            {trip.last_message || 'No messages yet'}
-                          </p>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => handleCopyInvite(e, trip)}
-                          >
-                            {copiedId === trip.id ? (
-                              <Check className="h-4 w-4 text-vote-in" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                        </div>
-                      </div>
-                    </Link>
+                    <TripCard
+                      trip={trip}
+                      onCopyInvite={handleCopyInvite}
+                      isCopied={copiedId === trip.id}
+                    />
                   </motion.div>
                 ))}
               </div>
