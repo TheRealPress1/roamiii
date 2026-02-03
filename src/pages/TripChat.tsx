@@ -276,6 +276,10 @@ export default function TripChat() {
         tripId={tripId!}
         isAdmin={isAdmin}
         onPinned={refetch}
+        onDeleted={() => {
+          setSelectedProposal(null);
+          refetch();
+        }}
       />
 
       <InviteModal

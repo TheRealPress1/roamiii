@@ -1,12 +1,22 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { MapPin, Calendar, DollarSign, ExternalLink, Trophy, Loader2, Users } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, ExternalLink, Trophy, Loader2, Users, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VibeTag } from '@/components/ui/VibeTag';
 import { ProposalReactions } from '@/components/proposal/ProposalReactions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { TripProposal, VoteType } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,18 +30,24 @@ interface ProposalDetailModalProps {
   tripId: string;
   isAdmin: boolean;
   onPinned: () => void;
+  onDeleted?: () => void;
 }
 
-export function ProposalDetailModal({ 
-  open, 
-  onClose, 
-  proposal, 
-  tripId, 
-  isAdmin, 
-  onPinned 
+export function ProposalDetailModal({
+  open,
+  onClose,
+  proposal,
+  tripId,
+  isAdmin,
+  onPinned,
+  onDeleted
 }: ProposalDetailModalProps) {
   const { user } = useAuth();
   const [pinning, setPinning] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const canDelete = proposal && (proposal.created_by === user?.id || isAdmin);
 
   if (!proposal) return null;
 
@@ -111,6 +127,29 @@ export function ProposalDetailModal({
       toast.error('Failed to pin proposal');
     } finally {
       setPinning(false);
+    }
+  };
+
+  const handleDeleteProposal = async () => {
+    if (!proposal) return;
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('trip_proposals')
+        .delete()
+        .eq('id', proposal.id);
+
+      if (error) throw error;
+
+      toast.success('Proposal deleted');
+      onDeleted?.();
+      onClose();
+    } catch (error) {
+      toast.error('Failed to delete proposal');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -279,8 +318,49 @@ export function ProposalDetailModal({
                 )}
               </Button>
             )}
+
+            {/* Delete Proposal (Creator or Admin) */}
+            {canDelete && (
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full text-destructive border-destructive/50 hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Proposal
+              </Button>
+            )}
           </div>
         </ScrollArea>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this proposal?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the proposal for "{proposal.destination}" and all associated votes and comments. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteProposal}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
