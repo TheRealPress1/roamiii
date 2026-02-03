@@ -1,20 +1,26 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const allowedOrigins = [
+  // Development
   "http://localhost:8080",
   "http://localhost:3000",
   "http://localhost:5173",
+  // Production
+  "https://roamiii.app",
+  "https://roamiii.co",
+  "https://roamiii.com",
+  "https://www.roamiii.app",
+  "https://www.roamiii.co",
+  "https://www.roamiii.com",
 ];
 
 function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("Origin") || "";
-  const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN");
 
   // Check if origin is allowed
   const isAllowed =
     allowedOrigins.includes(origin) ||
-    origin.endsWith(".vercel.app") ||
-    (allowedOrigin && origin === allowedOrigin);
+    origin.endsWith(".vercel.app");
 
   return {
     "Access-Control-Allow-Origin": isAllowed ? origin : "",
