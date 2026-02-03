@@ -22,11 +22,12 @@ export function useTripData(tripId: string) {
       setTrip(tripData as Trip);
 
       // Fetch members with profiles (only active members)
+      // Use explicit foreign key reference since there are two: user_id and removed_by
       const { data: membersData, error: membersError } = await supabase
         .from('trip_members')
         .select(`
           *,
-          profile:profiles(id, name, email, avatar_url)
+          profile:profiles!trip_members_user_id_fkey(id, name, email, avatar_url)
         `)
         .eq('trip_id', tripId)
         .eq('status', 'active');
