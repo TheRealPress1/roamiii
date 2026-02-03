@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, DollarSign, ExternalLink } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, ExternalLink, Reply } from 'lucide-react';
 import type { Message, TripProposal, VoteType } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,9 +18,10 @@ interface ProposalMessageProps {
   onViewDetails: (proposal: TripProposal) => void;
   isComparing?: boolean;
   onToggleCompare?: () => void;
+  onReply?: (message: Message) => void;
 }
 
-export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare }: ProposalMessageProps) {
+export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare, onReply }: ProposalMessageProps) {
   const { user } = useAuth();
   const proposal = message.proposal;
 
@@ -172,15 +173,28 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             </div>
           )}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full text-primary hover:text-primary"
-            onClick={() => onViewDetails(proposal)}
-          >
-            View Details
-            <ExternalLink className="h-3.5 w-3.5 ml-1" />
-          </Button>
+          <div className="flex gap-2">
+            {onReply && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => onReply(message)}
+              >
+                <Reply className="h-3.5 w-3.5 mr-1" />
+                Reply
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("text-primary hover:text-primary", onReply ? "flex-1" : "w-full")}
+              onClick={() => onViewDetails(proposal)}
+            >
+              View Details
+              <ExternalLink className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </div>
         </div>
       </div>
     </motion.div>

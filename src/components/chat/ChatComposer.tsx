@@ -1,29 +1,41 @@
-import { useState } from 'react';
-import { Send, Sparkles, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Send, Sparkles, Loader2, X, Reply, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import type { Message } from '@/lib/tripchat-types';
 
 interface ChatComposerProps {
-  onSend: (message: string) => Promise<{ error: Error | null }>;
+  onSend: (message: string, replyToId?: string) => Promise<{ error: Error | null }>;
   onPropose: () => void;
   disabled?: boolean;
+  replyTo?: Message | null;
+  onCancelReply?: () => void;
 }
 
-export function ChatComposer({ onSend, onPropose, disabled }: ChatComposerProps) {
+export function ChatComposer({ onSend, onPropose, disabled, replyTo, onCancelReply }: ChatComposerProps) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus textarea when replying
+  useEffect(() => {
+    if (replyTo && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [replyTo]);
 
   const handleSend = async () => {
     const trimmed = message.trim();
     if (!trimmed || sending) return;
 
     setSending(true);
-    const { error } = await onSend(trimmed);
+    const { error } = await onSend(trimmed, replyTo?.id);
     setSending(false);
 
     if (!error) {
       setMessage('');
+      onCancelReply?.();
     }
   };
 
@@ -32,17 +44,54 @@ export function ChatComposer({ onSend, onPropose, disabled }: ChatComposerProps)
       e.preventDefault();
       handleSend();
     }
+    // Escape to cancel reply
+    if (e.key === 'Escape' && replyTo) {
+      onCancelReply?.();
+    }
+  };
+
+  // Get preview text for the message being replied to
+  const getReplyPreview = () => {
+    if (!replyTo) return '';
+    if (replyTo.type === 'proposal' && replyTo.proposal) {
+      return `📍 ${replyTo.proposal.destination}`;
+    }
+    return replyTo.body?.slice(0, 50) + (replyTo.body && replyTo.body.length > 50 ? '...' : '') || '';
   };
 
   return (
-    <div className="border-t border-border bg-card p-4">
-      <div className="flex items-end gap-2">
+    <div className="border-t border-border bg-card">
+      {/* Reply preview bar */}
+      {replyTo && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border">
+          <Reply className="h-4 w-4 text-primary" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground">
+              Replying to <span className="font-medium text-foreground">{replyTo.author?.name || 'Unknown'}</span>
+            </p>
+            <p className="text-sm text-foreground truncate">
+              {getReplyPreview()}
+            </p>
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onCancelReply}
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      <div className="flex items-end gap-2 p-4">
         <div className="flex-1 relative">
           <Textarea
+            ref={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder={replyTo ? "Write a reply..." : "Type a message..."}
             disabled={disabled || sending}
             rows={1}
             className={cn(

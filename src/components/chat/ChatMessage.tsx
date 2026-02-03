@@ -1,15 +1,18 @@
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import { Reply, MapPin } from 'lucide-react';
 import type { Message } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface ChatMessageProps {
   message: Message;
+  onReply?: (message: Message) => void;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, onReply }: ChatMessageProps) {
   const { user } = useAuth();
   const isOwn = message.user_id === user?.id;
   const isSystem = message.type === 'system';
@@ -31,12 +34,40 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const authorName = message.author?.name || message.author?.email?.split('@')[0] || 'Unknown';
   const authorInitials = authorName.slice(0, 2).toUpperCase();
 
+  // Get reply preview content
+  const getReplyPreview = () => {
+    if (!message.reply_to) return null;
+
+    const replyAuthorName = message.reply_to.author?.name || 'Unknown';
+
+    if (message.reply_to.type === 'proposal' && message.reply_to.proposal) {
+      return (
+        <div className="flex items-center gap-1.5 text-xs">
+          <MapPin className="h-3 w-3" />
+          <span className="font-medium">{replyAuthorName}</span>
+          <span className="text-muted-foreground">·</span>
+          <span>{message.reply_to.proposal.destination}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-xs">
+        <span className="font-medium">{replyAuthorName}: </span>
+        <span className="text-muted-foreground">
+          {message.reply_to.body?.slice(0, 40)}
+          {message.reply_to.body && message.reply_to.body.length > 40 ? '...' : ''}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'flex gap-3 px-4 py-2',
+        'group flex gap-3 px-4 py-2',
         isOwn && 'flex-row-reverse'
       )}
     >
@@ -57,15 +88,53 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </span>
         </div>
 
-        <div
-          className={cn(
-            'px-4 py-2.5 rounded-2xl',
-            isOwn
-              ? 'bg-primary text-primary-foreground rounded-tr-sm'
-              : 'bg-muted text-foreground rounded-tl-sm'
+        {/* Reply context */}
+        {message.reply_to && (
+          <div
+            className={cn(
+              'mb-1 px-3 py-1.5 rounded-lg border-l-2 border-primary/50',
+              isOwn ? 'bg-primary/10' : 'bg-muted/50'
+            )}
+          >
+            {getReplyPreview()}
+          </div>
+        )}
+
+        <div className="flex items-end gap-1">
+          {/* Reply button (show on hover, left side for own messages) */}
+          {isOwn && onReply && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onReply(message)}
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+            >
+              <Reply className="h-4 w-4" />
+            </Button>
           )}
-        >
-          <p className="text-sm whitespace-pre-wrap break-words">{message.body}</p>
+
+          <div
+            className={cn(
+              'px-4 py-2.5 rounded-2xl',
+              isOwn
+                ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                : 'bg-muted text-foreground rounded-tl-sm'
+            )}
+          >
+            <p className="text-sm whitespace-pre-wrap break-words">{message.body}</p>
+          </div>
+
+          {/* Reply button (show on hover, right side for others' messages) */}
+          {!isOwn && onReply && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onReply(message)}
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+            >
+              <Reply className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </motion.div>

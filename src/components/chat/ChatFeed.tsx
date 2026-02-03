@@ -12,9 +12,10 @@ interface ChatFeedProps {
   onViewProposal: (proposal: TripProposal) => void;
   compareIds?: string[];
   onToggleCompare?: (proposalId: string) => void;
+  onReply?: (message: Message) => void;
 }
 
-export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare }: ChatFeedProps) {
+export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply }: ChatFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,9 +59,10 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
               onViewDetails={onViewProposal}
               isComparing={compareIds?.includes(message.proposal.id) || false}
               onToggleCompare={onToggleCompare ? () => onToggleCompare(message.proposal!.id) : undefined}
+              onReply={onReply}
             />
           ) : (
-            <ChatMessage key={message.id} message={message} />
+            <ChatMessage key={message.id} message={message} onReply={onReply} />
           )
         )}
         <div ref={bottomRef} />

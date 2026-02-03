@@ -19,7 +19,7 @@ import { useTripMessages } from '@/hooks/useTripMessages';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import type { TripProposal, TripMember } from '@/lib/tripchat-types';
+import type { TripProposal, TripMember, Message } from '@/lib/tripchat-types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +41,7 @@ export default function TripChat() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<TripMember | null>(null);
   const [removeLoading, setRemoveLoading] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   // Compare hook
   const { compareIds, compareCount, toggleCompare, clearCompare, isComparing } = useProposalCompare(tripId!);
@@ -226,10 +227,13 @@ export default function TripChat() {
             onViewProposal={handleViewProposal}
             compareIds={compareIds}
             onToggleCompare={toggleCompare}
+            onReply={setReplyingTo}
           />
           <ChatComposer
             onSend={sendMessage}
             onPropose={() => setProposalModalOpen(true)}
+            replyTo={replyingTo}
+            onCancelReply={() => setReplyingTo(null)}
           />
         </div>
 

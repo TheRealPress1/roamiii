@@ -54,10 +54,25 @@ export interface Message {
   type: MessageType;
   body: string | null;
   proposal_id: string | null;
+  reply_to_id: string | null;
   created_at: string;
   author?: Profile;
   proposal?: TripProposal;
   reactions?: MessageReaction[];
+  reply_to?: MessageReplyPreview | null;
+}
+
+// Lightweight preview of a message for reply context
+export interface MessageReplyPreview {
+  id: string;
+  type: MessageType;
+  body: string | null;
+  user_id: string;
+  author?: Profile;
+  proposal?: {
+    id: string;
+    destination: string;
+  };
 }
 
 export interface TripProposal {

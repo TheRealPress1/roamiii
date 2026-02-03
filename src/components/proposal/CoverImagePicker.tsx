@@ -1,7 +1,6 @@
 import { Sparkles, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { COVER_PRESETS, getAutoPickCover, getAutoPickKey } from '@/lib/cover-presets';
 
@@ -16,7 +15,6 @@ export function CoverImagePicker({
   selectedKey,
   onSelect,
   vibeTags,
-  previewUrl,
 }: CoverImagePickerProps) {
   const handleAutoPick = () => {
     const autoKey = getAutoPickKey(vibeTags);
@@ -25,24 +23,7 @@ export function CoverImagePicker({
   };
 
   return (
-    <div className="space-y-3">
-      {/* Preview */}
-      {previewUrl && (
-        <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-          <img
-            src={previewUrl}
-            alt="Cover preview"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-          <div className="absolute top-2 right-2 bg-primary/90 text-primary-foreground rounded-full p-1">
-            <Check className="h-4 w-4" />
-          </div>
-        </div>
-      )}
-
+    <div className="space-y-2">
       {/* Header with Auto-pick button */}
       <div className="flex items-center justify-between">
         <Label>Cover Image</Label>
@@ -58,46 +39,43 @@ export function CoverImagePicker({
         </Button>
       </div>
 
-      {/* Preset Gallery */}
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex gap-3 pb-2">
-          {COVER_PRESETS.map((preset) => {
-            const isSelected = selectedKey === preset.key;
-            return (
-              <button
-                key={preset.key}
-                type="button"
-                onClick={() => onSelect(preset.key, preset.imageUrl)}
-                className={cn(
-                  'flex-shrink-0 flex flex-col items-center gap-1.5 p-1 rounded-lg transition-all',
-                  'hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  isSelected && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                )}
-              >
-                <div className="relative w-24 aspect-[3/2] rounded-md overflow-hidden bg-muted">
-                  <img
-                    src={preset.imageUrl}
-                    alt={preset.label}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  {isSelected && (
-                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                      <div className="bg-primary text-primary-foreground rounded-full p-1">
-                        <Check className="h-3 w-3" />
-                      </div>
+      {/* Compact Preset Gallery - Grid */}
+      <div className="grid grid-cols-5 gap-2">
+        {COVER_PRESETS.map((preset) => {
+          const isSelected = selectedKey === preset.key;
+          return (
+            <button
+              key={preset.key}
+              type="button"
+              onClick={() => onSelect(preset.key, preset.imageUrl)}
+              className={cn(
+                'flex flex-col items-center gap-1 p-1 rounded-lg transition-all',
+                'hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                isSelected && 'ring-2 ring-primary ring-offset-1 ring-offset-background bg-primary/5'
+              )}
+            >
+              <div className="relative w-full aspect-square rounded-md overflow-hidden bg-muted">
+                <img
+                  src={preset.imageUrl}
+                  alt={preset.label}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                {isSelected && (
+                  <div className="absolute inset-0 bg-primary/30 flex items-center justify-center">
+                    <div className="bg-primary text-primary-foreground rounded-full p-0.5">
+                      <Check className="h-3 w-3" />
                     </div>
-                  )}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {preset.emoji} {preset.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+                  </div>
+                )}
+              </div>
+              <span className="text-[10px] text-muted-foreground leading-tight text-center">
+                {preset.emoji}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -9,18 +9,29 @@ export function useTripMessages(tripId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Common select query for messages with all relations
+  const messageSelectQuery = `
+    *,
+    author:profiles!messages_user_id_fkey(*),
+    proposal:trip_proposals(
+      *,
+      votes:trip_votes(*)
+    ),
+    reply_to:messages!messages_reply_to_id_fkey(
+      id,
+      type,
+      body,
+      user_id,
+      author:profiles!messages_user_id_fkey(id, name, avatar_url),
+      proposal:trip_proposals(id, destination)
+    )
+  `;
+
   const fetchMessages = useCallback(async () => {
     try {
       const { data, error: fetchError } = await supabase
         .from('messages')
-        .select(`
-          *,
-          author:profiles!messages_user_id_fkey(*),
-          proposal:trip_proposals(
-            *,
-            votes:trip_votes(*)
-          )
-        `)
+        .select(messageSelectQuery)
         .eq('trip_id', tripId)
         .order('created_at', { ascending: true });
 
@@ -51,14 +62,7 @@ export function useTripMessages(tripId: string) {
           // Fetch the full message with relations
           const { data } = await supabase
             .from('messages')
-            .select(`
-              *,
-              author:profiles!messages_user_id_fkey(*),
-              proposal:trip_proposals(
-                *,
-                votes:trip_votes(*)
-              )
-            `)
+            .select(messageSelectQuery)
             .eq('id', payload.new.id)
             .single();
 
@@ -74,7 +78,7 @@ export function useTripMessages(tripId: string) {
     };
   }, [tripId, fetchMessages]);
 
-  const sendMessage = async (body: string) => {
+  const sendMessage = async (body: string, replyToId?: string) => {
     if (!user) return { error: new Error('Not authenticated') };
 
     const { error } = await supabase.from('messages').insert({
@@ -82,6 +86,7 @@ export function useTripMessages(tripId: string) {
       user_id: user.id,
       type: 'text',
       body,
+      reply_to_id: replyToId || null,
     });
 
     return { error };
