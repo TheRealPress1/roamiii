@@ -355,7 +355,7 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
   const config = {
     in: {
       icon: ThumbsUp,
-      label: "I'm in",
+      label: 'Locked in',
       gradient: 'from-emerald-500 to-green-600',
       bg: 'bg-emerald-50 dark:bg-emerald-950/30',
       text: 'text-emerald-600 dark:text-emerald-400',
@@ -373,7 +373,7 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
     },
     out: {
       icon: ThumbsDown,
-      label: "I'm out",
+      label: 'Hell nah',
       gradient: 'from-rose-500 to-red-600',
       bg: 'bg-rose-50 dark:bg-rose-950/30',
       text: 'text-rose-600 dark:text-rose-400',

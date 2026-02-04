@@ -16,7 +16,7 @@ export function useTripMessages(tripId: string) {
     author:profiles!messages_user_id_fkey(*),
     proposal:trip_proposals(
       *,
-      votes:trip_votes(*)
+      votes:trip_votes(*, voter:profiles!trip_votes_user_id_fkey(id, name, email, avatar_url))
     )
   `;
 
