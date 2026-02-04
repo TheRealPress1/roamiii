@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { VibeTagSelector } from '@/components/ui/VibeTag';
 import { DestinationAutocomplete } from '@/components/ui/DestinationAutocomplete';
+import { MapPreview } from '@/components/ui/MapPreview';
 import { PriceScreenshotAnalyzer } from '@/components/proposal/PriceScreenshotAnalyzer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,6 +62,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   const [description, setDescription] = useState('');
   const [url, setUrl] = useState('');
   const [destination, setDestination] = useState('');
+  const [coordinates, setCoordinates] = useState<[number, number] | null>(null);
   const [dateStart, setDateStart] = useState('');
   const [totalCost, setTotalCost] = useState('');
   const [vibeTags, setVibeTags] = useState<string[]>([]);
@@ -155,6 +156,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
     setDescription('');
     setUrl('');
     setDestination('');
+    setCoordinates(null);
     setDateStart('');
     setTotalCost('');
     setVibeTags([]);
@@ -194,15 +196,15 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
                   <DestinationAutocomplete
                     value={destination}
                     onChange={setDestination}
+                    onCoordinatesChange={setCoordinates}
                     placeholder="e.g., Tokyo, Japan"
                   />
                 </div>
 
-                {/* Vibe Tags */}
-                <div className="space-y-2">
-                  <Label>What's the vibe?</Label>
-                  <VibeTagSelector selected={vibeTags} onChange={setVibeTags} />
-                </div>
+                {/* Map Preview - appears after selecting a place */}
+                {coordinates && (
+                  <MapPreview coordinates={coordinates} />
+                )}
 
                 {/* Optional notes - collapsed by default */}
                 <div className="space-y-2">

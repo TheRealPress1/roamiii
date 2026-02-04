@@ -7,11 +7,13 @@ interface Place {
   id: string;
   place_name: string;
   text: string;
+  center: [number, number]; // [lng, lat]
 }
 
 interface DestinationAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
+  onCoordinatesChange?: (coords: [number, number] | null) => void;
   placeholder?: string;
   className?: string;
 }
@@ -19,6 +21,7 @@ interface DestinationAutocompleteProps {
 export function DestinationAutocomplete({
   value,
   onChange,
+  onCoordinatesChange,
   placeholder = "e.g., Cancún, Mexico",
   className,
 }: DestinationAutocompleteProps) {
@@ -70,6 +73,7 @@ export function DestinationAutocomplete({
               id: f.id,
               place_name: f.place_name,
               text: f.text,
+              center: f.center,
             }))
           );
           setIsOpen(true);
@@ -89,6 +93,7 @@ export function DestinationAutocomplete({
   const handleSelect = (place: Place) => {
     setQuery(place.place_name);
     onChange(place.place_name);
+    onCoordinatesChange?.(place.center);
     setSuggestions([]);
     setIsOpen(false);
   };
