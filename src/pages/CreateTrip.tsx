@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, Loader2, MapPin, Calendar, DollarSign, Users, Copy, Link as LinkIcon, PartyPopper } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, MapPin, Users, Copy, Link as LinkIcon, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { COVER_PRESETS } from '@/lib/cover-presets';
+import { cn } from '@/lib/utils';
 
 const STEPS = [
   { id: 'setup', title: 'Trip Setup', icon: MapPin },
@@ -36,8 +38,7 @@ export default function CreateTrip() {
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [flexibleDates, setFlexibleDates] = useState(false);
-  const [budgetMin, setBudgetMin] = useState('');
-  const [budgetMax, setBudgetMax] = useState('');
+  const [coverImageKey, setCoverImageKey] = useState('nature');
   const [decisionDeadline, setDecisionDeadline] = useState('');
 
   const getInviteLink = () => {
@@ -77,6 +78,7 @@ export default function CreateTrip() {
     setLoading(true);
     try {
       // Create the trip
+      const coverPreset = COVER_PRESETS.find(p => p.key === coverImageKey);
       const { data: trip, error: tripError } = await supabase
         .from('trips')
         .insert({
@@ -86,8 +88,7 @@ export default function CreateTrip() {
           date_start: dateStart || null,
           date_end: dateEnd || null,
           flexible_dates: flexibleDates,
-          budget_min: budgetMin ? parseInt(budgetMin) : null,
-          budget_max: budgetMax ? parseInt(budgetMax) : null,
+          cover_image_url: coverPreset?.imageUrl || null,
           decision_deadline: decisionDeadline || null,
         })
         .select('id, name, join_code')
@@ -136,6 +137,47 @@ export default function CreateTrip() {
               />
             </div>
 
+            {/* Cover Image Picker */}
+            <div className="space-y-2">
+              <Label>Cover Image</Label>
+              <div className="grid grid-cols-5 gap-2">
+                {COVER_PRESETS.map((preset) => {
+                  const isSelected = coverImageKey === preset.key;
+                  return (
+                    <button
+                      key={preset.key}
+                      type="button"
+                      onClick={() => setCoverImageKey(preset.key)}
+                      className={cn(
+                        'flex flex-col items-center gap-1 p-1 rounded-lg transition-all',
+                        'hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        isSelected && 'ring-2 ring-primary ring-offset-1 ring-offset-background bg-primary/5'
+                      )}
+                    >
+                      <div className="relative w-full aspect-square rounded-md overflow-hidden bg-muted">
+                        <img
+                          src={preset.imageUrl}
+                          alt={preset.label}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-primary/30 flex items-center justify-center">
+                            <div className="bg-primary text-primary-foreground rounded-full p-0.5">
+                              <Check className="h-3 w-3" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground leading-tight text-center">
+                        {preset.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="dateStart">Start Date</Label>
@@ -177,39 +219,6 @@ export default function CreateTrip() {
                 value={homeCity}
                 onChange={(e) => setHomeCity(e.target.value)}
               />
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="budgetMin">Min Budget (per person)</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="budgetMin"
-                    type="number"
-                    placeholder="500"
-                    value={budgetMin}
-                    onChange={(e) => setBudgetMin(e.target.value)}
-                    className="pl-9"
-                    min="0"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="budgetMax">Max Budget (per person)</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="budgetMax"
-                    type="number"
-                    placeholder="2000"
-                    value={budgetMax}
-                    onChange={(e) => setBudgetMax(e.target.value)}
-                    className="pl-9"
-                    min={budgetMin || "0"}
-                  />
-                </div>
-              </div>
             </div>
 
             <div className="space-y-2">
