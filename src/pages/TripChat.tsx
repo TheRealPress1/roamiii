@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, PanelRightOpen, PanelRightClose, Loader2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { ChatFeed } from '@/components/chat/ChatFeed';
+import { ChatFeed, type ChatViewMode } from '@/components/chat/ChatFeed';
 import { ChatComposer } from '@/components/chat/ChatComposer';
 import { TripPanel } from '@/components/trip/TripPanel';
 import { CreateProposalModal } from '@/components/proposal/CreateProposalModal';
@@ -50,6 +50,7 @@ export default function TripChat() {
   const [lockDestinationModalOpen, setLockDestinationModalOpen] = useState(false);
   const [proposalToLock, setProposalToLock] = useState<TripProposal | null>(null);
   const [finalizeViewOpen, setFinalizeViewOpen] = useState(false);
+  const [chatViewMode, setChatViewMode] = useState<ChatViewMode>('proposals');
 
   // Compare hook
   const { compareIds, compareCount, toggleCompare, clearCompare, isComparing } = useProposalCompare(tripId!);
@@ -271,6 +272,8 @@ export default function TripChat() {
             isAdmin={isAdmin}
             tripPhase={trip.phase}
             onProposalUpdated={refetch}
+            viewMode={chatViewMode}
+            onViewModeChange={setChatViewMode}
           />
           <ChatComposer
             onSend={sendMessage}

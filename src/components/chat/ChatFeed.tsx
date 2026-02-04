@@ -1,10 +1,13 @@
 import { useRef, useEffect, useMemo } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Vote, MessageCircle } from 'lucide-react';
 import type { Message, TripProposal, TripPhase, ProposalType } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { ChatMessage } from './ChatMessage';
 import { ProposalMessage } from './ProposalMessage';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+
+export type ChatViewMode = 'proposals' | 'chat';
 
 interface ChatFeedProps {
   messages: Message[];
@@ -17,6 +20,8 @@ interface ChatFeedProps {
   isAdmin?: boolean;
   tripPhase?: TripPhase;
   onProposalUpdated?: () => void;
+  viewMode: ChatViewMode;
+  onViewModeChange: (mode: ChatViewMode) => void;
 }
 
 interface ProposalGroup {
@@ -26,7 +31,7 @@ interface ProposalGroup {
   messages: Message[];
 }
 
-export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated }: ChatFeedProps) {
+export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange }: ChatFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -98,85 +103,208 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
     };
   }, [messages]);
 
+  // Count proposals for badge
+  const proposalCount = proposalGroups.reduce((acc, g) => acc + g.messages.length, 0);
+
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex-1 flex flex-col">
+        <ViewModeToggle
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          proposalCount={proposalCount}
+          chatCount={regularMessages.length}
+        />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
       </div>
     );
   }
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
-            <span className="text-3xl">💬</span>
+      <div className="flex-1 flex flex-col">
+        <ViewModeToggle
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          proposalCount={proposalCount}
+          chatCount={regularMessages.length}
+        />
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
+              <span className="text-3xl">{viewMode === 'proposals' ? '🗳️' : '💬'}</span>
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {viewMode === 'proposals' ? 'No proposals yet' : 'No messages yet'}
+            </h3>
+            <p className="text-muted-foreground text-sm max-w-xs">
+              {viewMode === 'proposals'
+                ? 'Add a proposal to start voting on trip ideas!'
+                : 'Start the conversation! Share ideas with your group.'}
+            </p>
           </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">No messages yet</h3>
-          <p className="text-muted-foreground text-sm max-w-xs">
-            Start the conversation! Share ideas or propose a trip destination.
-          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <ScrollArea className="flex-1 min-w-0">
-      <div className="py-4 space-y-4">
-        {/* Proposal Groups - side by side layout */}
-        {proposalGroups.map((group) => (
-          <div key={group.type} className="px-4">
-            {/* Group Header */}
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">{group.emoji}</span>
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                {group.label}
-              </h3>
-              <span className="text-xs text-muted-foreground">
-                ({group.messages.length})
-              </span>
-            </div>
+    <div className="flex-1 flex flex-col min-w-0">
+      {/* View Mode Toggle */}
+      <ViewModeToggle
+        viewMode={viewMode}
+        onViewModeChange={onViewModeChange}
+        proposalCount={proposalCount}
+        chatCount={regularMessages.length}
+      />
 
-            {/* Horizontal scrollable container for proposal cards */}
-            <div className="overflow-x-auto pb-2 -mx-4 px-4">
-              <div className="flex gap-4" style={{ minWidth: 'min-content' }}>
-                {group.messages.map((message) => (
-                  <div key={message.id} className="flex-shrink-0 w-[340px]">
-                    <ProposalMessage
-                      message={message}
-                      tripId={tripId}
-                      onViewDetails={onViewProposal}
-                      isComparing={compareIds?.includes(message.proposal!.id) || false}
-                      onToggleCompare={onToggleCompare ? () => onToggleCompare(message.proposal!.id) : undefined}
-                      onReply={onReply}
-                      isAdmin={isAdmin}
-                      tripPhase={tripPhase}
-                      onProposalUpdated={onProposalUpdated}
-                      replies={repliesByProposalMessageId.get(message.id) || []}
-                    />
+      <ScrollArea className="flex-1 min-w-0">
+        <div className="py-4 space-y-4">
+          {/* Proposals View */}
+          {viewMode === 'proposals' && (
+            <>
+              {proposalGroups.length === 0 ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-3xl">🗳️</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">No proposals yet</h3>
+                    <p className="text-muted-foreground text-sm max-w-xs">
+                      Add a proposal to start voting on trip ideas!
+                    </p>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
+                </div>
+              ) : (
+                proposalGroups.map((group) => (
+                  <div key={group.type} className="px-4">
+                    {/* Group Header */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-lg">{group.emoji}</span>
+                      <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                        {group.label}
+                      </h3>
+                      <span className="text-xs text-muted-foreground">
+                        ({group.messages.length})
+                      </span>
+                    </div>
 
-        {/* Separator if we have both proposals and messages */}
-        {proposalGroups.length > 0 && regularMessages.length > 0 && (
-          <div className="border-t border-border mx-4" />
-        )}
+                    {/* Horizontal scrollable container for proposal cards */}
+                    <div className="overflow-x-auto pb-2 -mx-4 px-4">
+                      <div className="flex gap-4" style={{ minWidth: 'min-content' }}>
+                        {group.messages.map((message) => (
+                          <div key={message.id} className="flex-shrink-0 w-[340px]">
+                            <ProposalMessage
+                              message={message}
+                              tripId={tripId}
+                              onViewDetails={onViewProposal}
+                              isComparing={compareIds?.includes(message.proposal!.id) || false}
+                              onToggleCompare={onToggleCompare ? () => onToggleCompare(message.proposal!.id) : undefined}
+                              onReply={onReply}
+                              isAdmin={isAdmin}
+                              tripPhase={tripPhase}
+                              onProposalUpdated={onProposalUpdated}
+                              replies={repliesByProposalMessageId.get(message.id) || []}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
+          )}
 
-        {/* Regular chat messages */}
-        <div className="space-y-1">
-          {regularMessages.map((message) => (
-            <ChatMessage key={message.id} message={message} onReply={onReply} />
-          ))}
+          {/* Chat View */}
+          {viewMode === 'chat' && (
+            <>
+              {regularMessages.length === 0 ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-3xl">💬</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">No messages yet</h3>
+                    <p className="text-muted-foreground text-sm max-w-xs">
+                      Start the conversation! Share ideas with your group.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {regularMessages.map((message) => (
+                    <ChatMessage key={message.id} message={message} onReply={onReply} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          <div ref={bottomRef} />
         </div>
+      </ScrollArea>
+    </div>
+  );
+}
 
-        <div ref={bottomRef} />
-      </div>
-    </ScrollArea>
+// Toggle component for switching between Proposals and Chat views
+interface ViewModeToggleProps {
+  viewMode: ChatViewMode;
+  onViewModeChange: (mode: ChatViewMode) => void;
+  proposalCount: number;
+  chatCount: number;
+}
+
+function ViewModeToggle({ viewMode, onViewModeChange, proposalCount, chatCount }: ViewModeToggleProps) {
+  return (
+    <div className="flex items-center justify-center gap-1 p-2 border-b border-border bg-card/50">
+      <button
+        onClick={() => onViewModeChange('proposals')}
+        className={cn(
+          'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+          viewMode === 'proposals'
+            ? 'bg-primary text-primary-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+        )}
+      >
+        <Vote className="h-4 w-4" />
+        <span>Proposals</span>
+        {proposalCount > 0 && (
+          <span className={cn(
+            'px-1.5 py-0.5 text-xs rounded-full',
+            viewMode === 'proposals'
+              ? 'bg-primary-foreground/20 text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
+          )}>
+            {proposalCount}
+          </span>
+        )}
+      </button>
+      <button
+        onClick={() => onViewModeChange('chat')}
+        className={cn(
+          'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+          viewMode === 'chat'
+            ? 'bg-primary text-primary-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+        )}
+      >
+        <MessageCircle className="h-4 w-4" />
+        <span>Chat</span>
+        {chatCount > 0 && (
+          <span className={cn(
+            'px-1.5 py-0.5 text-xs rounded-full',
+            viewMode === 'chat'
+              ? 'bg-primary-foreground/20 text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
+          )}>
+            {chatCount}
+          </span>
+        )}
+      </button>
+    </div>
   );
 }
