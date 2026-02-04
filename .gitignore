@@ -27,3 +27,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# AI/Editor tool configs
+.agent/
+.agents/
+.claude/
+.cursor/
+.factory/
+.gemini/
+.windsurf/
+roamiii/
