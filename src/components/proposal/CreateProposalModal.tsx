@@ -15,6 +15,15 @@ import { toast } from 'sonner';
 import { PROPOSAL_TYPES, type ProposalType, type TripPhase } from '@/lib/tripchat-types';
 import { cn } from '@/lib/utils';
 
+// Generate static map URL for destination cover images
+const getMapCoverUrl = (coords: [number, number]): string => {
+  const [lng, lat] = coords;
+  const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+  // Use 800x450 to match Unsplash cover preset dimensions
+  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/` +
+    `pin-s+8b5cf6(${lng},${lat})/${lng},${lat},10,0/800x450@2x?access_token=${token}`;
+};
+
 // Notification helper - notify all trip members about new proposal
 const notifyTripMembers = async (
   tripId: string,
@@ -95,8 +104,10 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
       }
     }
 
-    // Auto-pick cover image based on vibe tags
-    const finalCoverUrl = getAutoPickCover(vibeTags);
+    // Use map image for destination proposals, otherwise auto-pick based on vibe tags
+    const finalCoverUrl = (isDestinationPhase && coordinates)
+      ? getMapCoverUrl(coordinates)
+      : getAutoPickCover(vibeTags);
 
     // For itinerary items, use name as destination if destination is empty
     const finalDestination = destination.trim() || name.trim();
