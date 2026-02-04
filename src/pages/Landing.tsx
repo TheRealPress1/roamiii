@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
 import { ArrowRight, Users, Vote, CheckCircle, MessageCircle, Calendar, DollarSign, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
@@ -7,6 +7,7 @@ import { Footer } from '@/components/layout/Footer';
 import { VibeTag } from '@/components/ui/VibeTag';
 import { VotePill } from '@/components/ui/VotePill';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRef } from 'react';
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -21,6 +22,226 @@ const staggerContainer = {
     }
   }
 };
+
+// How It Works animations
+const howItWorksContainer = {
+  initial: {},
+  animate: {
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const cardVariants = {
+  initial: (i: number) => ({
+    opacity: 0,
+    y: 40,
+    x: i === 0 ? -30 : i === 2 ? 30 : 0,
+    scale: 0.95,
+    rotate: i === 0 ? -2 : i === 2 ? 2 : 0
+  }),
+  animate: {
+    opacity: 1,
+    y: 0,
+    x: 0,
+    scale: 1,
+    rotate: 0,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 25
+    }
+  }
+};
+
+const iconVariants = {
+  initial: { scale: 0, rotate: -180 },
+  animate: {
+    scale: 1,
+    rotate: 0,
+    transition: {
+      type: "spring",
+      stiffness: 260,
+      damping: 20,
+      delay: 0.2
+    }
+  }
+};
+
+const stepNumberVariants = {
+  initial: { scale: 0, opacity: 0 },
+  animate: {
+    scale: 1,
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 400,
+      damping: 15,
+      delay: 0.3
+    }
+  }
+};
+
+// Animated background component
+function HowItWorksBackground() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Animated gradient blobs */}
+      <motion.div
+        className="absolute -top-20 -left-20 w-72 h-72 rounded-full bg-primary/10 blur-3xl"
+        animate={{
+          x: [0, 30, 0],
+          y: [0, -20, 0],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+      <motion.div
+        className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-accent/10 blur-3xl"
+        animate={{
+          x: [0, -25, 0],
+          y: [0, 25, 0],
+          scale: [1, 1.15, 1],
+        }}
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+
+      {/* Floating sparkles */}
+      {[
+        { top: '15%', left: '10%', delay: 0 },
+        { top: '70%', left: '85%', delay: 1 },
+        { top: '40%', left: '90%', delay: 2 },
+      ].map((pos, i) => (
+        <motion.img
+          key={i}
+          src="/icons/sparkle.svg"
+          alt=""
+          className="absolute w-6 h-6 opacity-40"
+          style={{ top: pos.top, left: pos.left }}
+          animate={{
+            rotate: [0, 180, 360],
+            opacity: [0.3, 0.6, 0.3],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            delay: pos.delay,
+            ease: "easeInOut"
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Animated icon container with shimmer
+function AnimatedIconContainer({
+  icon: Icon,
+  color
+}: {
+  icon: React.ElementType;
+  color: string;
+}) {
+  return (
+    <motion.div
+      className={`relative inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${color} text-white mb-6 overflow-hidden`}
+      variants={iconVariants}
+      whileHover={{
+        scale: 1.1,
+        transition: { type: "spring", stiffness: 400, damping: 10 }
+      }}
+    >
+      <Icon className="h-7 w-7 relative z-10" />
+      {/* Shimmer effect */}
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12"
+        animate={{
+          x: ['-100%', '200%'],
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          repeatDelay: 3,
+          ease: "easeInOut"
+        }}
+      />
+    </motion.div>
+  );
+}
+
+// Flowing connector line between all steps (desktop only)
+function StepFlowConnector() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  return (
+    <div ref={ref} className="hidden md:block absolute inset-0 pointer-events-none">
+      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+        {/* Curved path from card 1 to card 2 */}
+        <motion.path
+          d="M 22 50 C 28 25, 38 25, 50 50"
+          fill="none"
+          stroke="hsl(var(--primary) / 0.3)"
+          strokeWidth="0.4"
+          strokeDasharray="1.5 0.8"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={isInView ? { pathLength: 1, opacity: 1 } : {}}
+          transition={{ duration: 1, delay: 0.5 }}
+        />
+        {/* Curved path from card 2 to card 3 */}
+        <motion.path
+          d="M 50 50 C 62 75, 72 75, 78 50"
+          fill="none"
+          stroke="hsl(var(--primary) / 0.3)"
+          strokeWidth="0.4"
+          strokeDasharray="1.5 0.8"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={isInView ? { pathLength: 1, opacity: 1 } : {}}
+          transition={{ duration: 1, delay: 1 }}
+        />
+        {/* Dots at connection points */}
+        <motion.circle
+          cx="22"
+          cy="50"
+          r="1"
+          fill="hsl(var(--primary))"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={isInView ? { scale: 1, opacity: 0.6 } : {}}
+          transition={{ duration: 0.3, delay: 0.4 }}
+        />
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="1.2"
+          fill="hsl(var(--primary))"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={isInView ? { scale: 1, opacity: 0.7 } : {}}
+          transition={{ duration: 0.3, delay: 1.2 }}
+        />
+        <motion.circle
+          cx="78"
+          cy="50"
+          r="1"
+          fill="hsl(var(--primary))"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={isInView ? { scale: 1, opacity: 0.6 } : {}}
+          transition={{ duration: 0.3, delay: 1.8 }}
+        />
+      </svg>
+    </div>
+  );
+}
 
 export default function Landing() {
   const { user } = useAuth();
@@ -187,66 +408,149 @@ export default function Landing() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 md:py-28 bg-background">
-        <div className="container">
-          <motion.div 
+      <section className="py-20 md:py-28 bg-background relative overflow-hidden">
+        <HowItWorksBackground />
+
+        <div className="container relative z-10">
+          {/* Enhanced Section Header */}
+          <motion.div
             className="text-center mb-16"
-            {...fadeIn}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
           >
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
-              How <span className="text-primary">roamiii</span> Works
+            <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4 relative inline-block">
+              How{' '}
+              <span className="relative">
+                <span className="text-primary">roamiii</span>
+                {/* Squiggly animated underline */}
+                <motion.svg
+                  className="absolute -bottom-2 left-0 w-full h-3"
+                  viewBox="0 0 100 12"
+                  preserveAspectRatio="none"
+                >
+                  <motion.path
+                    d="M0 6 Q 12.5 0, 25 6 T 50 6 T 75 6 T 100 6"
+                    fill="none"
+                    stroke="url(#underlineGradient)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    initial={{ pathLength: 0 }}
+                    whileInView={{ pathLength: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: 0.3 }}
+                  />
+                  <defs>
+                    <linearGradient id="underlineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" />
+                      <stop offset="100%" stopColor="#f97316" />
+                    </linearGradient>
+                  </defs>
+                </motion.svg>
+              </span>
+              {' '}Works
+              {/* Decorative sparkle */}
+              <motion.span
+                className="absolute -top-2 -right-6"
+                initial={{ scale: 0, rotate: -30 }}
+                whileInView={{ scale: 1, rotate: 0 }}
+                viewport={{ once: true }}
+                transition={{ type: "spring", stiffness: 400, delay: 0.5 }}
+              >
+                <Sparkles className="w-5 h-5 text-primary" />
+              </motion.span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <motion.p
+              className="text-lg text-muted-foreground max-w-2xl mx-auto"
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
               From group chat chaos to booked and ready in three steps
-            </p>
+            </motion.p>
           </motion.div>
 
-          <motion.div 
-            className="grid md:grid-cols-3 gap-8"
-            variants={staggerContainer}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-          >
-            {[
-              {
-                step: '01',
-                icon: MessageCircle,
-                title: 'Chat & Propose',
-                description: 'Create a trip chat and invite your crew. Anyone can propose destinations as visual cards right in the conversation.',
-                color: 'from-primary to-orange-500'
-              },
-              {
-                step: '02',
-                icon: Vote,
-                title: 'Vote Together',
-                description: 'Everyone votes In, Maybe, or Out on each proposal. See what works for the whole group in real-time.',
-                color: 'from-blue-500 to-cyan-500'
-              },
-              {
-                step: '03',
-                icon: CheckCircle,
-                title: 'Pin & Go',
-                description: "Once the group converges, pin the final pick. You're ready to book and start packing!",
-                color: 'from-emerald-500 to-green-500'
-              }
-            ].map((item, i) => (
-              <motion.div
-                key={item.step}
-                className="relative group"
-                variants={fadeIn}
-              >
-                <div className="bg-card rounded-2xl p-8 border border-border shadow-card hover:shadow-card-hover transition-all duration-300">
-                  <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${item.color} text-white mb-6`}>
-                    <item.icon className="h-7 w-7" />
-                  </div>
-                  <div className="text-sm font-semibold text-primary mb-2">Step {item.step}</div>
-                  <h3 className="text-xl font-semibold text-foreground mb-3">{item.title}</h3>
-                  <p className="text-muted-foreground">{item.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+          {/* Enhanced Cards Grid */}
+          <div className="relative">
+            {/* Flowing connector line between steps (desktop only) */}
+            <StepFlowConnector />
+
+            <motion.div
+              className="grid md:grid-cols-3 gap-8"
+              variants={howItWorksContainer}
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true, margin: "-50px" }}
+            >
+              {[
+                {
+                  step: '01',
+                  icon: MessageCircle,
+                  title: 'Chat & Propose',
+                  description: 'Create a trip chat and invite your crew. Anyone can propose destinations as visual cards right in the conversation.',
+                  color: 'from-primary to-orange-500'
+                },
+                {
+                  step: '02',
+                  icon: Vote,
+                  title: 'Vote Together',
+                  description: 'Everyone votes In, Maybe, or Out on each proposal. See what works for the whole group in real-time.',
+                  color: 'from-blue-500 to-cyan-500'
+                },
+                {
+                  step: '03',
+                  icon: CheckCircle,
+                  title: 'Pin & Go',
+                  description: "Once the group converges, pin the final pick. You're ready to book and start packing!",
+                  color: 'from-emerald-500 to-green-500'
+                }
+              ].map((item, i) => (
+                <motion.div
+                  key={item.step}
+                  className="relative group"
+                  custom={i}
+                  variants={cardVariants}
+                >
+                  {/* Gradient glow border on hover */}
+                  <motion.div
+                    className="absolute -inset-0.5 bg-gradient-to-r from-primary via-orange-500 to-accent rounded-2xl opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-500"
+                    initial={{ opacity: 0 }}
+                  />
+
+                  <motion.div
+                    className="relative bg-card rounded-2xl p-8 border border-border shadow-card transition-shadow duration-300 group-hover:shadow-glow"
+                    whileHover={{
+                      y: -8,
+                      transition: { type: "spring", stiffness: 400, damping: 15 }
+                    }}
+                  >
+                    {/* Animated Icon */}
+                    <AnimatedIconContainer icon={item.icon} color={item.color} />
+
+                    {/* Animated Step Number */}
+                    <motion.div
+                      className="flex items-center gap-1.5 text-sm font-semibold text-primary mb-2"
+                      variants={stepNumberVariants}
+                    >
+                      <span>Step {item.step}</span>
+                      <motion.span
+                        className="w-1.5 h-1.5 rounded-full bg-primary"
+                        initial={{ scale: 0 }}
+                        whileInView={{ scale: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.5 + i * 0.1, type: "spring" }}
+                      />
+                    </motion.div>
+
+                    <h3 className="text-xl font-semibold text-foreground mb-3">{item.title}</h3>
+                    <p className="text-muted-foreground">{item.description}</p>
+                  </motion.div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
         </div>
       </section>
 
