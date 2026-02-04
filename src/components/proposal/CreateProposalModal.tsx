@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, DollarSign, Link as LinkIcon, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { Loader2, DollarSign, Link as LinkIcon, ChevronDown, ChevronUp, Calendar, Users } from 'lucide-react';
 import { getAutoPickCover } from '@/lib/cover-presets';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { VibeTagSelector } from '@/components/ui/VibeTag';
 import { DestinationAutocomplete } from '@/components/ui/DestinationAutocomplete';
+import { PriceScreenshotAnalyzer } from '@/components/proposal/PriceScreenshotAnalyzer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -62,7 +63,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   const [url, setUrl] = useState('');
   const [destination, setDestination] = useState('');
   const [dateStart, setDateStart] = useState('');
-  const [cost, setCost] = useState('');
+  const [totalCost, setTotalCost] = useState('');
   const [vibeTags, setVibeTags] = useState<string[]>([]);
 
   // Collapsible sections
@@ -71,9 +72,10 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
 
   const isDestinationPhase = tripPhase === 'destination';
 
-  // Auto-calculate split from actual trip members
+  // Auto-calculate cost per person from total cost / members
   const splitCount = Math.max(memberCount, 1);
-  const costPerPerson = Math.round((parseFloat(cost) || 0) / splitCount);
+  const totalCostNum = parseFloat(totalCost) || 0;
+  const costPerPerson = totalCostNum > 0 ? Math.round(totalCostNum / splitCount) : 0;
 
   const handleSubmit = async () => {
     // Validation based on phase
@@ -111,7 +113,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
           date_start: dateStart || null,
           cover_image_url: finalCoverUrl,
           vibe_tags: vibeTags,
-          estimated_cost_per_person: parseFloat(cost) || 0, // Cost is per person directly now
+          estimated_cost_per_person: costPerPerson,
           attendee_count: splitCount,
           is_destination: isDestinationPhase,
         })
@@ -151,7 +153,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
     setUrl('');
     setDestination('');
     setDateStart('');
-    setCost('');
+    setTotalCost('');
     setVibeTags([]);
     setShowNotes(false);
     setShowDate(false);
@@ -275,20 +277,38 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
                   </div>
                 </div>
 
-                {/* Cost per person */}
+                {/* Total Cost with screenshot analyzer */}
                 <div className="space-y-2">
-                  <Label htmlFor="cost">Cost per person</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="cost"
-                      type="number"
-                      value={cost}
-                      onChange={(e) => setCost(e.target.value)}
-                      placeholder="0"
-                      className="pl-9"
+                  <Label htmlFor="totalCost">Total Cost</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="totalCost"
+                        type="number"
+                        value={totalCost}
+                        onChange={(e) => setTotalCost(e.target.value)}
+                        placeholder="0"
+                        className="pl-9"
+                      />
+                    </div>
+                    <PriceScreenshotAnalyzer
+                      label={proposalType === 'housing' ? 'housing' : 'activity'}
+                      onPriceExtracted={(price) => setTotalCost(price.toString())}
                     />
                   </div>
+                  {/* Calculated cost per person */}
+                  {totalCostNum > 0 && (
+                    <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <Users className="h-3.5 w-3.5" />
+                        {splitCount} {splitCount === 1 ? 'person' : 'people'}
+                      </span>
+                      <span className="font-semibold text-primary">
+                        ${costPerPerson}/person
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Notes - collapsed by default */}
