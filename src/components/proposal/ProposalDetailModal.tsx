@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { MapPin, Calendar, ExternalLink, Trophy, Loader2, Trash2, Navigation, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VibeTag } from '@/components/ui/VibeTag';
-import { ProposalReactions } from '@/components/proposal/ProposalReactions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   AlertDialog,
@@ -46,34 +45,66 @@ export function ProposalDetailModal({
   onDeleted,
   tripPhase = 'destination',
 }: ProposalDetailModalProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [pinning, setPinning] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Local state for optimistic voting
+  const [localVotes, setLocalVotes] = useState<TripVote[]>(proposal?.votes || []);
+
+  // Sync local votes with props when they change
+  useEffect(() => {
+    setLocalVotes(proposal?.votes || []);
+  }, [proposal?.votes]);
 
   const canDelete = proposal && (proposal.created_by === user?.id || isAdmin);
 
   if (!proposal) return null;
 
-  const votes = proposal.votes || [];
-  const userVote = votes.find((v) => v.user_id === user?.id);
+  const userVote = localVotes.find((v) => v.user_id === user?.id);
   const votesByType = {
-    in: votes.filter((v) => v.vote === 'in'),
-    maybe: votes.filter((v) => v.vote === 'maybe'),
-    out: votes.filter((v) => v.vote === 'out'),
+    in: localVotes.filter((v) => v.vote === 'in'),
+    maybe: localVotes.filter((v) => v.vote === 'maybe'),
+    out: localVotes.filter((v) => v.vote === 'out'),
   };
 
   const handleVote = async (voteType: VoteType) => {
-    if (!user) return;
+    if (!user || !profile) return;
+
+    // Store previous state for rollback
+    const previousVotes = [...localVotes];
 
     try {
       if (userVote) {
         if (userVote.vote === voteType) {
+          // Optimistically remove vote
+          setLocalVotes(prev => prev.filter(v => v.user_id !== user.id));
           await supabase.from('trip_votes').delete().eq('id', userVote.id);
         } else {
+          // Optimistically update vote
+          setLocalVotes(prev => prev.map(v =>
+            v.user_id === user.id
+              ? { ...v, vote: voteType }
+              : v
+          ));
           await supabase.from('trip_votes').update({ vote: voteType }).eq('id', userVote.id);
         }
       } else {
+        // Optimistically add new vote
+        const optimisticVote: TripVote = {
+          id: `temp-${Date.now()}`,
+          trip_id: tripId,
+          proposal_id: proposal.id,
+          user_id: user.id,
+          vote: voteType,
+          score: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          voter: profile,
+        };
+        setLocalVotes(prev => [...prev, optimisticVote]);
+
         await supabase.from('trip_votes').insert({
           trip_id: tripId,
           proposal_id: proposal.id,
@@ -83,6 +114,8 @@ export function ProposalDetailModal({
       }
       onPinned(); // Refresh data
     } catch (error) {
+      // Revert on error
+      setLocalVotes(previousVotes);
       toast.error('Failed to vote');
     }
   };
@@ -305,13 +338,6 @@ export function ProposalDetailModal({
                 onClick={() => handleVote('out')}
               />
             </div>
-
-            {/* Quick reactions */}
-            <div className="pt-2 border-t border-border">
-              <p className="text-sm text-muted-foreground mb-2">Quick reactions</p>
-              <ProposalReactions proposalId={proposal.id} tripId={tripId} />
-            </div>
-
 
             {/* Include in Plan Toggle (Admin only, Phase 2+, non-destination proposals) */}
             {isAdmin &&

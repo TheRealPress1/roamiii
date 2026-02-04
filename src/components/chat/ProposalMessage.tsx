@@ -1,13 +1,13 @@
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, ThumbsUp, ThumbsDown, CircleHelp, Check, X, Minus } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus } from 'lucide-react';
 import type { Message, TripProposal, TripVote, VoteType, TripPhase } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { VibeTag } from '@/components/ui/VibeTag';
-import { ProposalReactions } from '@/components/proposal/ProposalReactions';
 import { CompareButton } from '@/components/compare/CompareButton';
 import { IncludeToggle, IncludedBadge } from '@/components/proposal/IncludeToggle';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,11 +24,20 @@ interface ProposalMessageProps {
   isAdmin?: boolean;
   tripPhase?: TripPhase;
   onProposalUpdated?: () => void;
+  replies?: Message[];
 }
 
-export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated }: ProposalMessageProps) {
-  const { user } = useAuth();
+export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, replies = [] }: ProposalMessageProps) {
+  const { user, profile } = useAuth();
   const proposal = message.proposal;
+
+  // Local state for optimistic voting
+  const [localVotes, setLocalVotes] = useState<TripVote[]>(proposal?.votes || []);
+
+  // Sync local votes with props when they change
+  useEffect(() => {
+    setLocalVotes(proposal?.votes || []);
+  }, [proposal?.votes]);
 
   // Show include toggle in itinerary/finalize phases for non-destination proposals
   const showIncludeToggle = isAdmin &&
@@ -39,28 +48,49 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
 
   if (!proposal) return null;
 
-  const votes = proposal.votes || [];
-  const userVote = votes.find((v) => v.user_id === user?.id);
+  const userVote = localVotes.find((v) => v.user_id === user?.id);
   const votesByType = {
-    in: votes.filter((v) => v.vote === 'in'),
-    maybe: votes.filter((v) => v.vote === 'maybe'),
-    out: votes.filter((v) => v.vote === 'out'),
+    in: localVotes.filter((v) => v.vote === 'in'),
+    maybe: localVotes.filter((v) => v.vote === 'maybe'),
+    out: localVotes.filter((v) => v.vote === 'out'),
   };
 
   const handleVote = async (voteType: VoteType) => {
-    if (!user) return;
+    if (!user || !profile) return;
+
+    // Store previous state for rollback
+    const previousVotes = [...localVotes];
 
     try {
       if (userVote) {
         if (userVote.vote === voteType) {
-          // Remove vote
+          // Optimistically remove vote
+          setLocalVotes(prev => prev.filter(v => v.user_id !== user.id));
           await supabase.from('trip_votes').delete().eq('id', userVote.id);
         } else {
-          // Update vote
+          // Optimistically update vote
+          setLocalVotes(prev => prev.map(v =>
+            v.user_id === user.id
+              ? { ...v, vote: voteType }
+              : v
+          ));
           await supabase.from('trip_votes').update({ vote: voteType }).eq('id', userVote.id);
         }
       } else {
-        // Create vote
+        // Optimistically add new vote
+        const optimisticVote: TripVote = {
+          id: `temp-${Date.now()}`,
+          trip_id: tripId,
+          proposal_id: proposal.id,
+          user_id: user.id,
+          vote: voteType,
+          score: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          voter: profile,
+        };
+        setLocalVotes(prev => [...prev, optimisticVote]);
+
         await supabase.from('trip_votes').insert({
           trip_id: tripId,
           proposal_id: proposal.id,
@@ -69,6 +99,8 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
         });
       }
     } catch (error) {
+      // Revert on error
+      setLocalVotes(previousVotes);
       toast.error('Failed to vote');
     }
   };
@@ -104,7 +136,6 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="px-4 py-3"
     >
       {/* Author header */}
       <div className="flex items-center gap-2 mb-3">
@@ -122,7 +153,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
       </div>
 
       {/* Proposal Card */}
-      <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden w-full max-w-md ml-8">
+      <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden w-full">
         {/* Cover Image */}
         <div className="aspect-[16/9] relative bg-gradient-to-br from-primary/20 to-accent/20">
           {proposal.cover_image_url ? (
@@ -214,11 +245,6 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             />
           </div>
 
-          {/* Quick reactions */}
-          <div className="mb-3">
-            <ProposalReactions proposalId={proposal.id} tripId={tripId} />
-          </div>
-
           {/* Compare button */}
           {onToggleCompare && (
             <div className="mb-3">
@@ -285,6 +311,30 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             </Button>
           </div>
         </div>
+
+        {/* Inline Replies */}
+        {replies.length > 0 && (
+          <div className="border-t border-border px-4 py-3 space-y-2 bg-muted/30">
+            {replies.map((reply) => {
+              const replyAuthorName = reply.author?.name || reply.author?.email?.split('@')[0] || 'Unknown';
+              const replyAuthorInitials = replyAuthorName.slice(0, 2).toUpperCase();
+              return (
+                <div key={reply.id} className="flex items-start gap-2">
+                  <Avatar className="h-5 w-5 flex-shrink-0">
+                    <AvatarImage src={reply.author?.avatar_url || undefined} />
+                    <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                      {replyAuthorInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-medium text-foreground">{replyAuthorName}: </span>
+                    <span className="text-xs text-muted-foreground break-words">{reply.body}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </motion.div>
   );
