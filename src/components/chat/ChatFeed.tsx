@@ -51,7 +51,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
   }
 
   return (
-    <ScrollArea className="flex-1">
+    <ScrollArea className="flex-1 min-w-0">
       <div className="py-4 space-y-1">
         {messages.map((message) =>
           message.type === 'proposal' && message.proposal ? (

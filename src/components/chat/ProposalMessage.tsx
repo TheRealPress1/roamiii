@@ -124,7 +124,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
       </div>
 
       {/* Proposal Card */}
-      <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden max-w-md ml-8">
+      <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden w-full max-w-md ml-8">
         {/* Cover Image */}
         <div className="aspect-[16/9] relative bg-gradient-to-br from-primary/20 to-accent/20">
           {proposal.cover_image_url ? (
