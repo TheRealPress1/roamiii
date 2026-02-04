@@ -26,61 +26,51 @@ export function ItineraryBoard({
     <div
       ref={setNodeRef}
       className={cn(
-        'sticky top-0 z-20 bg-card border-b border-border p-4 transition-all duration-200',
-        isOver && 'ring-2 ring-primary ring-inset bg-primary/5'
+        'px-4 py-3 transition-all duration-200',
+        isOver && 'bg-primary/5 rounded-lg'
       )}
     >
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-          <MapPin className="h-3.5 w-3.5 text-primary" />
-        </div>
-        <h3 className="text-sm font-semibold text-foreground">Your Itinerary</h3>
-      </div>
+      <div className="flex items-center gap-2 overflow-x-auto">
+        {/* Locked Destination Chip */}
+        {lockedDestination && (
+          <ItineraryChip
+            proposal={lockedDestination}
+            isDestination
+            isLocked
+            isAdmin={isAdmin}
+            onRemove={onRemoveItem}
+          />
+        )}
 
-      {/* Content */}
-      {hasItems ? (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-          {/* Locked Destination Card */}
-          {lockedDestination && (
-            <ItineraryChip
-              proposal={lockedDestination}
-              isDestination
-              isLocked
-              isAdmin={isAdmin}
-              onRemove={onRemoveItem}
-            />
-          )}
+        {/* Included Items */}
+        {includedProposals.map((proposal) => (
+          <ItineraryChip
+            key={proposal.id}
+            proposal={proposal}
+            isAdmin={isAdmin}
+            onRemove={onRemoveItem}
+          />
+        ))}
 
-          {/* Included Items */}
-          {includedProposals.map((proposal) => (
-            <ItineraryChip
-              key={proposal.id}
-              proposal={proposal}
-              isAdmin={isAdmin}
-              onRemove={onRemoveItem}
-            />
-          ))}
+        {/* Drop indicator when dragging over */}
+        {isOver && (
+          <div className="flex-shrink-0 h-9 px-4 border-2 border-dashed border-primary rounded-full flex items-center justify-center gap-1 text-primary text-sm">
+            <Plus className="h-3.5 w-3.5" />
+            <span>Drop here</span>
+          </div>
+        )}
 
-          {/* Drop indicator when empty slots available */}
-          {isOver && (
-            <div className="flex-shrink-0 h-9 px-4 border-2 border-dashed border-primary rounded-full flex items-center justify-center gap-1 text-primary text-sm">
-              <Plus className="h-3.5 w-3.5" />
-              <span>Drop here</span>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className={cn(
-          'flex items-center justify-center gap-2 py-4 border-2 border-dashed rounded-lg transition-colors',
-          isOver ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground'
-        )}>
-          <Plus className="h-4 w-4" />
-          <span className="text-sm">
-            {isOver ? 'Drop to add!' : 'Drag proposals here to build your itinerary'}
+        {/* Empty state hint */}
+        {!hasItems && (
+          <span className={cn(
+            'text-sm transition-colors',
+            isOver ? 'text-primary' : 'text-muted-foreground/50'
+          )}>
+            <Plus className="h-3.5 w-3.5 inline mr-1" />
+            Drag items here
           </span>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
