@@ -2,16 +2,18 @@ import { useProposalReactions } from '@/hooks/useProposalReactions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { ReactionType } from '@/lib/tripchat-types';
+import { SFSymbol } from '@/components/icons';
+import { REACTION_ICON_MAP } from '@/lib/icon-mappings';
 
 interface ProposalReactionsProps {
   proposalId: string;
   tripId: string;
 }
 
-const reactionConfig: Record<ReactionType, { emoji: string; label: string }> = {
-  interested: { emoji: '👍', label: 'Interested' },
-  love: { emoji: '❤️', label: 'Love it' },
-  nope: { emoji: '👎', label: 'Not for me' },
+const reactionConfig: Record<ReactionType, { label: string }> = {
+  interested: { label: 'Interested' },
+  love: { label: 'Love it' },
+  nope: { label: 'Not for me' },
 };
 
 export function ProposalReactions({ proposalId, tripId }: ProposalReactionsProps) {
@@ -33,6 +35,7 @@ export function ProposalReactions({ proposalId, tripId }: ProposalReactionsProps
         ([type, config]) => {
           const isActive = userReaction?.reaction === type;
           const count = counts[type];
+          const iconName = REACTION_ICON_MAP[type];
 
           return (
             <button
@@ -46,7 +49,7 @@ export function ProposalReactions({ proposalId, tripId }: ProposalReactionsProps
               )}
               title={config.label}
             >
-              <span>{config.emoji}</span>
+              <SFSymbol name={iconName} size="sm" className={isActive ? 'invert' : ''} />
               <span>{count}</span>
             </button>
           );

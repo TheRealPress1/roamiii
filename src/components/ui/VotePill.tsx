@@ -1,5 +1,7 @@
 import { cn } from '@/lib/utils';
 import type { VoteType } from '@/lib/supabase-types';
+import { SFSymbol } from '@/components/icons';
+import { VOTE_INDICATOR_ICON_MAP } from '@/lib/icon-mappings';
 
 interface VotePillProps {
   vote: VoteType;
@@ -12,7 +14,6 @@ interface VotePillProps {
 const voteConfig = {
   in: {
     label: "I'm In",
-    emoji: '✓',
     bgClass: 'bg-vote-in-bg',
     textClass: 'text-vote-in',
     activeClass: 'bg-vote-in text-white',
@@ -20,7 +21,6 @@ const voteConfig = {
   },
   maybe: {
     label: 'Maybe',
-    emoji: '?',
     bgClass: 'bg-vote-maybe-bg',
     textClass: 'text-vote-maybe',
     activeClass: 'bg-vote-maybe text-white',
@@ -28,7 +28,6 @@ const voteConfig = {
   },
   out: {
     label: "I'm Out",
-    emoji: '✕',
     bgClass: 'bg-vote-out-bg',
     textClass: 'text-vote-out',
     activeClass: 'bg-vote-out text-white',
@@ -58,7 +57,7 @@ export function VotePill({ vote, count, selected, onClick, size = 'md' }: VotePi
         !onClick && 'cursor-default'
       )}
     >
-      <span>{config.emoji}</span>
+      <SFSymbol name={VOTE_INDICATOR_ICON_MAP[vote]} size="xs" className={selected ? 'invert' : ''} />
       <span>{config.label}</span>
       {count !== undefined && (
         <span className={cn(

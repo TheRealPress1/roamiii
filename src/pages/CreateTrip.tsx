@@ -95,12 +95,12 @@ export default function CreateTrip() {
 
       if (tripError) throw tripError;
 
-      // Post a welcome system message
+      // Post a welcome system message (plain text, icons rendered at display time)
       await supabase.from('messages').insert({
         trip_id: trip.id,
         user_id: user.id,
         type: 'system',
-        body: `🎉 Trip chat created! Start planning your adventure.`,
+        body: `Trip chat created! Start planning your adventure.`,
       });
 
       setCreatedTrip(trip);

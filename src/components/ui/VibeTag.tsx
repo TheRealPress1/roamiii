@@ -1,5 +1,7 @@
 import { cn } from '@/lib/utils';
 import { VIBE_TAGS } from '@/lib/supabase-types';
+import { SFSymbol } from '@/components/icons';
+import { VIBE_ICON_MAP } from '@/lib/icon-mappings';
 
 interface VibeTagProps {
   vibe: string;
@@ -31,17 +33,20 @@ export function VibeTag({ vibe, size = 'sm', interactive, selected, onClick }: V
     md: 'px-3 py-1 text-sm',
   };
 
+  const iconName = VIBE_ICON_MAP[vibe];
+
   return (
     <span
       onClick={onClick}
       className={cn(
-        'inline-flex items-center rounded-full font-medium border transition-all',
+        'inline-flex items-center gap-1 rounded-full font-medium border transition-all',
         sizeClasses[size],
         colorClasses,
         interactive && 'cursor-pointer hover:shadow-sm',
         selected && 'ring-2 ring-offset-1 ring-primary'
       )}
     >
+      {iconName && <SFSymbol name={iconName} size="xs" className="opacity-90 invert" />}
       {vibeInfo?.label || vibe}
     </span>
   );

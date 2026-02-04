@@ -16,13 +16,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { TripProposal, TripVote, VoteType, TripPhase } from '@/lib/tripchat-types';
+import type { TripProposal, TripVote, VoteType, TripPhase, ProposalType } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { IncludeToggle, IncludedBadge } from '@/components/proposal/IncludeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { SFSymbol } from '@/components/icons';
+import { PROPOSAL_TYPE_ICON_MAP, TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
 
 interface ProposalDetailModalProps {
   open: boolean;
@@ -134,12 +136,12 @@ export function ProposalDetailModal({
         })
         .eq('id', tripId);
 
-      // Post system message
+      // Post system message (plain text, icons rendered at display time)
       await supabase.from('messages').insert({
         trip_id: tripId,
         user_id: user.id,
         type: 'system',
-        body: `🎉 Final pick pinned: ${proposal.destination}!`,
+        body: `Final pick pinned: ${proposal.destination}!`,
       });
 
       // Notify all trip members about the locked plan
@@ -148,7 +150,7 @@ export function ProposalDetailModal({
           _trip_id: tripId,
           _actor_id: user.id,
           _type: 'plan_locked',
-          _title: 'Plan locked ✅',
+          _title: 'Plan locked',
           _body: `The plan for ${proposal.destination} has been finalized!`,
           _href: `/app/trip/${tripId}`,
         });
@@ -199,9 +201,12 @@ export function ProposalDetailModal({
   // Get badge info - special case for destinations
   const getBadgeInfo = () => {
     if (isDestination) {
-      return { emoji: '🌍', label: 'Destination' };
+      return { icon: TRIP_PHASE_ICON_MAP.destination, label: 'Destination' };
     }
-    return typeInfo;
+    return {
+      icon: PROPOSAL_TYPE_ICON_MAP[proposalType as ProposalType],
+      label: typeInfo?.label || proposalType
+    };
   };
   const badgeInfo = getBadgeInfo();
 
@@ -227,7 +232,7 @@ export function ProposalDetailModal({
           {/* Type badge */}
           {badgeInfo && (
             <div className="absolute top-4 left-4 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full text-white text-sm font-medium flex items-center gap-1.5">
-              <span>{badgeInfo.emoji}</span>
+              <SFSymbol name={badgeInfo.icon} size="sm" className="invert" />
               <span>{badgeInfo.label}</span>
             </div>
           )}

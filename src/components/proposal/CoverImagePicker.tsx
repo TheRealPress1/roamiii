@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { COVER_PRESETS, getAutoPickCover, getAutoPickKey } from '@/lib/cover-presets';
+import { SFSymbol } from '@/components/icons';
+import { COVER_PRESET_ICON_MAP } from '@/lib/icon-mappings';
 
 interface CoverImagePickerProps {
   selectedKey: string | null;
@@ -69,8 +71,10 @@ export function CoverImagePicker({
                   </div>
                 )}
               </div>
-              <span className="text-[10px] text-muted-foreground leading-tight text-center">
-                {preset.emoji}
+              <span className="text-[10px] text-muted-foreground leading-tight text-center flex items-center justify-center">
+                {COVER_PRESET_ICON_MAP[preset.key] && (
+                  <SFSymbol name={COVER_PRESET_ICON_MAP[preset.key]} size="xs" />
+                )}
               </span>
             </button>
           );

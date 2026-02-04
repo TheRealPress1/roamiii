@@ -23,6 +23,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { SFSymbol } from '@/components/icons';
+import { PROPOSAL_TYPE_ICON_MAP } from '@/lib/icon-mappings';
 
 interface FinalizeViewProps {
   open: boolean;
@@ -82,12 +84,12 @@ export function FinalizeView({
 
       if (error) throw error;
 
-      // Post system message
+      // Post system message (plain text, icons rendered at display time)
       await supabase.from('messages').insert({
         trip_id: trip.id,
         user_id: user.id,
         type: 'system',
-        body: `🎉 Trip is ready! ${lockedDestination?.name || lockedDestination?.destination || 'Destination'} is all planned!`,
+        body: `Trip is ready! ${lockedDestination?.name || lockedDestination?.destination || 'Destination'} is all planned!`,
       });
 
       // Notify members
@@ -221,7 +223,9 @@ export function FinalizeView({
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                              {typeInfo?.emoji}
+                              {type && PROPOSAL_TYPE_ICON_MAP[type as keyof typeof PROPOSAL_TYPE_ICON_MAP] && (
+                                <SFSymbol name={PROPOSAL_TYPE_ICON_MAP[type as keyof typeof PROPOSAL_TYPE_ICON_MAP]} size="md" />
+                              )}
                             </div>
                           )}
                         </div>

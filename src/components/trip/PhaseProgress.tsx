@@ -2,6 +2,8 @@ import { Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TripPhase, TripProposal } from '@/lib/tripchat-types';
 import { TRIP_PHASES } from '@/lib/tripchat-types';
+import { SFSymbol } from '@/components/icons';
+import { TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
 
 interface PhaseProgressProps {
   currentPhase: TripPhase;
@@ -39,7 +41,11 @@ export function PhaseProgress({ currentPhase, lockedDestination, className }: Ph
                   {isCompleted ? (
                     <Check className="h-5 w-5" />
                   ) : (
-                    <span>{phase.emoji}</span>
+                    <SFSymbol
+                      name={TRIP_PHASE_ICON_MAP[phase.value as TripPhase]}
+                      size="md"
+                      className={isCurrent ? 'invert' : ''}
+                    />
                   )}
                 </div>
                 <span
@@ -86,7 +92,7 @@ export function PhaseProgress({ currentPhase, lockedDestination, className }: Ph
       {/* Ready State Banner */}
       {currentPhase === 'ready' && (
         <div className="flex items-center gap-2 px-3 py-2 bg-vote-in/10 border border-vote-in/20 rounded-lg">
-          <span className="text-lg">🎉</span>
+          <SFSymbol name="party.popper.fill" size="md" />
           <span className="text-sm font-medium text-vote-in">
             Trip is ready! All planning complete.
           </span>

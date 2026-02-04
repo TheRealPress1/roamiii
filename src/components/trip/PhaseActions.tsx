@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
 
 interface PhaseActionsProps {
   tripId: string;
@@ -59,12 +60,12 @@ export function PhaseActions({
 
       if (error) throw error;
 
-      // Post system message
+      // Post system message (plain text, icons rendered at display time)
       await supabase.from('messages').insert({
         trip_id: tripId,
         user_id: user.id,
         type: 'system',
-        body: `${phaseInfo?.emoji || '📋'} Trip moved to: ${phaseInfo?.label || targetPhase}`,
+        body: `Trip moved to: ${phaseInfo?.label || targetPhase}`,
       });
 
       toast.success(`Moved to ${phaseInfo?.label || targetPhase}`);
@@ -98,12 +99,12 @@ export function PhaseActions({
 
       const phaseInfo = TRIP_PHASES.find(p => p.value === unlockTarget);
 
-      // Post system message
+      // Post system message (plain text, icons rendered at display time)
       await supabase.from('messages').insert({
         trip_id: tripId,
         user_id: user.id,
         type: 'system',
-        body: `🔓 Trip reopened for: ${phaseInfo?.label || unlockTarget}`,
+        body: `Trip reopened for: ${phaseInfo?.label || unlockTarget}`,
       });
 
       toast.success(`Reopened ${phaseInfo?.label || unlockTarget}`);

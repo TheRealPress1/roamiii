@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus } from 'lucide-react';
-import type { Message, TripProposal, TripVote, VoteType, TripPhase } from '@/lib/tripchat-types';
+import type { Message, TripProposal, TripVote, VoteType, TripPhase, ProposalType } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,6 +13,8 @@ import { IncludeToggle, IncludedBadge } from '@/components/proposal/IncludeToggl
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { SFSymbol } from '@/components/icons';
+import { PROPOSAL_TYPE_ICON_MAP, TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
 
 interface ProposalMessageProps {
   message: Message;
@@ -126,9 +128,12 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
   // Get badge info - special case for destinations
   const getBadgeInfo = () => {
     if (isDestination) {
-      return { emoji: '🌍', label: 'Destination' };
+      return { icon: TRIP_PHASE_ICON_MAP.destination, label: 'Destination' };
     }
-    return typeInfo;
+    return {
+      icon: PROPOSAL_TYPE_ICON_MAP[proposalType as ProposalType],
+      label: typeInfo?.label || proposalType
+    };
   };
   const badgeInfo = getBadgeInfo();
 
@@ -170,7 +175,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
           {/* Type badge */}
           {badgeInfo && (
             <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium flex items-center gap-1">
-              <span>{badgeInfo.emoji}</span>
+              <SFSymbol name={badgeInfo.icon} size="sm" className="invert" />
               <span>{badgeInfo.label}</span>
             </div>
           )}

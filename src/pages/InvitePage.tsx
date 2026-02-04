@@ -142,7 +142,7 @@ export default function InvitePage() {
         trip_id: trip.id,
         user_id: user.id,
         type: 'system',
-        body: `👋 ${displayName} joined the trip!`,
+        body: `${displayName} joined the trip!`,
       });
 
       localStorage.removeItem('pending_invite_code');

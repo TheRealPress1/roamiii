@@ -5,6 +5,8 @@ import { useProposalReactions } from '@/hooks/useProposalReactions';
 import { Button } from '@/components/ui/button';
 import { VibeTag } from '@/components/ui/VibeTag';
 import { cn } from '@/lib/utils';
+import { SFSymbol } from '@/components/icons';
+import { REACTION_ICON_MAP } from '@/lib/icon-mappings';
 
 interface CompareCardProps {
   proposal: TripProposal;
@@ -108,13 +110,13 @@ export function CompareCard({
         {/* Reaction counts */}
         <div className="flex flex-wrap gap-2 text-sm">
           <span className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded">
-            <span>👍</span> {counts.interested}
+            <SFSymbol name={REACTION_ICON_MAP.interested} size="sm" /> {counts.interested}
           </span>
           <span className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded">
-            <span>❤️</span> {counts.love}
+            <SFSymbol name={REACTION_ICON_MAP.love} size="sm" /> {counts.love}
           </span>
           <span className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded">
-            <span>👎</span> {counts.nope}
+            <SFSymbol name={REACTION_ICON_MAP.nope} size="sm" /> {counts.nope}
           </span>
           <span className="ml-auto font-medium text-primary">Score: {score}</span>
         </div>

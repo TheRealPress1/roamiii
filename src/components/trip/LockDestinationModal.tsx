@@ -13,6 +13,8 @@ import type { TripProposal } from '@/lib/tripchat-types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { SFSymbol } from '@/components/icons';
+import { VOTE_INDICATOR_ICON_MAP } from '@/lib/icon-mappings';
 
 interface LockDestinationModalProps {
   open: boolean;
@@ -61,12 +63,12 @@ export function LockDestinationModal({
         .update({ included: true })
         .eq('id', proposal.id);
 
-      // Post system message
+      // Post system message (plain text, icons rendered at display time)
       await supabase.from('messages').insert({
         trip_id: tripId,
         user_id: user.id,
         type: 'system',
-        body: `🌍 Destination locked: ${proposal.name || proposal.destination}! Now let's build the itinerary.`,
+        body: `Destination locked: ${proposal.name || proposal.destination}! Now let's build the itinerary.`,
       });
 
       toast.success('Destination locked! Moving to itinerary planning.');
@@ -125,13 +127,13 @@ export function LockDestinationModal({
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1 text-vote-in">
-                    <span>✅</span> {voteCounts.in} in
+                    <SFSymbol name={VOTE_INDICATOR_ICON_MAP.in} size="sm" /> {voteCounts.in} in
                   </span>
                   <span className="flex items-center gap-1 text-vote-maybe">
-                    <span>🤔</span> {voteCounts.maybe} maybe
+                    <SFSymbol name={VOTE_INDICATOR_ICON_MAP.maybe} size="sm" /> {voteCounts.maybe} maybe
                   </span>
                   <span className="flex items-center gap-1 text-vote-out">
-                    <span>❌</span> {voteCounts.out} out
+                    <SFSymbol name={VOTE_INDICATOR_ICON_MAP.out} size="sm" /> {voteCounts.out} out
                   </span>
                 </div>
               </div>

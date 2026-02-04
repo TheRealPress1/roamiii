@@ -100,7 +100,7 @@ export default function JoinTrip() {
         trip_id: trip.id,
         user_id: user.id,
         type: 'system',
-        body: `👋 ${displayName} joined the trip!`,
+        body: `${displayName} joined the trip!`,
       });
 
       toast.success(`Joined "${trip.name}"!`);

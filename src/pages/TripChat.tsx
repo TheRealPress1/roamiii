@@ -112,7 +112,7 @@ export default function TripChat() {
       return;
     }
 
-    toast.success('Trip locked! 🎉');
+    toast.success('Trip locked!');
     setCompareModalOpen(false);
     refetch();
   };

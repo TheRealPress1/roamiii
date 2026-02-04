@@ -8,15 +8,15 @@ export type ProposalType = 'housing' | 'activity';
 export type TripPhase = 'destination' | 'itinerary' | 'finalize' | 'ready';
 
 export const PROPOSAL_TYPES = [
-  { value: 'housing', label: 'Housing', emoji: '🏠', description: 'Where you\'ll stay' },
-  { value: 'activity', label: 'Activity', emoji: '🎯', description: 'Things to do' },
+  { value: 'housing', label: 'Housing', description: 'Where you\'ll stay' },
+  { value: 'activity', label: 'Activity', description: 'Things to do' },
 ] as const;
 
 export const TRIP_PHASES = [
-  { value: 'destination', label: 'Pick Destination', emoji: '🌍', step: 1 },
-  { value: 'itinerary', label: 'Build Itinerary', emoji: '📋', step: 2 },
-  { value: 'finalize', label: 'Finalize & Book', emoji: '✅', step: 3 },
-  { value: 'ready', label: 'Ready!', emoji: '🎉', step: 4 },
+  { value: 'destination', label: 'Pick Destination', step: 1 },
+  { value: 'itinerary', label: 'Build Itinerary', step: 2 },
+  { value: 'finalize', label: 'Finalize & Book', step: 3 },
+  { value: 'ready', label: 'Ready!', step: 4 },
 ] as const;
 
 export interface Profile {
@@ -176,19 +176,19 @@ export interface TripWithMeta extends Trip {
 }
 
 export const VIBE_TAGS = [
-  { value: 'party', label: '🎉 Party', color: 'vibe-party' },
-  { value: 'chill', label: '🌴 Chill', color: 'vibe-chill' },
-  { value: 'adventure', label: '🏔️ Adventure', color: 'vibe-adventure' },
-  { value: 'culture', label: '🏛️ Culture', color: 'vibe-culture' },
-  { value: 'nature', label: '🌿 Nature', color: 'vibe-nature' },
-  { value: 'luxury', label: '✨ Luxury', color: 'vibe-luxury' },
-  { value: 'beach', label: '🏖️ Beach', color: 'vibe-chill' },
-  { value: 'city', label: '🌆 City', color: 'vibe-culture' },
-  { value: 'food', label: '🍜 Foodie', color: 'vibe-adventure' },
-  { value: 'romantic', label: '💕 Romantic', color: 'vibe-party' },
+  { value: 'party', label: 'Party', color: 'vibe-party' },
+  { value: 'chill', label: 'Chill', color: 'vibe-chill' },
+  { value: 'adventure', label: 'Adventure', color: 'vibe-adventure' },
+  { value: 'culture', label: 'Culture', color: 'vibe-culture' },
+  { value: 'nature', label: 'Nature', color: 'vibe-nature' },
+  { value: 'luxury', label: 'Luxury', color: 'vibe-luxury' },
+  { value: 'beach', label: 'Beach', color: 'vibe-chill' },
+  { value: 'city', label: 'City', color: 'vibe-culture' },
+  { value: 'food', label: 'Foodie', color: 'vibe-adventure' },
+  { value: 'romantic', label: 'Romantic', color: 'vibe-party' },
 ] as const;
 
-export const REACTION_EMOJIS = ['👍', '❤️', '🔥', '😂', '😮', '🙌', '✈️', '🏝️'] as const;
+// Reaction icons are now handled via icon-mappings.ts
 
 // Proposal reaction types
 export type ReactionType = 'interested' | 'love' | 'nope';

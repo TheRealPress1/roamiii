@@ -5,6 +5,9 @@ import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { ChatMessage } from './ChatMessage';
 import { ProposalMessage } from './ProposalMessage';
 import { cn } from '@/lib/utils';
+import { SFSymbol } from '@/components/icons';
+import { PROPOSAL_TYPE_ICON_MAP, TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
+import type { SFSymbolName } from '@/components/icons';
 
 export type ChatViewMode = 'proposals' | 'chat';
 
@@ -26,7 +29,7 @@ interface ChatFeedProps {
 interface ProposalGroup {
   type: ProposalType | 'destination';
   label: string;
-  emoji: string;
+  icon: SFSymbolName;
   messages: Message[];
 }
 
@@ -66,7 +69,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
       groups.push({
         type: 'destination',
         label: 'Destinations',
-        emoji: '🌍',
+        icon: TRIP_PHASE_ICON_MAP.destination,
         messages: destinationMsgs,
       });
     }
@@ -78,7 +81,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
       groups.push({
         type: 'housing',
         label: typeInfo?.label || 'Housing',
-        emoji: typeInfo?.emoji || '🏠',
+        icon: PROPOSAL_TYPE_ICON_MAP.housing,
         messages: housingMsgs,
       });
     }
@@ -90,7 +93,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
       groups.push({
         type: 'activity',
         label: typeInfo?.label || 'Activity',
-        emoji: typeInfo?.emoji || '🎯',
+        icon: PROPOSAL_TYPE_ICON_MAP.activity,
         messages: activityMsgs,
       });
     }
@@ -133,7 +136,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center">
             <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
-              <span className="text-3xl">{viewMode === 'proposals' ? '🗳️' : '💬'}</span>
+              <SFSymbol name={viewMode === 'proposals' ? 'square.stack.3d.up.fill' : 'bubble.left.fill'} size="xl" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
               {viewMode === 'proposals' ? 'No proposals yet' : 'No messages yet'}
@@ -168,7 +171,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
                 <div className="flex items-center justify-center p-8">
                   <div className="text-center">
                     <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
-                      <span className="text-3xl">🗳️</span>
+                      <SFSymbol name="square.stack.3d.up.fill" size="xl" />
                     </div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">No proposals yet</h3>
                     <p className="text-muted-foreground text-sm max-w-xs">
@@ -181,7 +184,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
                   <div key={group.type} className="px-4">
                     {/* Group Header */}
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="text-lg">{group.emoji}</span>
+                      <SFSymbol name={group.icon} size="md" />
                       <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
                         {group.label}
                       </h3>
@@ -224,7 +227,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
                 <div className="flex items-center justify-center p-8">
                   <div className="text-center">
                     <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
-                      <span className="text-3xl">💬</span>
+                      <SFSymbol name="bubble.left.fill" size="xl" />
                     </div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">No messages yet</h3>
                     <p className="text-muted-foreground text-sm max-w-xs">

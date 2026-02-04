@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { Message, TripPhase } from '@/lib/tripchat-types';
+import { SFSymbol } from '@/components/icons';
 
 interface ChatComposerProps {
   onSend: (message: string, replyToId?: string) => Promise<{ error: Error | null }>;
@@ -68,9 +69,14 @@ export function ChatComposer({ onSend, onPropose, disabled, replyTo, onCancelRep
 
   // Get preview text for the message being replied to
   const getReplyPreview = () => {
-    if (!replyTo) return '';
+    if (!replyTo) return null;
     if (replyTo.type === 'proposal' && replyTo.proposal) {
-      return `📍 ${replyTo.proposal.destination}`;
+      return (
+        <span className="flex items-center gap-1">
+          <SFSymbol name="mappin.circle.fill" size="xs" inline />
+          {replyTo.proposal.destination}
+        </span>
+      );
     }
     return replyTo.body?.slice(0, 50) + (replyTo.body && replyTo.body.length > 50 ? '...' : '') || '';
   };
