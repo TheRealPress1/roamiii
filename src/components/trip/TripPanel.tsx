@@ -92,15 +92,15 @@ export function TripPanel({
   };
 
   return (
-    <div className="w-80 border-l border-border bg-card flex flex-col h-full">
+    <div className="w-80 min-w-0 border-l border-border bg-card flex flex-col h-full overflow-hidden">
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
+        <div className="p-4 space-y-6 overflow-hidden">
           {/* Phase Status */}
           <section className="pb-4 border-b border-border">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">{phaseInfo?.emoji}</span>
-              <span className="text-sm font-semibold text-foreground">{phaseInfo?.label}</span>
-              <Badge variant="secondary" className="ml-auto text-xs">
+            <div className="flex items-center gap-2 mb-3 min-w-0">
+              <span className="text-lg flex-shrink-0">{phaseInfo?.emoji}</span>
+              <span className="text-sm font-semibold text-foreground truncate">{phaseInfo?.label}</span>
+              <Badge variant="secondary" className="ml-auto text-xs flex-shrink-0 whitespace-nowrap">
                 Step {phaseInfo?.step}/4
               </Badge>
             </div>
@@ -144,11 +144,11 @@ export function TripPanel({
                 return (
                   <button
                     onClick={() => onViewProposal(lockedDestination)}
-                    className="w-full p-3 bg-primary/5 rounded-lg border border-primary/20 hover:border-primary/40 transition-colors text-left"
+                    className="w-full p-3 bg-primary/5 rounded-lg border border-primary/20 hover:border-primary/40 transition-colors text-left overflow-hidden"
                   >
-                    <div className="flex items-center gap-2 mb-1">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      <span className="font-semibold text-foreground">{destDisplayName}</span>
+                    <div className="flex items-center gap-2 mb-1 min-w-0">
+                      <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="font-semibold text-foreground truncate">{destDisplayName}</span>
                     </div>
                     {lockedDestination.vibe_tags && lockedDestination.vibe_tags.length > 0 && (
                       <p className="text-xs text-muted-foreground">
@@ -191,11 +191,11 @@ export function TripPanel({
                 </DropdownMenu>
               )}
             </div>
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 overflow-hidden">
               {(trip.date_start || trip.date_end) && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>
+                <div className="flex items-center gap-2 text-sm min-w-0">
+                  <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="truncate">
                     {trip.date_start && format(new Date(trip.date_start), 'MMM d')}
                     {trip.date_end && ` - ${format(new Date(trip.date_end), 'MMM d, yyyy')}`}
                     {trip.flexible_dates && ' (Flexible)'}
@@ -203,9 +203,9 @@ export function TripPanel({
                 </div>
               )}
               {(trip.budget_min || trip.budget_max) && (
-                <div className="flex items-center gap-2 text-sm">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span>
+                <div className="flex items-center gap-2 text-sm min-w-0">
+                  <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="truncate">
                     {trip.budget_min && `$${trip.budget_min}`}
                     {trip.budget_min && trip.budget_max && ' - '}
                     {trip.budget_max && `$${trip.budget_max}`}
@@ -214,9 +214,9 @@ export function TripPanel({
                 </div>
               )}
               {hasDeadline && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4 text-vote-maybe" />
-                  <span className="text-vote-maybe font-medium">
+                <div className="flex items-center gap-2 text-sm min-w-0">
+                  <Clock className="h-4 w-4 text-vote-maybe flex-shrink-0" />
+                  <span className="text-vote-maybe font-medium truncate">
                     Decide {formatDistanceToNow(new Date(trip.decision_deadline!), { addSuffix: true })}
                   </span>
                 </div>
@@ -226,11 +226,11 @@ export function TripPanel({
 
           {/* Members */}
           <section>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="flex items-center justify-between mb-3 min-w-0">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">
                 Members ({members.length})
               </h3>
-              <Button variant="ghost" size="sm" onClick={onInvite} className="h-7 text-xs">
+              <Button variant="ghost" size="sm" onClick={onInvite} className="h-7 text-xs flex-shrink-0">
                 Invite
               </Button>
             </div>
@@ -301,13 +301,13 @@ export function TripPanel({
                 return (
                   <button
                     onClick={() => onViewProposal(pinnedProposal)}
-                    className="w-full p-3 bg-vote-in-bg rounded-lg border border-vote-in/20 hover:border-vote-in/40 transition-colors text-left"
+                    className="w-full p-3 bg-vote-in-bg rounded-lg border border-vote-in/20 hover:border-vote-in/40 transition-colors text-left overflow-hidden"
                   >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span>{pinnedTypeInfo?.emoji}</span>
-                      <span className="font-semibold text-foreground">{pinnedDisplayName}</span>
+                    <div className="flex items-center gap-2 mb-1 min-w-0">
+                      <span className="flex-shrink-0">{pinnedTypeInfo?.emoji}</span>
+                      <span className="font-semibold text-foreground truncate">{pinnedDisplayName}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground truncate">
                       {isPinnedFullItinerary
                         ? `$${pinnedProposal.estimated_cost_per_person}/person`
                         : pinnedProposal.price_range || pinnedProposal.destination}
@@ -319,9 +319,9 @@ export function TripPanel({
           )}
 
           {/* Proposals Ranking - Phase-aware */}
-          <section>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              {currentPhase === 'destination' ? 'Destination Proposals' : 'Itinerary Items'} ({currentPhase === 'destination' ? destinationProposals.length : proposals.filter(p => !p.is_destination).length})
+          <section className="overflow-hidden">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 truncate">
+              {currentPhase === 'destination' ? 'Destinations' : 'Itinerary'} ({currentPhase === 'destination' ? destinationProposals.length : proposals.filter(p => !p.is_destination).length})
             </h3>
             {(() => {
               // Show destination proposals in phase 1, itinerary items in phase 2+
@@ -355,31 +355,32 @@ export function TripPanel({
                         key={proposal.id}
                         onClick={() => onViewProposal(proposal)}
                         className={cn(
-                          'w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left',
+                          'w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left min-w-0',
                           isPinned && 'bg-vote-in-bg border border-vote-in/20',
                           isIncluded && !isPinned && 'bg-vote-in/5 border border-vote-in/10'
                         )}
                       >
                         <div className={cn(
-                          'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+                          'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
                           index === 0 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
                         )}>
                           {index + 1}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate flex items-center gap-1">
-                            {typeInfo?.emoji} {displayName}
+                            <span className="flex-shrink-0">{typeInfo?.emoji}</span>
+                            <span className="truncate">{displayName}</span>
                             {isIncluded && (
                               <Check className="h-3 w-3 text-vote-in flex-shrink-0" />
                             )}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground truncate">
                             {isFullItinerary ? `$${proposal.estimated_cost_per_person} · ` : ''}
                             {proposal.price_range && proposalType === 'food_spot' ? `${proposal.price_range} · ` : ''}
                             {inCount} in
                           </p>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       </button>
                     );
                   })}
@@ -390,10 +391,10 @@ export function TripPanel({
 
           {/* Included Items Summary (Phase 2+) */}
           {currentPhase !== 'destination' && includedProposals.length > 0 && (
-            <section>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1">
-                <Check className="h-3.5 w-3.5 text-vote-in" />
-                In the Plan ({includedProposals.length})
+            <section className="overflow-hidden">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1 min-w-0">
+                <Check className="h-3.5 w-3.5 text-vote-in flex-shrink-0" />
+                <span className="truncate">In the Plan ({includedProposals.length})</span>
               </h3>
               <div className="space-y-1.5">
                 {includedProposals.slice(0, 5).map((proposal) => {
@@ -405,11 +406,11 @@ export function TripPanel({
                     <button
                       key={proposal.id}
                       onClick={() => onViewProposal(proposal)}
-                      className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left text-sm"
+                      className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left text-sm min-w-0"
                     >
-                      <span>{typeInfo?.emoji}</span>
-                      <span className="flex-1 truncate">{displayName}</span>
-                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="flex-shrink-0">{typeInfo?.emoji}</span>
+                      <span className="flex-1 truncate min-w-0">{displayName}</span>
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                     </button>
                   );
                 })}
