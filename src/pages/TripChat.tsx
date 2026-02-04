@@ -289,7 +289,7 @@ export default function TripChat() {
           initial={false}
           animate={{ width: showPanel ? 320 : 0, opacity: showPanel ? 1 : 0 }}
           transition={{ duration: 0.2 }}
-          className={cn('hidden md:block overflow-hidden', !showPanel && 'pointer-events-none')}
+          className={cn('hidden md:flex flex-shrink-0 overflow-hidden border-l border-border', !showPanel && 'pointer-events-none')}
         >
           <TripPanel
             trip={trip}

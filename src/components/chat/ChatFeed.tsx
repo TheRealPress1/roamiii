@@ -260,7 +260,7 @@ interface ViewModeToggleProps {
 
 function ViewModeToggle({ viewMode, onViewModeChange, proposalCount, chatCount }: ViewModeToggleProps) {
   return (
-    <div className="flex items-center justify-center gap-1 p-2 border-b border-border bg-card/50">
+    <div className="flex items-center justify-center gap-1 p-2 border-b border-border bg-card relative z-10">
       <button
         onClick={() => onViewModeChange('proposals')}
         className={cn(
