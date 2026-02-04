@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { MapPin, Calendar, DollarSign, ExternalLink, Trophy, Loader2, Users, Trash2, Navigation, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus } from 'lucide-react';
+import { MapPin, Calendar, ExternalLink, Trophy, Loader2, Trash2, Navigation, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -157,16 +157,9 @@ export function ProposalDetailModal({
     }
   };
 
-  const totalCost =
-    proposal.cost_lodging_total +
-    proposal.cost_transport_total +
-    proposal.cost_food_total +
-    proposal.cost_activities_total;
-
   // Get proposal type info
-  const proposalType = proposal.type || 'full_itinerary';
+  const proposalType = proposal.type || 'housing';
   const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
-  const isFullItinerary = proposalType === 'full_itinerary';
   const isDestination = proposal.is_destination;
   const displayTitle = proposal.name || proposal.destination;
 
@@ -214,8 +207,8 @@ export function ProposalDetailModal({
             {proposal.name && proposal.destination && proposal.name !== proposal.destination && (
               <p className="text-white/80 text-sm mb-2">{proposal.destination}</p>
             )}
-            {/* Vibe tags - only for full itinerary */}
-            {isFullItinerary && proposal.vibe_tags && proposal.vibe_tags.length > 0 && (
+            {/* Vibe tags - show for destinations */}
+            {isDestination && proposal.vibe_tags && proposal.vibe_tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {proposal.vibe_tags.map((vibe) => (
                   <VibeTag key={vibe} vibe={vibe as any} />
@@ -227,8 +220,8 @@ export function ProposalDetailModal({
 
         <ScrollArea className="max-h-[50vh]">
           <div className="p-6 space-y-6">
-            {/* Description for quick posts */}
-            {!isFullItinerary && proposal.description && (
+            {/* Description */}
+            {proposal.description && (
               <div className="text-sm text-muted-foreground">
                 {proposal.description}
               </div>
@@ -246,19 +239,6 @@ export function ProposalDetailModal({
                   {proposal.flexible_dates && (
                     <span className="text-xs bg-muted px-2 py-0.5 rounded">Flexible</span>
                   )}
-                </div>
-              )}
-              {isFullItinerary && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>{proposal.attendee_count} people</span>
-                </div>
-              )}
-              {/* Price range for food spots */}
-              {proposalType === 'food_spot' && proposal.price_range && (
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span>{proposal.price_range}</span>
                 </div>
               )}
             </div>
@@ -282,8 +262,8 @@ export function ProposalDetailModal({
               </div>
             )}
 
-            {/* URL link for quick posts */}
-            {!isFullItinerary && proposal.url && (
+            {/* URL link */}
+            {proposal.url && (
               <a
                 href={proposal.url}
                 target="_blank"
@@ -296,10 +276,10 @@ export function ProposalDetailModal({
               </a>
             )}
 
-            {/* Cost per person highlight - only for full itinerary (NOT destinations) */}
-            {isFullItinerary && !isDestination && proposal.estimated_cost_per_person > 0 && (
+            {/* Cost per person highlight (NOT for destinations) */}
+            {!isDestination && proposal.estimated_cost_per_person > 0 && (
               <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
-                <p className="text-sm text-muted-foreground mb-1">Estimated cost per person</p>
+                <p className="text-sm text-muted-foreground mb-1">Cost per person</p>
                 <p className="text-3xl font-bold text-primary">${proposal.estimated_cost_per_person}</p>
               </div>
             )}
@@ -332,59 +312,6 @@ export function ProposalDetailModal({
               <ProposalReactions proposalId={proposal.id} tripId={tripId} />
             </div>
 
-            {/* Cost Breakdown - only for full itinerary */}
-            {isFullItinerary && totalCost > 0 && (
-              <div className="space-y-3">
-                <h4 className="font-semibold text-foreground">Cost Breakdown</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  {proposal.cost_lodging_total > 0 && (
-                    <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-                      <span className="text-muted-foreground">Lodging</span>
-                      <span className="font-medium">${proposal.cost_lodging_total}</span>
-                    </div>
-                  )}
-                  {proposal.cost_transport_total > 0 && (
-                    <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-                      <span className="text-muted-foreground">Transport</span>
-                      <span className="font-medium">${proposal.cost_transport_total}</span>
-                    </div>
-                  )}
-                  {proposal.cost_food_total > 0 && (
-                    <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-                      <span className="text-muted-foreground">Food</span>
-                      <span className="font-medium">${proposal.cost_food_total}</span>
-                    </div>
-                  )}
-                  {proposal.cost_activities_total > 0 && (
-                    <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-                      <span className="text-muted-foreground">Activities</span>
-                      <span className="font-medium">${proposal.cost_activities_total}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Lodging Links - only for full itinerary */}
-            {isFullItinerary && proposal.lodging_links && proposal.lodging_links.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="font-semibold text-foreground">Lodging Options</h4>
-                <div className="space-y-2">
-                  {proposal.lodging_links.map((link, i) => (
-                    <a
-                      key={i}
-                      href={link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-sm"
-                    >
-                      <ExternalLink className="h-4 w-4 text-primary" />
-                      <span className="truncate flex-1">{link}</span>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Include in Plan Toggle (Admin only, Phase 2+, non-destination proposals) */}
             {isAdmin &&

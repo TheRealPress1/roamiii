@@ -3,13 +3,11 @@ import { format } from 'date-fns';
 import {
   MapPin,
   Calendar,
-  DollarSign,
   ExternalLink,
   Check,
   Loader2,
   ChevronRight,
   Hotel,
-  Utensils,
   Ticket,
   Navigation,
 } from 'lucide-react';
@@ -52,7 +50,7 @@ export function FinalizeView({
 
   // Group included proposals by type
   const groupedProposals = includedProposals.reduce((acc, proposal) => {
-    const type = proposal.type || 'full_itinerary';
+    const type = proposal.type || 'housing';
     if (!acc[type]) acc[type] = [];
     acc[type].push(proposal);
     return acc;
@@ -119,12 +117,10 @@ export function FinalizeView({
 
   const getCategoryIcon = (type: string) => {
     switch (type) {
-      case 'food_spot':
-        return <Utensils className="h-4 w-4" />;
+      case 'housing':
+        return <Hotel className="h-4 w-4" />;
       case 'activity':
         return <Ticket className="h-4 w-4" />;
-      case 'place':
-        return <MapPin className="h-4 w-4" />;
       default:
         return <Navigation className="h-4 w-4" />;
     }
@@ -233,14 +229,9 @@ export function FinalizeView({
                           <p className="font-medium text-foreground truncate">
                             {proposal.name || proposal.destination}
                           </p>
-                          {proposal.address && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {proposal.address}
-                            </p>
-                          )}
-                          {proposal.price_range && (
+                          {proposal.estimated_cost_per_person > 0 && (
                             <p className="text-xs text-muted-foreground">
-                              {proposal.price_range}
+                              ${proposal.estimated_cost_per_person}/person
                             </p>
                           )}
                         </div>
@@ -264,7 +255,7 @@ export function FinalizeView({
             {includedProposals.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No items included in the itinerary yet.</p>
-                <p className="text-sm mt-1">Go back and include some activities, food spots, or places!</p>
+                <p className="text-sm mt-1">Go back and include some housing or activities!</p>
               </div>
             )}
 

@@ -77,19 +77,17 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
   const authorInitials = authorName.slice(0, 2).toUpperCase();
 
   // Get proposal type info
-  const proposalType = proposal.type || 'full_itinerary';
+  const proposalType = proposal.type || 'housing';
   const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
-  const isFullItinerary = proposalType === 'full_itinerary';
   const isDestination = proposal.is_destination;
   const displayTitle = proposal.name || proposal.destination;
 
   const getActionText = () => {
     if (isDestination) return 'proposed a destination';
     switch (proposalType) {
-      case 'place': return 'suggested a place';
+      case 'housing': return 'suggested housing';
       case 'activity': return 'suggested an activity';
-      case 'food_spot': return 'suggested a food spot';
-      default: return 'proposed a trip';
+      default: return 'added to itinerary';
     }
   };
 
@@ -145,8 +143,8 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
               <span>{badgeInfo.label}</span>
             </div>
           )}
-          {/* Vibe tags - only for full itinerary */}
-          {isFullItinerary && proposal.vibe_tags && proposal.vibe_tags.length > 0 && (
+          {/* Vibe tags - show for destinations */}
+          {isDestination && proposal.vibe_tags && proposal.vibe_tags.length > 0 && (
             <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
               {proposal.vibe_tags.slice(0, 3).map((vibe) => (
                 <VibeTag key={vibe} vibe={vibe as any} size="sm" />
@@ -167,8 +165,8 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             <p className="text-sm text-muted-foreground mb-2">{proposal.destination}</p>
           )}
 
-          {/* Description for quick posts */}
-          {!isFullItinerary && proposal.description && (
+          {/* Description */}
+          {proposal.description && (
             <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{proposal.description}</p>
           )}
 
@@ -185,10 +183,8 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             {proposal.flexible_dates && (
               <span className="text-xs bg-muted px-2 py-0.5 rounded">Flexible</span>
             )}
-            {/* Price range for food spots, cost per person for full itineraries (NOT for destinations) */}
-            {proposalType === 'food_spot' && proposal.price_range ? (
-              <span className="font-medium text-foreground">{proposal.price_range}</span>
-            ) : isFullItinerary && !isDestination && proposal.estimated_cost_per_person > 0 && (
+            {/* Cost per person (NOT for destinations) */}
+            {!isDestination && proposal.estimated_cost_per_person > 0 && (
               <span className="flex items-center gap-1 font-medium text-foreground">
                 <DollarSign className="h-3.5 w-3.5" />
                 ${proposal.estimated_cost_per_person}/person
@@ -251,8 +247,8 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             </div>
           )}
 
-          {/* View Link button for quick posts with URL */}
-          {!isFullItinerary && proposal.url && (
+          {/* View Link button for items with URL */}
+          {proposal.url && (
             <div className="mb-3">
               <a
                 href={proposal.url}

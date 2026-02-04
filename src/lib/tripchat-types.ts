@@ -4,14 +4,12 @@ export type TripRole = 'owner' | 'admin' | 'member';
 export type MessageType = 'text' | 'proposal' | 'system';
 export type VoteType = 'in' | 'maybe' | 'out';
 export type MemberStatus = 'active' | 'removed';
-export type ProposalType = 'place' | 'activity' | 'food_spot' | 'full_itinerary';
+export type ProposalType = 'housing' | 'activity';
 export type TripPhase = 'destination' | 'itinerary' | 'finalize' | 'ready';
 
 export const PROPOSAL_TYPES = [
-  { value: 'place', label: 'Place', emoji: '📍', description: 'A destination to visit' },
-  { value: 'activity', label: 'Activity', emoji: '🎯', description: 'Something to do' },
-  { value: 'food_spot', label: 'Food Spot', emoji: '🍽️', description: 'Restaurant, cafe, bar' },
-  { value: 'full_itinerary', label: 'Full Itinerary', emoji: '🗺️', description: 'Complete trip plan' },
+  { value: 'housing', label: 'Housing', emoji: '🏠', description: 'Where you\'ll stay' },
+  { value: 'activity', label: 'Activity', emoji: '🎯', description: 'Things to do' },
 ] as const;
 
 export const TRIP_PHASES = [

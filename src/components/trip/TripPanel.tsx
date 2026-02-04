@@ -309,10 +309,9 @@ export function TripPanel({
                 Final Pick
               </h3>
               {(() => {
-                const pinnedType = pinnedProposal.type || 'full_itinerary';
+                const pinnedType = pinnedProposal.type || 'housing';
                 const pinnedTypeInfo = PROPOSAL_TYPES.find(t => t.value === pinnedType);
                 const pinnedDisplayName = pinnedProposal.name || pinnedProposal.destination;
-                const isPinnedFullItinerary = pinnedType === 'full_itinerary';
 
                 return (
                   <button
@@ -323,11 +322,11 @@ export function TripPanel({
                       <span className="flex-shrink-0">{pinnedTypeInfo?.emoji}</span>
                       <span className="font-semibold text-foreground truncate">{pinnedDisplayName}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {isPinnedFullItinerary
-                        ? `$${pinnedProposal.estimated_cost_per_person}/person`
-                        : pinnedProposal.price_range || pinnedProposal.destination}
-                    </p>
+                    {pinnedProposal.estimated_cost_per_person > 0 && (
+                      <p className="text-sm text-muted-foreground truncate">
+                        ${pinnedProposal.estimated_cost_per_person}/person
+                      </p>
+                    )}
                   </button>
                 );
               })()}
@@ -361,10 +360,9 @@ export function TripPanel({
                     const inCount = (proposal.votes || []).filter((v) => v.vote === 'in').length;
                     const isPinned = proposal.id === trip.pinned_proposal_id;
                     const isIncluded = proposal.included;
-                    const proposalType = proposal.type || 'full_itinerary';
+                    const proposalType = proposal.type || 'housing';
                     const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
                     const displayName = proposal.name || proposal.destination;
-                    const isFullItinerary = proposalType === 'full_itinerary';
 
                     return (
                       <button
@@ -391,8 +389,7 @@ export function TripPanel({
                             )}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {isFullItinerary ? `$${proposal.estimated_cost_per_person} · ` : ''}
-                            {proposal.price_range && proposalType === 'food_spot' ? `${proposal.price_range} · ` : ''}
+                            {proposal.estimated_cost_per_person > 0 ? `$${proposal.estimated_cost_per_person}/person · ` : ''}
                             {inCount} in
                           </p>
                         </div>
@@ -414,7 +411,7 @@ export function TripPanel({
               </h3>
               <div className="space-y-1.5">
                 {includedProposals.slice(0, 5).map((proposal) => {
-                  const proposalType = proposal.type || 'full_itinerary';
+                  const proposalType = proposal.type || 'housing';
                   const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
                   const displayName = proposal.name || proposal.destination;
 
