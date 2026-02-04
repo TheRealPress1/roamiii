@@ -230,6 +230,27 @@ export type CompareSortOption =
 // Notification types
 export type NotificationType = 'member_joined' | 'proposal_posted' | 'plan_locked' | 'mention';
 
+// Temperature voting helper functions
+export function scoreToLabel(score: number): string {
+  if (score <= 30) return "Not feeling it";
+  if (score <= 60) return "Maybe";
+  return "I'm in!";
+}
+
+export function voteTypeToScore(vote: VoteType): number {
+  switch (vote) {
+    case 'out': return 15;
+    case 'maybe': return 50;
+    case 'in': return 85;
+  }
+}
+
+export function scoreToVoteType(score: number): VoteType {
+  if (score <= 30) return 'out';
+  if (score <= 60) return 'maybe';
+  return 'in';
+}
+
 export interface Notification {
   id: string;
   user_id: string;

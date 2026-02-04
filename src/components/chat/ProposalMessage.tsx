@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus, Lock, Clock, Users, Check } from 'lucide-react';
-import type { Message, TripProposal, TripVote, VoteType, TripPhase, ProposalType } from '@/lib/tripchat-types';
-import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
+import { motion } from 'framer-motion';
+import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, Lock, Clock, Users, Check } from 'lucide-react';
+import type { Message, TripProposal, TripVote, TripPhase, ProposalType } from '@/lib/tripchat-types';
+import { PROPOSAL_TYPES, voteTypeToScore, scoreToVoteType } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SFSymbol } from '@/components/icons';
 import { PROPOSAL_TYPE_ICON_MAP, TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
+import { TemperatureSlider, TemperatureDisplay } from '@/components/ui/TemperatureSlider';
 
 interface VotingStatusInfo {
   votedCount: number;
@@ -53,33 +54,33 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
   if (!proposal) return null;
 
   const userVote = localVotes.find((v) => v.user_id === user?.id);
-  const votesByType = {
-    in: localVotes.filter((v) => v.vote === 'in'),
-    maybe: localVotes.filter((v) => v.vote === 'maybe'),
-    out: localVotes.filter((v) => v.vote === 'out'),
-  };
 
-  const handleVote = async (voteType: VoteType) => {
+  // Get user's current temperature score (default to 50 if no vote)
+  const userTemperature = userVote?.score ?? (userVote ? voteTypeToScore(userVote.vote) : 50);
+
+  // Calculate average temperature from all votes
+  const averageTemperature = localVotes.length > 0
+    ? localVotes.reduce((sum, v) => sum + (v.score ?? voteTypeToScore(v.vote)), 0) / localVotes.length
+    : null;
+
+  const handleTemperatureVote = async (score: number) => {
     if (!user || !profile) return;
+
+    // Derive VoteType from score for backwards compatibility
+    const voteType = scoreToVoteType(score);
 
     // Store previous state for rollback
     const previousVotes = [...localVotes];
 
     try {
       if (userVote) {
-        if (userVote.vote === voteType) {
-          // Optimistically remove vote
-          setLocalVotes(prev => prev.filter(v => v.user_id !== user.id));
-          await supabase.from('trip_votes').delete().eq('id', userVote.id);
-        } else {
-          // Optimistically update vote
-          setLocalVotes(prev => prev.map(v =>
-            v.user_id === user.id
-              ? { ...v, vote: voteType }
-              : v
-          ));
-          await supabase.from('trip_votes').update({ vote: voteType }).eq('id', userVote.id);
-        }
+        // Optimistically update vote
+        setLocalVotes(prev => prev.map(v =>
+          v.user_id === user.id
+            ? { ...v, vote: voteType, score }
+            : v
+        ));
+        await supabase.from('trip_votes').update({ vote: voteType, score }).eq('id', userVote.id);
       } else {
         // Optimistically add new vote
         const optimisticVote: TripVote = {
@@ -88,7 +89,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
           proposal_id: proposal.id,
           user_id: user.id,
           vote: voteType,
-          score: null,
+          score,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           voter: profile,
@@ -100,6 +101,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
           proposal_id: proposal.id,
           user_id: user.id,
           vote: voteType,
+          score,
         });
       }
     } catch (error) {
@@ -303,25 +305,17 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             <VotingStatusDisplay status={votingStatus} />
           )}
 
-          {/* Vote buttons */}
-          <div className="flex gap-2 mb-3">
-            <VoteButton
-              type="in"
-              votes={votesByType.in}
-              isActive={userVote?.vote === 'in'}
-              onClick={() => handleVote('in')}
+          {/* Temperature Slider Voting */}
+          <div className="mb-3 space-y-2">
+            <TemperatureSlider
+              value={userTemperature}
+              onChange={handleTemperatureVote}
+              size="sm"
             />
-            <VoteButton
-              type="maybe"
-              votes={votesByType.maybe}
-              isActive={userVote?.vote === 'maybe'}
-              onClick={() => handleVote('maybe')}
-            />
-            <VoteButton
-              type="out"
-              votes={votesByType.out}
-              isActive={userVote?.vote === 'out'}
-              onClick={() => handleVote('out')}
+            <TemperatureDisplay
+              averageScore={averageTemperature}
+              voteCount={localVotes.length}
+              size="sm"
             />
           </div>
 
@@ -402,62 +396,6 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
   );
 }
 
-interface VoteButtonProps {
-  type: VoteType;
-  votes: TripVote[];
-  isActive: boolean;
-  onClick: () => void;
-}
-
-function VoterAvatars({ votes, isActive }: { votes: TripVote[]; isActive: boolean }) {
-  const maxVisible = 3;
-  const visibleVotes = votes.slice(0, maxVisible);
-  const overflowCount = votes.length - maxVisible;
-
-  if (votes.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="flex items-center -space-x-1">
-      {visibleVotes.map((vote, index) => {
-        const voter = vote.voter;
-        const initials = voter?.name?.slice(0, 2).toUpperCase() || voter?.email?.slice(0, 2).toUpperCase() || '?';
-        return (
-          <Avatar
-            key={vote.id}
-            className={cn(
-              'h-5 w-5 ring-2',
-              isActive ? 'ring-white/30' : 'ring-background'
-            )}
-            style={{ zIndex: maxVisible - index }}
-          >
-            <AvatarImage src={voter?.avatar_url || undefined} />
-            <AvatarFallback className={cn(
-              'text-[8px] font-medium',
-              isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
-            )}>
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-        );
-      })}
-      {overflowCount > 0 && (
-        <div
-          className={cn(
-            'h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-medium ring-2',
-            isActive
-              ? 'bg-white/20 text-white ring-white/30'
-              : 'bg-muted text-muted-foreground ring-background'
-          )}
-          style={{ zIndex: 0 }}
-        >
-          +{overflowCount}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function VotingStatusDisplay({ status }: { status: VotingStatusInfo }) {
   const { votedCount, totalMembers, deadline, deadlinePassed, allVoted } = status;
@@ -505,56 +443,3 @@ function VotingStatusDisplay({ status }: { status: VotingStatusInfo }) {
   );
 }
 
-function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
-  const config = {
-    in: {
-      icon: ThumbsUp,
-      gradient: 'from-emerald-500 to-green-600',
-      bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-      text: 'text-emerald-600 dark:text-emerald-400',
-      border: 'border-emerald-200 dark:border-emerald-800',
-      hoverBg: 'hover:bg-emerald-100 dark:hover:bg-emerald-900/50',
-    },
-    maybe: {
-      icon: Minus,
-      gradient: 'from-amber-500 to-orange-500',
-      bg: 'bg-amber-50 dark:bg-amber-950/30',
-      text: 'text-amber-600 dark:text-amber-400',
-      border: 'border-amber-200 dark:border-amber-800',
-      hoverBg: 'hover:bg-amber-100 dark:hover:bg-amber-900/50',
-    },
-    out: {
-      icon: ThumbsDown,
-      gradient: 'from-rose-500 to-red-600',
-      bg: 'bg-rose-50 dark:bg-rose-950/30',
-      text: 'text-rose-600 dark:text-rose-400',
-      border: 'border-rose-200 dark:border-rose-800',
-      hoverBg: 'hover:bg-rose-100 dark:hover:bg-rose-900/50',
-    },
-  };
-
-  const { icon: Icon, gradient, bg, text, border, hoverBg } = config[type];
-  const voteCount = votes.length;
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border',
-        isActive
-          ? `bg-gradient-to-r ${gradient} text-white border-transparent shadow-lg shadow-${type === 'in' ? 'emerald' : type === 'maybe' ? 'amber' : 'rose'}-500/25 scale-[1.02]`
-          : `${bg} ${text} ${border} ${hoverBg}`
-      )}
-    >
-      <Icon className={cn('h-4 w-4', isActive && 'drop-shadow-sm')} />
-      {voteCount > 0 && (
-        <span className={cn(
-          'min-w-[1.25rem] h-5 flex items-center justify-center rounded-full text-xs font-bold',
-          isActive ? 'bg-white/20' : 'bg-current/10'
-        )}>
-          {voteCount}
-        </span>
-      )}
-    </button>
-  );
-}

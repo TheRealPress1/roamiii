@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { MapPin, Calendar, ExternalLink, Trophy, Loader2, Trash2, Navigation, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus } from 'lucide-react';
+import { MapPin, Calendar, ExternalLink, Trophy, Loader2, Trash2, Navigation, Link as LinkIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,14 +16,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { TripProposal, TripVote, VoteType, TripPhase, ProposalType } from '@/lib/tripchat-types';
-import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
+import type { TripProposal, TripVote, TripPhase, ProposalType } from '@/lib/tripchat-types';
+import { PROPOSAL_TYPES, voteTypeToScore, scoreToVoteType } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SFSymbol } from '@/components/icons';
 import { PROPOSAL_TYPE_ICON_MAP, TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
+import { TemperatureSlider, TemperatureDisplay } from '@/components/ui/TemperatureSlider';
 
 interface ProposalDetailModalProps {
   open: boolean;
@@ -64,33 +65,33 @@ export function ProposalDetailModal({
   if (!proposal) return null;
 
   const userVote = localVotes.find((v) => v.user_id === user?.id);
-  const votesByType = {
-    in: localVotes.filter((v) => v.vote === 'in'),
-    maybe: localVotes.filter((v) => v.vote === 'maybe'),
-    out: localVotes.filter((v) => v.vote === 'out'),
-  };
 
-  const handleVote = async (voteType: VoteType) => {
+  // Get user's current temperature score (default to 50 if no vote)
+  const userTemperature = userVote?.score ?? (userVote ? voteTypeToScore(userVote.vote) : 50);
+
+  // Calculate average temperature from all votes
+  const averageTemperature = localVotes.length > 0
+    ? localVotes.reduce((sum, v) => sum + (v.score ?? voteTypeToScore(v.vote)), 0) / localVotes.length
+    : null;
+
+  const handleTemperatureVote = async (score: number) => {
     if (!user || !profile) return;
+
+    // Derive VoteType from score for backwards compatibility
+    const voteType = scoreToVoteType(score);
 
     // Store previous state for rollback
     const previousVotes = [...localVotes];
 
     try {
       if (userVote) {
-        if (userVote.vote === voteType) {
-          // Optimistically remove vote
-          setLocalVotes(prev => prev.filter(v => v.user_id !== user.id));
-          await supabase.from('trip_votes').delete().eq('id', userVote.id);
-        } else {
-          // Optimistically update vote
-          setLocalVotes(prev => prev.map(v =>
-            v.user_id === user.id
-              ? { ...v, vote: voteType }
-              : v
-          ));
-          await supabase.from('trip_votes').update({ vote: voteType }).eq('id', userVote.id);
-        }
+        // Optimistically update vote
+        setLocalVotes(prev => prev.map(v =>
+          v.user_id === user.id
+            ? { ...v, vote: voteType, score }
+            : v
+        ));
+        await supabase.from('trip_votes').update({ vote: voteType, score }).eq('id', userVote.id);
       } else {
         // Optimistically add new vote
         const optimisticVote: TripVote = {
@@ -99,7 +100,7 @@ export function ProposalDetailModal({
           proposal_id: proposal.id,
           user_id: user.id,
           vote: voteType,
-          score: null,
+          score,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           voter: profile,
@@ -111,6 +112,7 @@ export function ProposalDetailModal({
           proposal_id: proposal.id,
           user_id: user.id,
           vote: voteType,
+          score,
         });
       }
       onPinned(); // Refresh data
@@ -321,25 +323,17 @@ export function ProposalDetailModal({
               </div>
             )}
 
-            {/* Vote buttons */}
-            <div className="flex gap-3">
-              <VoteButton
-                type="in"
-                votes={votesByType.in}
-                isActive={userVote?.vote === 'in'}
-                onClick={() => handleVote('in')}
+            {/* Temperature Slider Voting */}
+            <div className="space-y-3">
+              <TemperatureSlider
+                value={userTemperature}
+                onChange={handleTemperatureVote}
+                size="md"
               />
-              <VoteButton
-                type="maybe"
-                votes={votesByType.maybe}
-                isActive={userVote?.vote === 'maybe'}
-                onClick={() => handleVote('maybe')}
-              />
-              <VoteButton
-                type="out"
-                votes={votesByType.out}
-                isActive={userVote?.vote === 'out'}
-                onClick={() => handleVote('out')}
+              <TemperatureDisplay
+                averageScore={averageTemperature}
+                voteCount={localVotes.length}
+                size="md"
               />
             </div>
 
@@ -412,113 +406,3 @@ export function ProposalDetailModal({
   );
 }
 
-interface VoteButtonProps {
-  type: VoteType;
-  votes: TripVote[];
-  isActive: boolean;
-  onClick: () => void;
-}
-
-function VoterAvatars({ votes, isActive }: { votes: TripVote[]; isActive: boolean }) {
-  const maxVisible = 4;
-  const visibleVotes = votes.slice(0, maxVisible);
-  const overflowCount = votes.length - maxVisible;
-
-  if (votes.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="flex items-center justify-center -space-x-1.5">
-      {visibleVotes.map((vote, index) => {
-        const voter = vote.voter;
-        const initials = voter?.name?.slice(0, 2).toUpperCase() || voter?.email?.slice(0, 2).toUpperCase() || '?';
-        return (
-          <Avatar
-            key={vote.id}
-            className={cn(
-              'h-6 w-6 ring-2',
-              isActive ? 'ring-white/30' : 'ring-background'
-            )}
-            style={{ zIndex: maxVisible - index }}
-          >
-            <AvatarImage src={voter?.avatar_url || undefined} />
-            <AvatarFallback className={cn(
-              'text-[10px] font-medium',
-              isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
-            )}>
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-        );
-      })}
-      {overflowCount > 0 && (
-        <div
-          className={cn(
-            'h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-medium ring-2',
-            isActive
-              ? 'bg-white/20 text-white ring-white/30'
-              : 'bg-muted text-muted-foreground ring-background'
-          )}
-          style={{ zIndex: 0 }}
-        >
-          +{overflowCount}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
-  const config = {
-    in: {
-      icon: ThumbsUp,
-      gradient: 'from-emerald-500 to-green-600',
-      bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-      text: 'text-emerald-600 dark:text-emerald-400',
-      border: 'border-emerald-200 dark:border-emerald-800',
-      hoverBg: 'hover:bg-emerald-100 dark:hover:bg-emerald-900/50',
-    },
-    maybe: {
-      icon: Minus,
-      gradient: 'from-amber-500 to-orange-500',
-      bg: 'bg-amber-50 dark:bg-amber-950/30',
-      text: 'text-amber-600 dark:text-amber-400',
-      border: 'border-amber-200 dark:border-amber-800',
-      hoverBg: 'hover:bg-amber-100 dark:hover:bg-amber-900/50',
-    },
-    out: {
-      icon: ThumbsDown,
-      gradient: 'from-rose-500 to-red-600',
-      bg: 'bg-rose-50 dark:bg-rose-950/30',
-      text: 'text-rose-600 dark:text-rose-400',
-      border: 'border-rose-200 dark:border-rose-800',
-      hoverBg: 'hover:bg-rose-100 dark:hover:bg-rose-900/50',
-    },
-  };
-
-  const { icon: Icon, gradient, bg, text, border, hoverBg } = config[type];
-  const voteCount = votes.length;
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'flex-1 flex flex-col items-center gap-2 px-4 py-4 rounded-xl font-semibold transition-all duration-200 border',
-        isActive
-          ? `bg-gradient-to-r ${gradient} text-white border-transparent shadow-lg scale-[1.02]`
-          : `${bg} ${text} ${border} ${hoverBg}`
-      )}
-    >
-      <Icon className={cn('h-6 w-6', isActive && 'drop-shadow-sm')} />
-      {voteCount > 0 && (
-        <span className={cn(
-          'min-w-[1.5rem] h-6 flex items-center justify-center rounded-full text-sm font-bold',
-          isActive ? 'bg-white/20' : 'bg-current/10'
-        )}>
-          {voteCount}
-        </span>
-      )}
-    </button>
-  );
-}

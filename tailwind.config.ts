@@ -68,6 +68,11 @@ export default {
           nature: "hsl(var(--vibe-nature))",
           luxury: "hsl(var(--vibe-luxury))",
         },
+        temp: {
+          cold: "hsl(var(--temp-cold))",
+          warm: "hsl(var(--temp-warm))",
+          hot: "hsl(var(--temp-hot))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

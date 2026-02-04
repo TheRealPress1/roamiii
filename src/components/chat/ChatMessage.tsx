@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { Reply, MapPin } from 'lucide-react';
@@ -6,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { extractUrls } from '@/lib/url-utils';
+import { LinkPreviewCard } from '@/components/ui/LinkPreviewCard';
 
 interface ChatMessageProps {
   message: Message;
@@ -16,6 +19,12 @@ export function ChatMessage({ message, onReply }: ChatMessageProps) {
   const { user } = useAuth();
   const isOwn = message.user_id === user?.id;
   const isSystem = message.type === 'system';
+
+  // Extract URLs from message body (limit to first 3)
+  const urls = useMemo(() => {
+    if (!message.body || isSystem) return [];
+    return extractUrls(message.body).slice(0, 3);
+  }, [message.body, isSystem]);
 
   if (isSystem) {
     return (
@@ -136,6 +145,19 @@ export function ChatMessage({ message, onReply }: ChatMessageProps) {
             </Button>
           )}
         </div>
+
+        {/* Link Previews */}
+        {urls.length > 0 && (
+          <div className={cn(
+            "mt-2 space-y-2",
+            isOwn ? "ml-auto" : "mr-auto",
+            "max-w-[85%]"
+          )}>
+            {urls.map((url) => (
+              <LinkPreviewCard key={url} url={url} />
+            ))}
+          </div>
+        )}
       </div>
     </motion.div>
   );
