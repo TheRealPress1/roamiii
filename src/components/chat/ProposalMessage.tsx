@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { motion } from 'framer-motion';
-import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus, Lock } from 'lucide-react';
 import type { Message, TripProposal, TripVote, VoteType, TripPhase, ProposalType } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,9 +27,10 @@ interface ProposalMessageProps {
   tripPhase?: TripPhase;
   onProposalUpdated?: () => void;
   replies?: Message[];
+  isLocked?: boolean;
 }
 
-export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, replies = [] }: ProposalMessageProps) {
+export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, replies = [], isLocked }: ProposalMessageProps) {
   const { user, profile } = useAuth();
   const proposal = message.proposal;
 
@@ -137,8 +138,76 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
   };
   const badgeInfo = getBadgeInfo();
 
+  // Compact locked card for destinations
+  if (isLocked && isDestination) {
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        {/* Compact Author header */}
+        <div className="flex items-center gap-2 mb-2">
+          <Avatar className="h-5 w-5">
+            <AvatarImage src={message.author?.avatar_url || undefined} />
+            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+              {authorInitials}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-xs font-medium text-foreground">{authorName}</span>
+          <span className="text-xs text-muted-foreground">
+            {format(new Date(message.created_at), 'h:mm a')}
+          </span>
+        </div>
+
+        {/* Compact Locked Card */}
+        <motion.div
+          layout
+          className="bg-card rounded-xl border border-border shadow-card overflow-hidden w-full"
+        >
+          {/* Compact Cover Image */}
+          <div className="aspect-[3/1] relative bg-gradient-to-br from-emerald-500/20 to-green-600/20">
+            {proposal.cover_image_url ? (
+              <img
+                src={proposal.cover_image_url}
+                alt={displayTitle}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <MapPin className="h-8 w-8 text-primary/40" />
+              </div>
+            )}
+            {/* Locked badge */}
+            <div className="absolute top-2 left-2 px-2 py-1 bg-emerald-600/90 backdrop-blur-sm rounded-full text-white text-xs font-medium flex items-center gap-1">
+              <Lock className="h-3 w-3" />
+              <span>Locked</span>
+            </div>
+          </div>
+
+          {/* Compact Content */}
+          <div className="p-3">
+            <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+              <span className="truncate">{displayTitle}</span>
+            </h3>
+
+            <button
+              onClick={() => onViewDetails(proposal)}
+              className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+            >
+              View Details
+              <ExternalLink className="h-3 w-3" />
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
     >
@@ -158,7 +227,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
       </div>
 
       {/* Proposal Card */}
-      <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden w-full">
+      <motion.div layout className="bg-card rounded-xl border border-border shadow-card overflow-hidden w-full">
         {/* Cover Image */}
         <div className="aspect-[16/9] relative bg-gradient-to-br from-primary/20 to-accent/20">
           {proposal.cover_image_url ? (
@@ -340,7 +409,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             })}
           </div>
         )}
-      </div>
+      </motion.div>
     </motion.div>
   );
 }

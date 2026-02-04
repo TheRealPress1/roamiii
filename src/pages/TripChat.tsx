@@ -274,6 +274,7 @@ export default function TripChat() {
             onProposalUpdated={refetch}
             viewMode={chatViewMode}
             onViewModeChange={setChatViewMode}
+            lockedDestinationId={trip.locked_destination_id}
           />
           <ChatComposer
             onSend={sendMessage}

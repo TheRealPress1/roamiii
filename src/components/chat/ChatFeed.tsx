@@ -24,6 +24,7 @@ interface ChatFeedProps {
   onProposalUpdated?: () => void;
   viewMode: ChatViewMode;
   onViewModeChange: (mode: ChatViewMode) => void;
+  lockedDestinationId?: string | null;
 }
 
 interface ProposalGroup {
@@ -33,7 +34,7 @@ interface ProposalGroup {
   messages: Message[];
 }
 
-export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange }: ChatFeedProps) {
+export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId }: ChatFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -196,22 +197,26 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
                     {/* Horizontal scrollable container for proposal cards */}
                     <div className="overflow-x-auto pb-2 -mx-4 px-4">
                       <div className="flex gap-4" style={{ minWidth: 'min-content' }}>
-                        {group.messages.map((message) => (
-                          <div key={message.id} className="flex-shrink-0 w-[340px]">
-                            <ProposalMessage
-                              message={message}
-                              tripId={tripId}
-                              onViewDetails={onViewProposal}
-                              isComparing={compareIds?.includes(message.proposal!.id) || false}
-                              onToggleCompare={onToggleCompare ? () => onToggleCompare(message.proposal!.id) : undefined}
-                              onReply={onReply}
-                              isAdmin={isAdmin}
-                              tripPhase={tripPhase}
-                              onProposalUpdated={onProposalUpdated}
-                              replies={repliesByProposalMessageId.get(message.id) || []}
-                            />
-                          </div>
-                        ))}
+                        {group.messages.map((message) => {
+                          const isLocked = message.proposal?.is_destination && message.proposal?.id === lockedDestinationId;
+                          return (
+                            <div key={message.id} className={cn("flex-shrink-0", isLocked ? "w-[280px]" : "w-[340px]")}>
+                              <ProposalMessage
+                                message={message}
+                                tripId={tripId}
+                                onViewDetails={onViewProposal}
+                                isComparing={compareIds?.includes(message.proposal!.id) || false}
+                                onToggleCompare={onToggleCompare ? () => onToggleCompare(message.proposal!.id) : undefined}
+                                onReply={onReply}
+                                isAdmin={isAdmin}
+                                tripPhase={tripPhase}
+                                onProposalUpdated={onProposalUpdated}
+                                replies={repliesByProposalMessageId.get(message.id) || []}
+                                isLocked={isLocked}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
