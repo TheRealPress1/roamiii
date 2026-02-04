@@ -92,7 +92,25 @@ export function useTripData(tripId: string) {
           filter: `trip_id=eq.${tripId}`,
         },
         () => {
-          // Refetch when members change
+          // Refetch when members change (includes carpool updates)
+          fetchTrip();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to trip changes
+    const tripChannel = supabase
+      .channel(`trip-details-${tripId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'trips',
+          filter: `id=eq.${tripId}`,
+        },
+        () => {
+          // Refetch when trip changes (phase, travel_mode, etc.)
           fetchTrip();
         }
       )
@@ -101,6 +119,7 @@ export function useTripData(tripId: string) {
     return () => {
       supabase.removeChannel(votesChannel);
       supabase.removeChannel(membersChannel);
+      supabase.removeChannel(tripChannel);
     };
   }, [tripId, fetchTrip]);
 

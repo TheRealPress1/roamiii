@@ -18,6 +18,7 @@ import { EditTripCoverModal } from '@/components/trip/EditTripCoverModal';
 import { PhaseProgress } from '@/components/trip/PhaseProgress';
 import { LockDestinationModal } from '@/components/trip/LockDestinationModal';
 import { FinalizeView } from '@/components/trip/FinalizeView';
+import { TransportationView } from '@/components/trip/TransportationView';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
@@ -50,6 +51,7 @@ export default function TripChat() {
   const [lockDestinationModalOpen, setLockDestinationModalOpen] = useState(false);
   const [proposalToLock, setProposalToLock] = useState<TripProposal | null>(null);
   const [finalizeViewOpen, setFinalizeViewOpen] = useState(false);
+  const [transportationViewOpen, setTransportationViewOpen] = useState(false);
   const [chatViewMode, setChatViewMode] = useState<ChatViewMode>('proposals');
 
   // Compare hook
@@ -240,6 +242,7 @@ export default function TripChat() {
               onEditCover={() => setEditCoverModalOpen(true)}
               onOpenLockDestination={handleOpenLockDestination}
               onOpenFinalizeView={() => setFinalizeViewOpen(true)}
+              onOpenTransportation={() => setTransportationViewOpen(true)}
               onPhaseChanged={refetch}
               lockedDestination={lockedDestination}
               destinationProposals={destinationProposals}
@@ -301,6 +304,7 @@ export default function TripChat() {
             onEditCover={() => setEditCoverModalOpen(true)}
             onOpenLockDestination={handleOpenLockDestination}
             onOpenFinalizeView={() => setFinalizeViewOpen(true)}
+            onOpenTransportation={() => setTransportationViewOpen(true)}
             onPhaseChanged={refetch}
             lockedDestination={lockedDestination}
             destinationProposals={destinationProposals}
@@ -410,6 +414,15 @@ export default function TripChat() {
         includedProposals={includedProposals}
         isAdmin={isAdmin}
         onFinalized={refetch}
+      />
+
+      <TransportationView
+        open={transportationViewOpen}
+        onClose={() => setTransportationViewOpen(false)}
+        trip={trip}
+        members={members}
+        isAdmin={isAdmin}
+        onUpdated={refetch}
       />
     </div>
   );

@@ -14,8 +14,8 @@ interface PhaseProgressProps {
 export function PhaseProgress({ currentPhase, lockedDestination, className }: PhaseProgressProps) {
   const currentPhaseIndex = TRIP_PHASES.findIndex(p => p.value === currentPhase);
 
-  // Only show the first 3 phases in progress bar (ready is the final state)
-  const displayPhases = TRIP_PHASES.slice(0, 3);
+  // Only show the first 4 phases in progress bar (ready is the final state)
+  const displayPhases = TRIP_PHASES.slice(0, 4);
 
   return (
     <div className={cn('bg-card border-b border-border p-4', className)}>

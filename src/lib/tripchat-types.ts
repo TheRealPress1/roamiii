@@ -5,7 +5,8 @@ export type MessageType = 'text' | 'proposal' | 'system';
 export type VoteType = 'in' | 'maybe' | 'out';
 export type MemberStatus = 'active' | 'removed';
 export type ProposalType = 'housing' | 'activity';
-export type TripPhase = 'destination' | 'itinerary' | 'finalize' | 'ready';
+export type TripPhase = 'destination' | 'transportation' | 'itinerary' | 'finalize' | 'ready';
+export type TravelMode = 'flying' | 'driving';
 
 export const PROPOSAL_TYPES = [
   { value: 'housing', label: 'Housing', description: 'Where you\'ll stay' },
@@ -14,9 +15,10 @@ export const PROPOSAL_TYPES = [
 
 export const TRIP_PHASES = [
   { value: 'destination', label: 'Pick Destination', step: 1 },
-  { value: 'itinerary', label: 'Build Itinerary', step: 2 },
-  { value: 'finalize', label: 'Finalize & Book', step: 3 },
-  { value: 'ready', label: 'Ready!', step: 4 },
+  { value: 'transportation', label: 'Transportation', step: 2 },
+  { value: 'itinerary', label: 'Build Itinerary', step: 3 },
+  { value: 'finalize', label: 'Finalize & Book', step: 4 },
+  { value: 'ready', label: 'Ready!', step: 5 },
 ] as const;
 
 export interface Profile {
@@ -45,6 +47,7 @@ export interface Trip {
   cover_image_url: string | null;
   phase: TripPhase;
   locked_destination_id: string | null;
+  travel_mode: TravelMode | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,6 +64,10 @@ export interface TripMember {
   created_at: string;
   removed_at: string | null;
   removed_by: string | null;
+  travel_mode: TravelMode | null;
+  is_driver: boolean;
+  car_capacity: number | null;
+  rides_with_id: string | null;
   profile?: Profile;
 }
 

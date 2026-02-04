@@ -25,6 +25,7 @@ interface PhaseActionsProps {
   destinationProposals: TripProposal[];
   includedProposals: TripProposal[];
   onOpenLockDestination: (proposal: TripProposal) => void;
+  onOpenTransportation?: () => void;
   onPhaseChanged: () => void;
   isAdmin: boolean;
   className?: string;
@@ -36,6 +37,7 @@ export function PhaseActions({
   destinationProposals,
   includedProposals,
   onOpenLockDestination,
+  onOpenTransportation,
   onPhaseChanged,
   isAdmin,
   className,
@@ -150,7 +152,31 @@ export function PhaseActions({
           </>
         )}
 
-        {/* Phase 2: Finalize Trip */}
+        {/* Phase 2: Transportation */}
+        {currentPhase === 'transportation' && (
+          <>
+            {onOpenTransportation && (
+              <Button
+                onClick={onOpenTransportation}
+                className="w-full bg-primary hover:bg-primary/90"
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Plan Transportation
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setUnlockTarget('destination')}
+              className="w-full text-muted-foreground hover:text-foreground"
+            >
+              <Unlock className="h-3.5 w-3.5 mr-1.5" />
+              Reopen Destination Selection
+            </Button>
+          </>
+        )}
+
+        {/* Phase 3: Build Itinerary */}
         {currentPhase === 'itinerary' && (
           <>
             <Button
@@ -173,16 +199,16 @@ export function PhaseActions({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setUnlockTarget('destination')}
+              onClick={() => setUnlockTarget('transportation')}
               className="w-full text-muted-foreground hover:text-foreground"
             >
               <Unlock className="h-3.5 w-3.5 mr-1.5" />
-              Reopen Destination Selection
+              Reopen Transportation
             </Button>
           </>
         )}
 
-        {/* Phase 3: Mark Ready */}
+        {/* Phase 4: Mark Ready */}
         {currentPhase === 'finalize' && (
           <>
             <Button

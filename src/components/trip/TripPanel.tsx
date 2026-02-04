@@ -1,5 +1,5 @@
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye } from 'lucide-react';
+import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye, Car } from 'lucide-react';
 import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES, TRIP_PHASES } from '@/lib/tripchat-types';
 import { PhaseActions } from '@/components/trip/PhaseActions';
@@ -29,6 +29,7 @@ interface TripPanelProps {
   onEditCover?: () => void;
   onOpenLockDestination?: (proposal: TripProposal) => void;
   onOpenFinalizeView?: () => void;
+  onOpenTransportation?: () => void;
   onPhaseChanged?: () => void;
   lockedDestination?: TripProposal | null;
   destinationProposals?: TripProposal[];
@@ -48,6 +49,7 @@ export function TripPanel({
   onEditCover,
   onOpenLockDestination,
   onOpenFinalizeView,
+  onOpenTransportation,
   onPhaseChanged,
   lockedDestination,
   destinationProposals = [],
@@ -101,7 +103,7 @@ export function TripPanel({
               <span className="text-lg flex-shrink-0">{phaseInfo?.emoji}</span>
               <span className="text-sm font-semibold text-foreground truncate">{phaseInfo?.label}</span>
               <Badge variant="secondary" className="ml-auto text-xs flex-shrink-0 whitespace-nowrap">
-                Step {phaseInfo?.step}/4
+                Step {phaseInfo?.step}/5
               </Badge>
             </div>
 
@@ -113,9 +115,23 @@ export function TripPanel({
                 destinationProposals={destinationProposals}
                 includedProposals={includedProposals}
                 onOpenLockDestination={onOpenLockDestination}
+                onOpenTransportation={onOpenTransportation}
                 onPhaseChanged={onPhaseChanged}
                 isAdmin={isAdmin}
               />
+            )}
+
+            {/* View Transportation button in transportation phase */}
+            {currentPhase === 'transportation' && onOpenTransportation && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenTransportation}
+                className="w-full mt-2"
+              >
+                <Car className="h-4 w-4 mr-2" />
+                View Transportation
+              </Button>
             )}
 
             {/* View Finalize button in finalize phase */}

@@ -24,6 +24,7 @@ export const PROPOSAL_TYPE_ICON_MAP: Record<ProposalType, SFSymbolName> = {
 // Trip phase to SF Symbol mapping
 export const TRIP_PHASE_ICON_MAP: Record<TripPhase, SFSymbolName> = {
   destination: 'globe.europe.africa.fill',
+  transportation: 'car.fill',
   itinerary: 'list.bullet.clipboard.fill',
   finalize: 'checkmark.circle.fill',
   ready: 'party.popper.fill',
