@@ -2,13 +2,13 @@ import * as React from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { Snowflake, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { scoreToLabel } from "@/lib/tripchat-types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { TripVote } from "@/lib/tripchat-types";
 
 interface TemperatureSliderProps {
   value: number;
   onChange: (value: number) => void;
   disabled?: boolean;
-  showLabel?: boolean;
   size?: "sm" | "md";
   className?: string;
 }
@@ -17,12 +17,9 @@ export function TemperatureSlider({
   value,
   onChange,
   disabled = false,
-  showLabel = true,
   size = "md",
   className,
 }: TemperatureSliderProps) {
-  const label = scoreToLabel(value);
-
   // Calculate the gradient position for the thumb color
   const getThumbColor = (val: number) => {
     if (val <= 30) return "bg-temp-cold";
@@ -30,12 +27,18 @@ export function TemperatureSlider({
     return "bg-temp-hot";
   };
 
+  const getScoreColor = (val: number) => {
+    if (val <= 30) return "text-temp-cold";
+    if (val <= 60) return "text-temp-warm";
+    return "text-temp-hot";
+  };
+
   const handleValueChange = (values: number[]) => {
     onChange(values[0]);
   };
 
   return (
-    <div className={cn("w-full space-y-2", className)}>
+    <div className={cn("w-full space-y-1", className)}>
       <div className={cn(
         "flex items-center gap-3",
         size === "sm" ? "gap-2" : "gap-3"
@@ -85,37 +88,33 @@ export function TemperatureSlider({
         )} />
       </div>
 
-      {/* Label */}
-      {showLabel && (
-        <p className={cn(
-          "text-center font-medium transition-colors",
-          size === "sm" ? "text-xs" : "text-sm",
-          value <= 30 && "text-temp-cold",
-          value > 30 && value <= 60 && "text-temp-warm",
-          value > 60 && "text-temp-hot"
-        )}>
-          {label}
-        </p>
-      )}
+      {/* Numeric score display */}
+      <p className={cn(
+        "text-center font-medium transition-colors",
+        size === "sm" ? "text-xs" : "text-sm",
+        getScoreColor(value)
+      )}>
+        {Math.round(value)}°
+      </p>
     </div>
   );
 }
 
-// Display component for showing average temperature
-interface TemperatureDisplayProps {
+// Voter avatars bar with average score
+interface VoterAvatarsBarProps {
+  votes: TripVote[];
   averageScore: number | null;
-  voteCount: number;
   size?: "sm" | "md";
   className?: string;
 }
 
-export function TemperatureDisplay({
+export function VoterAvatarsBar({
+  votes,
   averageScore,
-  voteCount,
   size = "md",
   className,
-}: TemperatureDisplayProps) {
-  if (averageScore === null || voteCount === 0) {
+}: VoterAvatarsBarProps) {
+  if (votes.length === 0) {
     return (
       <div className={cn(
         "text-center text-muted-foreground",
@@ -127,40 +126,63 @@ export function TemperatureDisplay({
     );
   }
 
-  const label = scoreToLabel(averageScore);
-  const roundedScore = Math.round(averageScore);
+  const getScoreColor = (score: number) => {
+    if (score <= 30) return "text-temp-cold";
+    if (score <= 60) return "text-temp-warm";
+    return "text-temp-hot";
+  };
+
+  const roundedAvg = averageScore !== null ? Math.round(averageScore) : null;
+  const avatarSize = size === "sm" ? "h-6 w-6" : "h-7 w-7";
+  const textSize = size === "sm" ? "text-xs" : "text-sm";
 
   return (
-    <div className={cn("flex items-center justify-center gap-2", className)}>
-      {/* Temperature bar indicator */}
-      <div className={cn(
-        "relative w-16 rounded-full overflow-hidden",
-        "bg-gradient-to-r from-temp-cold via-temp-warm to-temp-hot",
-        size === "sm" ? "h-1.5" : "h-2"
-      )}>
-        {/* Position indicator */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full border border-gray-300 shadow-sm"
-          style={{ left: `calc(${averageScore}% - 4px)` }}
-        />
+    <div className={cn(
+      "flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg",
+      className
+    )}>
+      {/* Stacked avatars */}
+      <div className="flex items-center -space-x-2">
+        {votes.slice(0, 5).map((vote, index) => {
+          const voterName = vote.voter?.name || vote.voter?.email?.split('@')[0] || 'U';
+          const initials = voterName.slice(0, 2).toUpperCase();
+          return (
+            <Avatar
+              key={vote.id}
+              className={cn(
+                avatarSize,
+                "border-2 border-background",
+                "ring-1 ring-muted"
+              )}
+              style={{ zIndex: votes.length - index }}
+            >
+              <AvatarImage src={vote.voter?.avatar_url || undefined} />
+              <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          );
+        })}
+        {votes.length > 5 && (
+          <div className={cn(
+            avatarSize,
+            "flex items-center justify-center rounded-full bg-muted border-2 border-background text-[10px] font-medium text-muted-foreground"
+          )}>
+            +{votes.length - 5}
+          </div>
+        )}
       </div>
 
-      {/* Score and count */}
-      <span className={cn(
-        "font-medium",
-        size === "sm" ? "text-xs" : "text-sm",
-        averageScore <= 30 && "text-temp-cold",
-        averageScore > 30 && averageScore <= 60 && "text-temp-warm",
-        averageScore > 60 && "text-temp-hot"
-      )}>
-        {roundedScore}°
-      </span>
-      <span className={cn(
-        "text-muted-foreground",
-        size === "sm" ? "text-xs" : "text-sm"
-      )}>
-        ({voteCount} {voteCount === 1 ? "vote" : "votes"})
-      </span>
+      {/* Average score */}
+      {roundedAvg !== null && (
+        <span className={cn(
+          "font-medium",
+          textSize,
+          getScoreColor(roundedAvg)
+        )}>
+          Avg: {roundedAvg}°
+        </span>
+      )}
     </div>
   );
 }

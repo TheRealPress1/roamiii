@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { MapPin, Calendar, ExternalLink, Trophy, Loader2, Trash2, Navigation, Link as LinkIcon } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VibeTag } from '@/components/ui/VibeTag';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,10 +20,9 @@ import { PROPOSAL_TYPES, voteTypeToScore, scoreToVoteType } from '@/lib/tripchat
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 import { SFSymbol } from '@/components/icons';
 import { PROPOSAL_TYPE_ICON_MAP, TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
-import { TemperatureSlider, TemperatureDisplay } from '@/components/ui/TemperatureSlider';
+import { TemperatureSlider, VoterAvatarsBar } from '@/components/ui/TemperatureSlider';
 
 interface ProposalDetailModalProps {
   open: boolean;
@@ -125,13 +123,13 @@ export function ProposalDetailModal({
 
   const handlePin = async () => {
     if (!user) return;
-    
+
     setPinning(true);
     try {
       // Update trip with pinned proposal
       await supabase
         .from('trips')
-        .update({ 
+        .update({
           pinned_proposal_id: proposal.id,
           status: 'decided'
         })
@@ -323,19 +321,19 @@ export function ProposalDetailModal({
               </div>
             )}
 
+            {/* Voter avatars bar */}
+            <VoterAvatarsBar
+              votes={localVotes}
+              averageScore={averageTemperature}
+              size="md"
+            />
+
             {/* Temperature Slider Voting */}
-            <div className="space-y-3">
-              <TemperatureSlider
-                value={userTemperature}
-                onChange={handleTemperatureVote}
-                size="md"
-              />
-              <TemperatureDisplay
-                averageScore={averageTemperature}
-                voteCount={localVotes.length}
-                size="md"
-              />
-            </div>
+            <TemperatureSlider
+              value={userTemperature}
+              onChange={handleTemperatureVote}
+              size="md"
+            />
 
             {/* Pin as Final Pick (Owner only - only show in destination phase) */}
             {isOwner && tripPhase === 'destination' && (
@@ -405,4 +403,3 @@ export function ProposalDetailModal({
     </Dialog>
   );
 }
-

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, Lock, Clock, Users, Check } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, Lock, Loader2 } from 'lucide-react';
 import type { Message, TripProposal, TripVote, TripPhase, ProposalType } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES, voteTypeToScore, scoreToVoteType } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SFSymbol } from '@/components/icons';
 import { PROPOSAL_TYPE_ICON_MAP, TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
-import { TemperatureSlider, TemperatureDisplay } from '@/components/ui/TemperatureSlider';
+import { TemperatureSlider, VoterAvatarsBar } from '@/components/ui/TemperatureSlider';
 
 interface VotingStatusInfo {
   votedCount: number;
@@ -45,6 +45,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
 
   // Local state for optimistic voting
   const [localVotes, setLocalVotes] = useState<TripVote[]>(proposal?.votes || []);
+  const [locking, setLocking] = useState(false);
 
   // Sync local votes with props when they change
   useEffect(() => {
@@ -111,6 +112,51 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
     }
   };
 
+  const handleLock = async () => {
+    if (!user) return;
+
+    setLocking(true);
+    try {
+      // Update trip with pinned proposal
+      await supabase
+        .from('trips')
+        .update({
+          pinned_proposal_id: proposal.id,
+          status: 'decided'
+        })
+        .eq('id', tripId);
+
+      // Post system message
+      await supabase.from('messages').insert({
+        trip_id: tripId,
+        user_id: user.id,
+        type: 'system',
+        body: `Final pick pinned: ${proposal.destination}!`,
+      });
+
+      // Notify all trip members about the locked plan
+      try {
+        await supabase.rpc('notify_trip_members', {
+          _trip_id: tripId,
+          _actor_id: user.id,
+          _type: 'plan_locked',
+          _title: 'Plan locked',
+          _body: `The plan for ${proposal.destination} has been finalized!`,
+          _href: `/app/trip/${tripId}`,
+        });
+      } catch (notifyError) {
+        console.error('Error sending notifications:', notifyError);
+      }
+
+      toast.success('Final pick set!');
+      onProposalUpdated?.();
+    } catch (error) {
+      toast.error('Failed to lock destination');
+    } finally {
+      setLocking(false);
+    }
+  };
+
   const authorName = message.author?.name || message.author?.email?.split('@')[0] || 'Unknown';
   const authorInitials = authorName.slice(0, 2).toUpperCase();
 
@@ -140,6 +186,9 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
     };
   };
   const badgeInfo = getBadgeInfo();
+
+  // Can lock: owner only, destination phase, is a destination proposal
+  const canLock = isAdmin && tripPhase === 'destination' && isDestination;
 
   // Compact locked card for destinations
   if (isLocked && isDestination) {
@@ -300,21 +349,20 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             )}
           </div>
 
-          {/* Voting status */}
-          {votingStatus && (
-            <VotingStatusDisplay status={votingStatus} />
-          )}
+          {/* Voter avatars bar */}
+          <div className="mb-3">
+            <VoterAvatarsBar
+              votes={localVotes}
+              averageScore={averageTemperature}
+              size="sm"
+            />
+          </div>
 
           {/* Temperature Slider Voting */}
-          <div className="mb-3 space-y-2">
+          <div className="mb-3">
             <TemperatureSlider
               value={userTemperature}
               onChange={handleTemperatureVote}
-              size="sm"
-            />
-            <TemperatureDisplay
-              averageScore={averageTemperature}
-              voteCount={localVotes.length}
               size="sm"
             />
           </div>
@@ -356,15 +404,27 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
                 Reply
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn("text-primary hover:text-primary", onReply ? "flex-1" : "w-full")}
-              onClick={() => onViewDetails(proposal)}
-            >
-              View Details
-              <ExternalLink className="h-3.5 w-3.5 ml-1" />
-            </Button>
+            {canLock && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 text-vote-in hover:text-vote-in hover:bg-vote-in/10"
+                onClick={handleLock}
+                disabled={locking}
+              >
+                {locking ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    Locking...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-3.5 w-3.5 mr-1" />
+                    Lock
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -395,51 +455,3 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
     </motion.div>
   );
 }
-
-
-function VotingStatusDisplay({ status }: { status: VotingStatusInfo }) {
-  const { votedCount, totalMembers, deadline, deadlinePassed, allVoted } = status;
-
-  return (
-    <div className="flex items-center gap-3 mb-3 px-3 py-2 bg-muted/50 rounded-lg text-xs">
-      {/* Vote count */}
-      <div className={cn(
-        'flex items-center gap-1',
-        allVoted ? 'text-vote-in' : 'text-muted-foreground'
-      )}>
-        {allVoted ? (
-          <Check className="h-3.5 w-3.5" />
-        ) : (
-          <Users className="h-3.5 w-3.5" />
-        )}
-        <span className="font-medium">
-          {votedCount}/{totalMembers} voted
-        </span>
-      </div>
-
-      {/* Deadline */}
-      {deadline && (
-        <div className={cn(
-          'flex items-center gap-1',
-          deadlinePassed ? 'text-vote-out' : 'text-muted-foreground'
-        )}>
-          <Clock className="h-3.5 w-3.5" />
-          <span>
-            {deadlinePassed
-              ? 'Deadline passed'
-              : formatDistanceToNow(deadline, { addSuffix: true })}
-          </span>
-        </div>
-      )}
-
-      {/* All voted + deadline passed = ready to lock */}
-      {allVoted && deadlinePassed && (
-        <div className="flex items-center gap-1 text-vote-in ml-auto">
-          <Lock className="h-3.5 w-3.5" />
-          <span className="font-medium">Ready to lock</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
