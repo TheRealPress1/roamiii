@@ -77,6 +77,12 @@ export default function TripChat() {
   // Compare hook
   const { compareIds, compareCount, toggleCompare, clearCompare, isComparing } = useProposalCompare(tripId!);
 
+  // Derived state - must be defined before hooks that use them
+  const isLoading = dataLoading || messagesLoading;
+  const currentMember = members.find((m) => m.user_id === user?.id);
+  const isAdmin = currentMember?.role === 'owner' || currentMember?.role === 'admin';
+  const isOwner = currentMember?.role === 'owner';
+
   // Voting status hook
   const votingStatus = useVotingStatus(trip, proposals, members);
 
@@ -88,11 +94,6 @@ export default function TripChat() {
     onAutoLocked: refetch,
     userId: isOwner ? user?.id : undefined, // Only owner can trigger auto-lock
   });
-
-  const isLoading = dataLoading || messagesLoading;
-  const currentMember = members.find((m) => m.user_id === user?.id);
-  const isAdmin = currentMember?.role === 'owner' || currentMember?.role === 'admin';
-  const isOwner = currentMember?.role === 'owner';
 
   // Check if user has been removed (access denied)
   useEffect(() => {
