@@ -4,7 +4,6 @@ import type { Message, TripProposal, TripPhase, ProposalType } from '@/lib/tripc
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { ChatMessage } from './ChatMessage';
 import { ProposalMessage } from './ProposalMessage';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 export type ChatViewMode = 'proposals' | 'chat';
@@ -151,7 +150,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
   }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0">
       {/* View Mode Toggle */}
       <ViewModeToggle
         viewMode={viewMode}
@@ -160,7 +159,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
         chatCount={regularMessages.length}
       />
 
-      <ScrollArea className="flex-1 min-w-0">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="py-4 space-y-4">
           {/* Proposals View */}
           {viewMode === 'proposals' && (
@@ -245,7 +244,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
 
           <div ref={bottomRef} />
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
@@ -260,7 +259,7 @@ interface ViewModeToggleProps {
 
 function ViewModeToggle({ viewMode, onViewModeChange, proposalCount, chatCount }: ViewModeToggleProps) {
   return (
-    <div className="flex items-center justify-center gap-1 p-2 border-b border-border bg-card relative z-10">
+    <div className="flex-shrink-0 flex items-center justify-center gap-1 p-2 border-b border-border bg-card relative z-10">
       <button
         onClick={() => onViewModeChange('proposals')}
         className={cn(

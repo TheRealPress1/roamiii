@@ -258,9 +258,9 @@ export default function TripChat() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Chat area */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-h-0 min-w-0">
           <ChatFeed
             messages={messages}
             loading={messagesLoading}
@@ -285,13 +285,9 @@ export default function TripChat() {
         </div>
 
         {/* Desktop panel */}
-        <motion.div
-          initial={false}
-          animate={{ width: showPanel ? 320 : 0, opacity: showPanel ? 1 : 0 }}
-          transition={{ duration: 0.2 }}
-          className={cn('hidden md:flex flex-shrink-0 overflow-hidden border-l border-border', !showPanel && 'pointer-events-none')}
-        >
-          <TripPanel
+        {showPanel && (
+          <div className="hidden md:block w-80 flex-shrink-0 overflow-hidden">
+            <TripPanel
             trip={trip}
             members={members}
             proposals={proposals}
@@ -309,7 +305,8 @@ export default function TripChat() {
             destinationProposals={destinationProposals}
             includedProposals={includedProposals}
           />
-        </motion.div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
