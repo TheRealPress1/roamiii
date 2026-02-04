@@ -234,54 +234,70 @@ export function TripPanel({
                 Invite
               </Button>
             </div>
-            <div className="space-y-2">
-              {members.map((member) => {
-                const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
-                const isCurrentUser = member.user_id === user?.id;
-                const canRemove = isOwner && !isCurrentUser && member.role !== 'owner';
-                
-                return (
-                  <div key={member.id} className="flex items-center gap-2 group">
-                    <Avatar className="h-8 w-8 border-2 border-background">
-                      <AvatarImage src={member.profile?.avatar_url || undefined} />
-                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                        {name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-medium text-foreground truncate">
-                          {name}
-                          {isCurrentUser && <span className="text-muted-foreground"> (you)</span>}
-                        </span>
-                        {getRoleBadge(member.role)}
-                      </div>
+            {/* Stacked avatars */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center -space-x-2">
+                {members.slice(0, 6).map((member, index) => {
+                  const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
+                  const isOwnerMember = member.role === 'owner';
+                  const isAdminMember = member.role === 'admin';
+
+                  return (
+                    <div key={member.id} className="relative" style={{ zIndex: 6 - index }}>
+                      <Avatar className={cn(
+                        'h-8 w-8 ring-2 ring-background',
+                        isOwnerMember && 'ring-primary/50',
+                        isAdminMember && 'ring-muted-foreground/30'
+                      )}>
+                        <AvatarImage src={member.profile?.avatar_url || undefined} />
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                          {name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {isOwnerMember && (
+                        <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
+                          <Crown className="h-2 w-2 text-white" />
+                        </div>
+                      )}
                     </div>
-                    {canRemove && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreVertical className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                  );
+                })}
+                {members.length > 6 && (
+                  <div
+                    className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground ring-2 ring-background"
+                    style={{ zIndex: 0 }}
+                  >
+                    +{members.length - 6}
+                  </div>
+                )}
+              </div>
+              {/* Member management dropdown for owner */}
+              {isOwner && members.some(m => m.user_id !== user?.id && m.role !== 'owner') && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <MoreVertical className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {members
+                      .filter(m => m.user_id !== user?.id && m.role !== 'owner')
+                      .map(member => {
+                        const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
+                        return (
                           <DropdownMenuItem
+                            key={member.id}
                             onClick={() => onRemoveMember?.(member)}
                             className="text-destructive focus:text-destructive focus:bg-destructive/10"
                           >
                             <UserMinus className="mr-2 h-4 w-4" />
-                            Remove from trip
+                            Remove {name}
                           </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                );
-              })}
+                        );
+                      })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </section>
 

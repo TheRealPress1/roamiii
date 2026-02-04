@@ -563,6 +563,7 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
   };
 
   const { icon: Icon, label, gradient, bg, text, border, hoverBg } = config[type];
+  const hasVotes = votes.length > 0;
 
   return (
     <button
@@ -574,9 +575,14 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
           : `${bg} ${text} ${border} ${hoverBg}`
       )}
     >
-      <Icon className={cn('h-6 w-6', isActive && 'drop-shadow-sm')} />
-      <span className="text-sm">{label}</span>
-      <VoterAvatars votes={votes} isActive={isActive} />
+      {hasVotes ? (
+        <VoterAvatars votes={votes} isActive={isActive} />
+      ) : (
+        <>
+          <Icon className={cn('h-6 w-6', isActive && 'drop-shadow-sm')} />
+          <span className="text-sm">{label}</span>
+        </>
+      )}
     </button>
   );
 }

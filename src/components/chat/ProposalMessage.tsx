@@ -395,11 +395,13 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
           : `${bg} ${text} ${border} ${hoverBg}`
       )}
     >
-      <Icon className={cn('h-4 w-4', isActive && 'drop-shadow-sm')} />
       {hasVotes ? (
         <VoterAvatars votes={votes} isActive={isActive} />
       ) : (
-        <span>{label}</span>
+        <>
+          <Icon className={cn('h-4 w-4', isActive && 'drop-shadow-sm')} />
+          <span>{label}</span>
+        </>
       )}
     </button>
   );
