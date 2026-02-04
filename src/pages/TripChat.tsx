@@ -53,6 +53,25 @@ export default function TripChat() {
   const [finalizeViewOpen, setFinalizeViewOpen] = useState(false);
   const [transportationViewOpen, setTransportationViewOpen] = useState(false);
   const [chatViewMode, setChatViewMode] = useState<ChatViewMode>('proposals');
+  const [lastViewedChatAt, setLastViewedChatAt] = useState<string | null>(null);
+
+  // Initialize lastViewedChatAt from localStorage on mount
+  useEffect(() => {
+    if (tripId) {
+      const stored = localStorage.getItem(`trip-${tripId}-lastViewedChatAt`);
+      setLastViewedChatAt(stored);
+    }
+  }, [tripId]);
+
+  // Handler for view mode changes - updates localStorage when switching to chat
+  const handleViewModeChange = (mode: ChatViewMode) => {
+    setChatViewMode(mode);
+    if (mode === 'chat' && tripId) {
+      const now = new Date().toISOString();
+      localStorage.setItem(`trip-${tripId}-lastViewedChatAt`, now);
+      setLastViewedChatAt(now);
+    }
+  };
 
   // Compare hook
   const { compareIds, compareCount, toggleCompare, clearCompare, isComparing } = useProposalCompare(tripId!);
@@ -276,8 +295,9 @@ export default function TripChat() {
             tripPhase={trip.phase}
             onProposalUpdated={refetch}
             viewMode={chatViewMode}
-            onViewModeChange={setChatViewMode}
+            onViewModeChange={handleViewModeChange}
             lockedDestinationId={trip.locked_destination_id}
+            lastViewedChatAt={lastViewedChatAt}
           />
           <ChatComposer
             onSend={sendMessage}

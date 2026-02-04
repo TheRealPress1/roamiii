@@ -25,6 +25,7 @@ interface ChatFeedProps {
   viewMode: ChatViewMode;
   onViewModeChange: (mode: ChatViewMode) => void;
   lockedDestinationId?: string | null;
+  lastViewedChatAt?: string | null;
 }
 
 interface ProposalGroup {
@@ -34,7 +35,7 @@ interface ProposalGroup {
   messages: Message[];
 }
 
-export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId }: ChatFeedProps) {
+export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId, lastViewedChatAt }: ChatFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -64,8 +65,15 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
     // Group proposals by type
     const groups: ProposalGroup[] = [];
 
-    // Destinations group
-    const destinationMsgs = proposalMessages.filter(m => m.proposal?.is_destination);
+    // Destinations group - only show locked destination if one is locked
+    const destinationMsgs = proposalMessages.filter(m => {
+      if (!m.proposal?.is_destination) return false;
+      // If a destination is locked, only show the locked one
+      if (lockedDestinationId) {
+        return m.proposal.id === lockedDestinationId;
+      }
+      return true;
+    });
     if (destinationMsgs.length > 0) {
       groups.push({
         type: 'destination',
@@ -104,10 +112,15 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
       regularMessages: regularMsgs,
       repliesByProposalMessageId: repliesMap,
     };
-  }, [messages]);
+  }, [messages, lockedDestinationId]);
 
   // Count proposals for badge
   const proposalCount = proposalGroups.reduce((acc, g) => acc + g.messages.length, 0);
+
+  // Calculate unread chat count (messages after last viewed)
+  const unreadChatCount = lastViewedChatAt
+    ? regularMessages.filter(m => m.created_at > lastViewedChatAt).length
+    : regularMessages.length;
 
   if (loading) {
     return (
@@ -116,7 +129,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
           viewMode={viewMode}
           onViewModeChange={onViewModeChange}
           proposalCount={proposalCount}
-          chatCount={regularMessages.length}
+          chatCount={unreadChatCount}
         />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -132,7 +145,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
           viewMode={viewMode}
           onViewModeChange={onViewModeChange}
           proposalCount={proposalCount}
-          chatCount={regularMessages.length}
+          chatCount={unreadChatCount}
         />
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center">
@@ -160,7 +173,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
         proposalCount={proposalCount}
-        chatCount={regularMessages.length}
+        chatCount={unreadChatCount}
       />
 
       <div className="flex-1 min-h-0 overflow-y-auto">
