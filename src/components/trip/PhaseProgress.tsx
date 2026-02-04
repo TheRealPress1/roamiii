@@ -1,4 +1,4 @@
-import { Check, Lock } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TripPhase, TripProposal } from '@/lib/tripchat-types';
 import { TRIP_PHASES } from '@/lib/tripchat-types';
@@ -75,19 +75,6 @@ export function PhaseProgress({ currentPhase, lockedDestination, className }: Ph
           );
         })}
       </div>
-
-      {/* Locked Destination Banner (shows in Phase 2+) */}
-      {lockedDestination && currentPhase !== 'destination' && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/10 rounded-lg">
-          <Lock className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium text-foreground">
-            Destination locked:
-          </span>
-          <span className="text-sm text-primary font-semibold">
-            {lockedDestination.name || lockedDestination.destination}
-          </span>
-        </div>
-      )}
 
       {/* Ready State Banner */}
       {currentPhase === 'ready' && (

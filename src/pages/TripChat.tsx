@@ -122,6 +122,23 @@ export default function TripChat() {
     setProposalToLock(proposal);
     setLockDestinationModalOpen(true);
   };
+
+  // Handler for adding/removing proposals from itinerary board
+  const handleProposalIncludedChange = async (proposalId: string, included: boolean) => {
+    const { error } = await supabase
+      .from('trip_proposals')
+      .update({ included })
+      .eq('id', proposalId);
+
+    if (error) {
+      toast.error('Failed to update itinerary');
+      console.error('Error updating proposal:', error);
+      return;
+    }
+    toast.success(included ? 'Added to itinerary!' : 'Removed from itinerary');
+    refetch();
+  };
+
   const handleCopyCode = async () => {
     if (!trip?.join_code) return;
     await navigator.clipboard.writeText(trip.join_code);
@@ -313,6 +330,9 @@ export default function TripChat() {
             lockedDestinationId={trip.locked_destination_id}
             lastViewedChatAt={lastViewedChatAt}
             votingStatus={votingStatus}
+            includedProposals={includedProposals}
+            lockedDestination={lockedDestination}
+            onProposalIncludedChange={handleProposalIncludedChange}
           />
           <ChatComposer
             onSend={sendMessage}

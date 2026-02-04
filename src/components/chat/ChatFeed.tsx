@@ -1,9 +1,21 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
+import {
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 import { Loader2, Vote, MessageCircle } from 'lucide-react';
 import type { Message, TripProposal, TripPhase, ProposalType } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { ChatMessage } from './ChatMessage';
 import { ProposalMessage } from './ProposalMessage';
+import { ItineraryBoard } from '@/components/trip/ItineraryBoard';
+import { DraggableProposalWrapper } from '@/components/trip/DraggableProposalWrapper';
+import { BoardItemPreview } from '@/components/trip/BoardItemPreview';
 import { cn } from '@/lib/utils';
 import { SFSymbol } from '@/components/icons';
 import { PROPOSAL_TYPE_ICON_MAP, TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
@@ -35,6 +47,9 @@ interface ChatFeedProps {
   lockedDestinationId?: string | null;
   lastViewedChatAt?: string | null;
   votingStatus?: VotingStatusInfo;
+  includedProposals?: TripProposal[];
+  lockedDestination?: TripProposal | null;
+  onProposalIncludedChange?: (proposalId: string, included: boolean) => Promise<void>;
 }
 
 interface ProposalGroup {
@@ -44,8 +59,47 @@ interface ProposalGroup {
   messages: Message[];
 }
 
-export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId, lastViewedChatAt, votingStatus }: ChatFeedProps) {
+export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId, lastViewedChatAt, votingStatus, includedProposals = [], lockedDestination, onProposalIncludedChange }: ChatFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [activeProposal, setActiveProposal] = useState<TripProposal | null>(null);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const proposal = active.data.current?.proposal as TripProposal | undefined;
+    if (proposal) {
+      setActiveProposal(proposal);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveProposal(null);
+
+    if (over?.id === 'itinerary-board' && onProposalIncludedChange) {
+      const proposal = active.data.current?.proposal as TripProposal | undefined;
+      if (proposal && !proposal.included) {
+        onProposalIncludedChange(proposal.id, true);
+      }
+    }
+  };
+
+  const handleRemoveFromBoard = (proposalId: string) => {
+    if (onProposalIncludedChange) {
+      onProposalIncludedChange(proposalId, false);
+    }
+  };
+
+  // Set of included proposal IDs for quick lookup
+  const includedIds = new Set(includedProposals.map(p => p.id));
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
@@ -92,8 +146,12 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
       });
     }
 
-    // Housing group
-    const housingMsgs = proposalMessages.filter(m => !m.proposal?.is_destination && m.proposal?.type === 'housing');
+    // Housing group - exclude included proposals
+    const housingMsgs = proposalMessages.filter(m =>
+      !m.proposal?.is_destination &&
+      m.proposal?.type === 'housing' &&
+      !includedIds.has(m.proposal?.id || '')
+    );
     if (housingMsgs.length > 0) {
       const typeInfo = PROPOSAL_TYPES.find(t => t.value === 'housing');
       groups.push({
@@ -104,8 +162,12 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
       });
     }
 
-    // Activity group
-    const activityMsgs = proposalMessages.filter(m => !m.proposal?.is_destination && m.proposal?.type === 'activity');
+    // Activity group - exclude included proposals
+    const activityMsgs = proposalMessages.filter(m =>
+      !m.proposal?.is_destination &&
+      m.proposal?.type === 'activity' &&
+      !includedIds.has(m.proposal?.id || '')
+    );
     if (activityMsgs.length > 0) {
       const typeInfo = PROPOSAL_TYPES.find(t => t.value === 'activity');
       groups.push({
@@ -121,7 +183,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
       regularMessages: regularMsgs,
       repliesByProposalMessageId: repliesMap,
     };
-  }, [messages, lockedDestinationId]);
+  }, [messages, lockedDestinationId, includedIds]);
 
   // Count proposals for badge
   const proposalCount = proposalGroups.reduce((acc, g) => acc + g.messages.length, 0);
@@ -185,11 +247,25 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
         chatCount={unreadChatCount}
       />
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="py-4 space-y-4">
-          {/* Proposals View */}
-          {viewMode === 'proposals' && (
-            <>
+      {/* Proposals View with DnD */}
+      {viewMode === 'proposals' && (
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {/* Itinerary Board - shows in itinerary phase when we have a locked destination */}
+            {(tripPhase === 'itinerary' || tripPhase === 'transportation' || tripPhase === 'finalize') && (lockedDestination || includedProposals.length > 0) && (
+              <ItineraryBoard
+                lockedDestination={lockedDestination || null}
+                includedProposals={includedProposals}
+                isAdmin={isAdmin}
+                onRemoveItem={handleRemoveFromBoard}
+              />
+            )}
+
+            <div className="py-4 space-y-4">
               {proposalGroups.length === 0 ? (
                 <div className="flex items-center justify-center p-8">
                   <div className="text-center">
@@ -221,22 +297,29 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
                       <div className="flex gap-4" style={{ minWidth: 'min-content' }}>
                         {group.messages.map((message) => {
                           const isLocked = message.proposal?.is_destination && message.proposal?.id === lockedDestinationId;
+                          const isIncluded = includedIds.has(message.proposal?.id || '');
                           return (
                             <div key={message.id} className={cn("flex-shrink-0", isLocked ? "w-[280px]" : "w-[340px]")}>
-                              <ProposalMessage
-                                message={message}
-                                tripId={tripId}
-                                onViewDetails={onViewProposal}
-                                isComparing={compareIds?.includes(message.proposal!.id) || false}
-                                onToggleCompare={onToggleCompare ? () => onToggleCompare(message.proposal!.id) : undefined}
-                                onReply={onReply}
+                              <DraggableProposalWrapper
+                                proposal={message.proposal!}
                                 isAdmin={isAdmin}
-                                tripPhase={tripPhase}
-                                onProposalUpdated={onProposalUpdated}
-                                replies={repliesByProposalMessageId.get(message.id) || []}
-                                isLocked={isLocked}
-                                votingStatus={!isLocked ? votingStatus : undefined}
-                              />
+                                isIncluded={isIncluded || isLocked}
+                              >
+                                <ProposalMessage
+                                  message={message}
+                                  tripId={tripId}
+                                  onViewDetails={onViewProposal}
+                                  isComparing={compareIds?.includes(message.proposal!.id) || false}
+                                  onToggleCompare={onToggleCompare ? () => onToggleCompare(message.proposal!.id) : undefined}
+                                  onReply={onReply}
+                                  isAdmin={isAdmin}
+                                  tripPhase={tripPhase}
+                                  onProposalUpdated={onProposalUpdated}
+                                  replies={repliesByProposalMessageId.get(message.id) || []}
+                                  isLocked={isLocked}
+                                  votingStatus={!isLocked ? votingStatus : undefined}
+                                />
+                              </DraggableProposalWrapper>
                             </div>
                           );
                         })}
@@ -245,37 +328,51 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
                   </div>
                 ))
               )}
-            </>
-          )}
 
-          {/* Chat View */}
-          {viewMode === 'chat' && (
-            <>
-              {regularMessages.length === 0 ? (
-                <div className="flex items-center justify-center p-8">
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
-                      <SFSymbol name="bubble.left.fill" size="xl" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">No messages yet</h3>
-                    <p className="text-muted-foreground text-sm max-w-xs">
-                      Start the conversation! Share ideas with your group.
-                    </p>
+              <div ref={bottomRef} />
+            </div>
+          </div>
+
+          {/* Drag Overlay */}
+          <DragOverlay>
+            {activeProposal ? (
+              <BoardItemPreview
+                proposal={activeProposal}
+                isDestination={activeProposal.is_destination}
+              />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      )}
+
+      {/* Chat View */}
+      {viewMode === 'chat' && (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="py-4 space-y-4">
+            {regularMessages.length === 0 ? (
+              <div className="flex items-center justify-center p-8">
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
+                    <SFSymbol name="bubble.left.fill" size="xl" />
                   </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No messages yet</h3>
+                  <p className="text-muted-foreground text-sm max-w-xs">
+                    Start the conversation! Share ideas with your group.
+                  </p>
                 </div>
-              ) : (
-                <div className="space-y-1">
-                  {regularMessages.map((message) => (
-                    <ChatMessage key={message.id} message={message} onReply={onReply} />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {regularMessages.map((message) => (
+                  <ChatMessage key={message.id} message={message} onReply={onReply} />
+                ))}
+              </div>
+            )}
 
-          <div ref={bottomRef} />
+            <div ref={bottomRef} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
