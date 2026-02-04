@@ -5,12 +5,20 @@ export type MessageType = 'text' | 'proposal' | 'system';
 export type VoteType = 'in' | 'maybe' | 'out';
 export type MemberStatus = 'active' | 'removed';
 export type ProposalType = 'place' | 'activity' | 'food_spot' | 'full_itinerary';
+export type TripPhase = 'destination' | 'itinerary' | 'finalize' | 'ready';
 
 export const PROPOSAL_TYPES = [
   { value: 'place', label: 'Place', emoji: '📍', description: 'A destination to visit' },
   { value: 'activity', label: 'Activity', emoji: '🎯', description: 'Something to do' },
   { value: 'food_spot', label: 'Food Spot', emoji: '🍽️', description: 'Restaurant, cafe, bar' },
   { value: 'full_itinerary', label: 'Full Itinerary', emoji: '🗺️', description: 'Complete trip plan' },
+] as const;
+
+export const TRIP_PHASES = [
+  { value: 'destination', label: 'Pick Destination', emoji: '🌍', step: 1 },
+  { value: 'itinerary', label: 'Build Itinerary', emoji: '📋', step: 2 },
+  { value: 'finalize', label: 'Finalize & Book', emoji: '✅', step: 3 },
+  { value: 'ready', label: 'Ready!', emoji: '🎉', step: 4 },
 ] as const;
 
 export interface Profile {
@@ -37,6 +45,8 @@ export interface Trip {
   pinned_proposal_id: string | null;
   join_code: string;
   cover_image_url: string | null;
+  phase: TripPhase;
+  locked_destination_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -108,6 +118,8 @@ export interface TripProposal {
   cost_activities_total: number;
   estimated_cost_per_person: number;
   attendee_count: number;
+  included: boolean;
+  is_destination: boolean;
   created_at: string;
   updated_at: string;
   creator?: Profile;

@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import type { Message, TripProposal } from '@/lib/tripchat-types';
+import type { Message, TripProposal, TripPhase } from '@/lib/tripchat-types';
 import { ChatMessage } from './ChatMessage';
 import { ProposalMessage } from './ProposalMessage';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,9 +13,12 @@ interface ChatFeedProps {
   compareIds?: string[];
   onToggleCompare?: (proposalId: string) => void;
   onReply?: (message: Message) => void;
+  isAdmin?: boolean;
+  tripPhase?: TripPhase;
+  onProposalUpdated?: () => void;
 }
 
-export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply }: ChatFeedProps) {
+export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated }: ChatFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,6 +63,9 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
               isComparing={compareIds?.includes(message.proposal.id) || false}
               onToggleCompare={onToggleCompare ? () => onToggleCompare(message.proposal!.id) : undefined}
               onReply={onReply}
+              isAdmin={isAdmin}
+              tripPhase={tripPhase}
+              onProposalUpdated={onProposalUpdated}
             />
           ) : (
             <ChatMessage key={message.id} message={message} onReply={onReply} />

@@ -17,8 +17,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { TripProposal, VoteType } from '@/lib/tripchat-types';
+import type { TripProposal, VoteType, TripPhase } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
+import { IncludeToggle, IncludedBadge } from '@/components/proposal/IncludeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ interface ProposalDetailModalProps {
   isAdmin: boolean;
   onPinned: () => void;
   onDeleted?: () => void;
+  tripPhase?: TripPhase;
 }
 
 export function ProposalDetailModal({
@@ -41,7 +43,8 @@ export function ProposalDetailModal({
   tripId,
   isAdmin,
   onPinned,
-  onDeleted
+  onDeleted,
+  tripPhase = 'destination',
 }: ProposalDetailModalProps) {
   const { user } = useAuth();
   const [pinning, setPinning] = useState(false);
@@ -373,8 +376,27 @@ export function ProposalDetailModal({
               </div>
             )}
 
-            {/* Pin as Final Pick (Admin only) */}
-            {isAdmin && (
+            {/* Include in Plan Toggle (Admin only, Phase 2+, non-destination proposals) */}
+            {isAdmin &&
+              (tripPhase === 'itinerary' || tripPhase === 'finalize') &&
+              !proposal.is_destination && (
+                <IncludeToggle
+                  proposalId={proposal.id}
+                  included={proposal.included}
+                  onToggled={onPinned}
+                  className="w-full"
+                />
+              )}
+
+            {/* Show included badge for non-admins */}
+            {!isAdmin && proposal.included && !proposal.is_destination && (
+              <div className="flex justify-center">
+                <IncludedBadge />
+              </div>
+            )}
+
+            {/* Pin as Final Pick (Admin only - only show in destination phase or for ready phase) */}
+            {isAdmin && tripPhase === 'destination' && (
               <Button
                 onClick={handlePin}
                 disabled={pinning}

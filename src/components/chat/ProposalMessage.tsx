@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon } from 'lucide-react';
-import type { Message, TripProposal, VoteType } from '@/lib/tripchat-types';
+import type { Message, TripProposal, VoteType, TripPhase } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { VibeTag } from '@/components/ui/VibeTag';
 import { ProposalReactions } from '@/components/proposal/ProposalReactions';
 import { CompareButton } from '@/components/compare/CompareButton';
+import { IncludeToggle, IncludedBadge } from '@/components/proposal/IncludeToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -20,11 +21,21 @@ interface ProposalMessageProps {
   isComparing?: boolean;
   onToggleCompare?: () => void;
   onReply?: (message: Message) => void;
+  isAdmin?: boolean;
+  tripPhase?: TripPhase;
+  onProposalUpdated?: () => void;
 }
 
-export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare, onReply }: ProposalMessageProps) {
+export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated }: ProposalMessageProps) {
   const { user } = useAuth();
   const proposal = message.proposal;
+
+  // Show include toggle in itinerary/finalize phases for non-destination proposals
+  const showIncludeToggle = isAdmin &&
+    tripPhase &&
+    (tripPhase === 'itinerary' || tripPhase === 'finalize') &&
+    proposal &&
+    !proposal.is_destination;
 
   if (!proposal) return null;
 
@@ -208,6 +219,24 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
                 isComparing={isComparing || false}
                 onToggle={onToggleCompare}
               />
+            </div>
+          )}
+
+          {/* Include Toggle for Admins (Phase 2+) */}
+          {showIncludeToggle && (
+            <div className="mb-3">
+              <IncludeToggle
+                proposalId={proposal.id}
+                included={proposal.included}
+                onToggled={onProposalUpdated}
+              />
+            </div>
+          )}
+
+          {/* Show included badge for non-admins */}
+          {!isAdmin && proposal.included && !proposal.is_destination && (
+            <div className="mb-3">
+              <IncludedBadge />
             </div>
           )}
 

@@ -15,7 +15,7 @@ import { DestinationAutocomplete } from '@/components/ui/DestinationAutocomplete
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PROPOSAL_TYPES, type ProposalType } from '@/lib/tripchat-types';
+import { PROPOSAL_TYPES, type ProposalType, type TripPhase } from '@/lib/tripchat-types';
 import { cn } from '@/lib/utils';
 
 type CostCategory = 'lodging' | 'transport' | 'food' | 'activities';
@@ -54,15 +54,23 @@ interface CreateProposalModalProps {
   tripId: string;
   onCreated: () => void;
   memberCount: number;
+  tripPhase?: TripPhase;
 }
 
-export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCount }: CreateProposalModalProps) {
+export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCount, tripPhase = 'destination' }: CreateProposalModalProps) {
   const { user, profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [estimating, setEstimating] = useState(false);
 
+  // In Phase 1 (destination), default to full_itinerary for destination proposals
+  // In Phase 2 (itinerary), default to activity for itinerary items
+  const defaultType: ProposalType = tripPhase === 'destination' ? 'full_itinerary' : 'activity';
+
   // Proposal type
-  const [proposalType, setProposalType] = useState<ProposalType>('full_itinerary');
+  const [proposalType, setProposalType] = useState<ProposalType>(defaultType);
+
+  // Reset type when phase changes
+  const isDestinationPhase = tripPhase === 'destination';
 
   // Form state
   const [name, setName] = useState('');
@@ -221,6 +229,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
           cost_activities_total: parseFloat(costActivities) || 0,
           estimated_cost_per_person: costPerPerson,
           attendee_count: splitCount,
+          is_destination: isDestinationPhase,
         })
         .select()
         .single();
@@ -252,7 +261,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   };
 
   const resetForm = () => {
-    setProposalType('full_itinerary');
+    setProposalType(defaultType);
     setName('');
     setDescription('');
     setAddress('');
@@ -273,6 +282,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   };
 
   const getTitle = () => {
+    if (isDestinationPhase) return 'Propose a Destination';
     const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
     if (proposalType === 'full_itinerary') return 'Propose a Trip';
     return `Add ${typeInfo?.label || 'Proposal'}`;
@@ -296,28 +306,30 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
           </DialogHeader>
 
           <div className="space-y-5 pt-4">
-          {/* Type Selector */}
-          <div className="space-y-2">
-            <Label>What are you proposing?</Label>
-            <div className="grid grid-cols-4 gap-2">
-              {PROPOSAL_TYPES.map((type) => (
-                <button
-                  key={type.value}
-                  type="button"
-                  onClick={() => setProposalType(type.value as ProposalType)}
-                  className={cn(
-                    'flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-center',
-                    proposalType === type.value
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                  )}
-                >
-                  <span className="text-xl">{type.emoji}</span>
-                  <span className="text-xs font-medium">{type.label}</span>
-                </button>
-              ))}
+          {/* Type Selector - Hidden in destination phase (forced to full_itinerary) */}
+          {!isDestinationPhase && (
+            <div className="space-y-2">
+              <Label>What are you adding to the itinerary?</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {PROPOSAL_TYPES.map((type) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => setProposalType(type.value as ProposalType)}
+                    className={cn(
+                      'flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-center',
+                      proposalType === type.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                    )}
+                  >
+                    <span className="text-xl">{type.emoji}</span>
+                    <span className="text-xs font-medium">{type.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Quick Post Fields (Place/Activity/Food Spot) */}
           {isQuickPost && (

@@ -1,7 +1,8 @@
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, DollarSign, Users, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon } from 'lucide-react';
+import { Calendar, DollarSign, Users, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye } from 'lucide-react';
 import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
-import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
+import { PROPOSAL_TYPES, TRIP_PHASES } from '@/lib/tripchat-types';
+import { PhaseActions } from '@/components/trip/PhaseActions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -22,14 +23,40 @@ interface TripPanelProps {
   onInvite: () => void;
   onViewProposal: (proposal: TripProposal) => void;
   isOwner?: boolean;
+  isAdmin?: boolean;
   onDeleteTrip?: () => void;
   onRemoveMember?: (member: TripMember) => void;
   onEditCover?: () => void;
+  onOpenLockDestination?: (proposal: TripProposal) => void;
+  onOpenFinalizeView?: () => void;
+  onPhaseChanged?: () => void;
+  lockedDestination?: TripProposal | null;
+  destinationProposals?: TripProposal[];
+  includedProposals?: TripProposal[];
 }
 
-export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, isOwner, onDeleteTrip, onRemoveMember, onEditCover }: TripPanelProps) {
+export function TripPanel({
+  trip,
+  members,
+  proposals,
+  onInvite,
+  onViewProposal,
+  isOwner,
+  isAdmin,
+  onDeleteTrip,
+  onRemoveMember,
+  onEditCover,
+  onOpenLockDestination,
+  onOpenFinalizeView,
+  onPhaseChanged,
+  lockedDestination,
+  destinationProposals = [],
+  includedProposals = [],
+}: TripPanelProps) {
   const { user } = useAuth();
   const hasDeadline = trip.decision_deadline && new Date(trip.decision_deadline) > new Date();
+  const currentPhase = trip.phase || 'destination';
+  const phaseInfo = TRIP_PHASES.find(p => p.value === currentPhase);
   
   // Sort proposals by vote count
   const sortedProposals = [...proposals].sort((a, b) => {
@@ -68,6 +95,72 @@ export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, 
     <div className="w-80 border-l border-border bg-card flex flex-col h-full">
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
+          {/* Phase Status */}
+          <section className="pb-4 border-b border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">{phaseInfo?.emoji}</span>
+              <span className="text-sm font-semibold text-foreground">{phaseInfo?.label}</span>
+              <Badge variant="secondary" className="ml-auto text-xs">
+                Step {phaseInfo?.step}/4
+              </Badge>
+            </div>
+
+            {/* Phase Actions for Admins */}
+            {isAdmin && onOpenLockDestination && onPhaseChanged && (
+              <PhaseActions
+                tripId={trip.id}
+                currentPhase={currentPhase}
+                destinationProposals={destinationProposals}
+                includedProposals={includedProposals}
+                onOpenLockDestination={onOpenLockDestination}
+                onPhaseChanged={onPhaseChanged}
+                isAdmin={isAdmin}
+              />
+            )}
+
+            {/* View Finalize button in finalize phase */}
+            {currentPhase === 'finalize' && onOpenFinalizeView && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenFinalizeView}
+                className="w-full mt-2"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View Trip Summary
+              </Button>
+            )}
+          </section>
+
+          {/* Locked Destination */}
+          {lockedDestination && (
+            <section>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1">
+                <Lock className="h-3.5 w-3.5 text-primary" />
+                Destination
+              </h3>
+              {(() => {
+                const destDisplayName = lockedDestination.name || lockedDestination.destination;
+                return (
+                  <button
+                    onClick={() => onViewProposal(lockedDestination)}
+                    className="w-full p-3 bg-primary/5 rounded-lg border border-primary/20 hover:border-primary/40 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      <span className="font-semibold text-foreground">{destDisplayName}</span>
+                    </div>
+                    {lockedDestination.vibe_tags && lockedDestination.vibe_tags.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {lockedDestination.vibe_tags.slice(0, 3).join(' · ')}
+                      </p>
+                    )}
+                  </button>
+                );
+              })()}
+            </section>
+          )}
+
           {/* Trip Basics */}
           <section>
             <div className="flex items-center justify-between mb-3">
@@ -225,55 +318,109 @@ export function TripPanel({ trip, members, proposals, onInvite, onViewProposal, 
             </section>
           )}
 
-          {/* Proposals Ranking */}
+          {/* Proposals Ranking - Phase-aware */}
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              Proposals ({proposals.length})
+              {currentPhase === 'destination' ? 'Destination Proposals' : 'Itinerary Items'} ({currentPhase === 'destination' ? destinationProposals.length : proposals.filter(p => !p.is_destination).length})
             </h3>
-            {sortedProposals.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No proposals yet</p>
-            ) : (
-              <div className="space-y-2">
-                {sortedProposals.slice(0, 5).map((proposal, index) => {
-                  const inCount = (proposal.votes || []).filter((v) => v.vote === 'in').length;
-                  const isPinned = proposal.id === trip.pinned_proposal_id;
+            {(() => {
+              // Show destination proposals in phase 1, itinerary items in phase 2+
+              const relevantProposals = currentPhase === 'destination'
+                ? sortedProposals.filter(p => p.is_destination)
+                : sortedProposals.filter(p => !p.is_destination);
+
+              if (relevantProposals.length === 0) {
+                return (
+                  <p className="text-sm text-muted-foreground">
+                    {currentPhase === 'destination'
+                      ? 'No destination proposals yet'
+                      : 'No itinerary items yet'}
+                  </p>
+                );
+              }
+
+              return (
+                <div className="space-y-2">
+                  {relevantProposals.slice(0, 5).map((proposal, index) => {
+                    const inCount = (proposal.votes || []).filter((v) => v.vote === 'in').length;
+                    const isPinned = proposal.id === trip.pinned_proposal_id;
+                    const isIncluded = proposal.included;
+                    const proposalType = proposal.type || 'full_itinerary';
+                    const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
+                    const displayName = proposal.name || proposal.destination;
+                    const isFullItinerary = proposalType === 'full_itinerary';
+
+                    return (
+                      <button
+                        key={proposal.id}
+                        onClick={() => onViewProposal(proposal)}
+                        className={cn(
+                          'w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left',
+                          isPinned && 'bg-vote-in-bg border border-vote-in/20',
+                          isIncluded && !isPinned && 'bg-vote-in/5 border border-vote-in/10'
+                        )}
+                      >
+                        <div className={cn(
+                          'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+                          index === 0 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
+                        )}>
+                          {index + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate flex items-center gap-1">
+                            {typeInfo?.emoji} {displayName}
+                            {isIncluded && (
+                              <Check className="h-3 w-3 text-vote-in flex-shrink-0" />
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {isFullItinerary ? `$${proposal.estimated_cost_per_person} · ` : ''}
+                            {proposal.price_range && proposalType === 'food_spot' ? `${proposal.price_range} · ` : ''}
+                            {inCount} in
+                          </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </section>
+
+          {/* Included Items Summary (Phase 2+) */}
+          {currentPhase !== 'destination' && includedProposals.length > 0 && (
+            <section>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1">
+                <Check className="h-3.5 w-3.5 text-vote-in" />
+                In the Plan ({includedProposals.length})
+              </h3>
+              <div className="space-y-1.5">
+                {includedProposals.slice(0, 5).map((proposal) => {
                   const proposalType = proposal.type || 'full_itinerary';
                   const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
                   const displayName = proposal.name || proposal.destination;
-                  const isFullItinerary = proposalType === 'full_itinerary';
 
                   return (
                     <button
                       key={proposal.id}
                       onClick={() => onViewProposal(proposal)}
-                      className={cn(
-                        'w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left',
-                        isPinned && 'bg-vote-in-bg border border-vote-in/20'
-                      )}
+                      className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left text-sm"
                     >
-                      <div className={cn(
-                        'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
-                        index === 0 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
-                      )}>
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {typeInfo?.emoji} {displayName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {isFullItinerary ? `$${proposal.estimated_cost_per_person} · ` : ''}
-                          {proposal.price_range && proposalType === 'food_spot' ? `${proposal.price_range} · ` : ''}
-                          {inCount} in
-                        </p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <span>{typeInfo?.emoji}</span>
+                      <span className="flex-1 truncate">{displayName}</span>
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>
                   );
                 })}
+                {includedProposals.length > 5 && (
+                  <p className="text-xs text-muted-foreground text-center pt-1">
+                    +{includedProposals.length - 5} more
+                  </p>
+                )}
               </div>
-            )}
-          </section>
+            </section>
+          )}
         </div>
       </ScrollArea>
     </div>

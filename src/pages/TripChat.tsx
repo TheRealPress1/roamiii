@@ -15,6 +15,9 @@ import { CompareModal } from '@/components/compare/CompareModal';
 import { DeleteTripDialog } from '@/components/trip/DeleteTripDialog';
 import { RemoveMemberDialog } from '@/components/trip/RemoveMemberDialog';
 import { EditTripCoverModal } from '@/components/trip/EditTripCoverModal';
+import { PhaseProgress } from '@/components/trip/PhaseProgress';
+import { LockDestinationModal } from '@/components/trip/LockDestinationModal';
+import { FinalizeView } from '@/components/trip/FinalizeView';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
@@ -44,6 +47,9 @@ export default function TripChat() {
   const [removeLoading, setRemoveLoading] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editCoverModalOpen, setEditCoverModalOpen] = useState(false);
+  const [lockDestinationModalOpen, setLockDestinationModalOpen] = useState(false);
+  const [proposalToLock, setProposalToLock] = useState<TripProposal | null>(null);
+  const [finalizeViewOpen, setFinalizeViewOpen] = useState(false);
 
   // Compare hook
   const { compareIds, compareCount, toggleCompare, clearCompare, isComparing } = useProposalCompare(tripId!);
@@ -64,6 +70,22 @@ export default function TripChat() {
 
   // Get compared proposals
   const comparedProposals = proposals.filter(p => compareIds.includes(p.id));
+
+  // Get locked destination proposal
+  const lockedDestination = trip?.locked_destination_id
+    ? proposals.find(p => p.id === trip.locked_destination_id) || null
+    : null;
+
+  // Filter proposals by phase context
+  const destinationProposals = proposals.filter(p => p.is_destination);
+  const itineraryProposals = proposals.filter(p => !p.is_destination);
+  const includedProposals = proposals.filter(p => p.included);
+
+  // Handler for opening lock destination modal
+  const handleOpenLockDestination = (proposal: TripProposal) => {
+    setProposalToLock(proposal);
+    setLockDestinationModalOpen(true);
+  };
   const handleCopyCode = async () => {
     if (!trip?.join_code) return;
     await navigator.clipboard.writeText(trip.join_code);
@@ -211,13 +233,28 @@ export default function TripChat() {
               onInvite={() => setInviteModalOpen(true)}
               onViewProposal={handleViewProposal}
               isOwner={isOwner}
+              isAdmin={isAdmin}
               onDeleteTrip={() => setDeleteModalOpen(true)}
               onRemoveMember={(member) => setMemberToRemove(member)}
               onEditCover={() => setEditCoverModalOpen(true)}
+              onOpenLockDestination={handleOpenLockDestination}
+              onOpenFinalizeView={() => setFinalizeViewOpen(true)}
+              onPhaseChanged={refetch}
+              lockedDestination={lockedDestination}
+              destinationProposals={destinationProposals}
+              includedProposals={includedProposals}
             />
           </SheetContent>
         </Sheet>
       </header>
+
+      {/* Phase Progress - show below header */}
+      {trip.phase && (
+        <PhaseProgress
+          currentPhase={trip.phase}
+          lockedDestination={lockedDestination}
+        />
+      )}
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
@@ -231,12 +268,16 @@ export default function TripChat() {
             compareIds={compareIds}
             onToggleCompare={toggleCompare}
             onReply={setReplyingTo}
+            isAdmin={isAdmin}
+            tripPhase={trip.phase}
+            onProposalUpdated={refetch}
           />
           <ChatComposer
             onSend={sendMessage}
             onPropose={() => setProposalModalOpen(true)}
             replyTo={replyingTo}
             onCancelReply={() => setReplyingTo(null)}
+            tripPhase={trip.phase}
           />
         </div>
 
@@ -254,9 +295,16 @@ export default function TripChat() {
             onInvite={() => setInviteModalOpen(true)}
             onViewProposal={handleViewProposal}
             isOwner={isOwner}
+            isAdmin={isAdmin}
             onDeleteTrip={() => setDeleteModalOpen(true)}
             onRemoveMember={(member) => setMemberToRemove(member)}
             onEditCover={() => setEditCoverModalOpen(true)}
+            onOpenLockDestination={handleOpenLockDestination}
+            onOpenFinalizeView={() => setFinalizeViewOpen(true)}
+            onPhaseChanged={refetch}
+            lockedDestination={lockedDestination}
+            destinationProposals={destinationProposals}
+            includedProposals={includedProposals}
           />
         </motion.div>
       </div>
@@ -271,6 +319,7 @@ export default function TripChat() {
           refetch();
         }}
         memberCount={members.length}
+        tripPhase={trip.phase}
       />
 
       <ProposalDetailModal
@@ -284,6 +333,7 @@ export default function TripChat() {
           setSelectedProposal(null);
           refetch();
         }}
+        tripPhase={trip.phase}
       />
 
       <InviteModal
@@ -335,6 +385,30 @@ export default function TripChat() {
         onUpdate={(updatedTrip) => {
           refetch();
         }}
+      />
+
+      {/* Phase-specific modals */}
+      {proposalToLock && (
+        <LockDestinationModal
+          open={lockDestinationModalOpen}
+          onClose={() => {
+            setLockDestinationModalOpen(false);
+            setProposalToLock(null);
+          }}
+          proposal={proposalToLock}
+          tripId={tripId!}
+          onLocked={refetch}
+        />
+      )}
+
+      <FinalizeView
+        open={finalizeViewOpen}
+        onClose={() => setFinalizeViewOpen(false)}
+        trip={trip}
+        lockedDestination={lockedDestination}
+        includedProposals={includedProposals}
+        isAdmin={isAdmin}
+        onFinalized={refetch}
       />
     </div>
   );

@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Sparkles, Loader2, X, Reply, MapPin } from 'lucide-react';
+import { Send, Sparkles, Loader2, X, Reply, MapPin, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { Message } from '@/lib/tripchat-types';
+import type { Message, TripPhase } from '@/lib/tripchat-types';
 
 interface ChatComposerProps {
   onSend: (message: string, replyToId?: string) => Promise<{ error: Error | null }>;
@@ -11,12 +11,28 @@ interface ChatComposerProps {
   disabled?: boolean;
   replyTo?: Message | null;
   onCancelReply?: () => void;
+  tripPhase?: TripPhase;
 }
 
-export function ChatComposer({ onSend, onPropose, disabled, replyTo, onCancelReply }: ChatComposerProps) {
+export function ChatComposer({ onSend, onPropose, disabled, replyTo, onCancelReply, tripPhase = 'destination' }: ChatComposerProps) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Disable proposing in finalize and ready phases
+  const canPropose = tripPhase === 'destination' || tripPhase === 'itinerary';
+
+  // Get appropriate button text based on phase
+  const getProposalButtonText = () => {
+    switch (tripPhase) {
+      case 'destination':
+        return 'Propose';
+      case 'itinerary':
+        return 'Add';
+      default:
+        return 'Propose';
+    }
+  };
 
   // Focus textarea when replying
   useEffect(() => {
@@ -100,16 +116,22 @@ export function ChatComposer({ onSend, onPropose, disabled, replyTo, onCancelRep
             )}
           />
           <div className="absolute right-2 bottom-2 flex items-center gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onPropose}
-              disabled={disabled || sending}
-              className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
-            >
-              <Sparkles className="h-4 w-4 mr-1" />
-              Propose
-            </Button>
+            {canPropose && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onPropose}
+                disabled={disabled || sending}
+                className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
+              >
+                {tripPhase === 'destination' ? (
+                  <Sparkles className="h-4 w-4 mr-1" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-1" />
+                )}
+                {getProposalButtonText()}
+              </Button>
+            )}
           </div>
         </div>
         <Button
