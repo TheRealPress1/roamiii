@@ -80,12 +80,12 @@ export default function Dashboard() {
   const fetchTrips = async () => {
     setError(null);
     try {
-      // Fetch trips with member count, proposal count, and first proposal image
+      // Fetch trips with members (to count active only), proposals, and first proposal image
       const { data: tripData, error: fetchError } = await supabase
         .from('trips')
         .select(`
           *,
-          trip_members(count),
+          trip_members(id, status),
           trip_proposals!trip_proposals_trip_id_fkey(
             cover_image_url,
             destination
@@ -115,9 +115,12 @@ export default function Dashboard() {
           const proposals = trip.trip_proposals || [];
           const firstProposal = proposals[0];
 
+          // Count only active members
+          const activeMembers = trip.trip_members?.filter((m: { status: string }) => m.status === 'active') || [];
+
           return {
             ...trip,
-            member_count: trip.trip_members?.[0]?.count || 0,
+            member_count: activeMembers.length,
             proposal_count: proposals.length,
             last_message: lastMessageData?.body || null,
             last_message_at: lastMessageData?.created_at || null,
