@@ -1,5 +1,5 @@
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, DollarSign, Users, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye } from 'lucide-react';
+import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye } from 'lucide-react';
 import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES, TRIP_PHASES } from '@/lib/tripchat-types';
 import { PhaseActions } from '@/components/trip/PhaseActions';
@@ -202,17 +202,6 @@ export function TripPanel({
                   </span>
                 </div>
               )}
-              {(trip.budget_min || trip.budget_max) && (
-                <div className="flex items-center gap-2 text-sm min-w-0">
-                  <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <span className="truncate">
-                    {trip.budget_min && `$${trip.budget_min}`}
-                    {trip.budget_min && trip.budget_max && ' - '}
-                    {trip.budget_max && `$${trip.budget_max}`}
-                    <span className="text-muted-foreground"> / person</span>
-                  </span>
-                </div>
-              )}
               {hasDeadline && (
                 <div className="flex items-center gap-2 text-sm min-w-0">
                   <Clock className="h-4 w-4 text-vote-maybe flex-shrink-0" />
@@ -236,7 +225,7 @@ export function TripPanel({
             </div>
             {/* Stacked avatars */}
             <div className="flex items-center gap-2">
-              <div className="flex items-center -space-x-2">
+              <div className="flex items-center -space-x-1">
                 {members.slice(0, 6).map((member, index) => {
                   const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
                   const isOwnerMember = member.role === 'owner';
@@ -333,74 +322,6 @@ export function TripPanel({
             </section>
           )}
 
-          {/* Proposals Ranking - Phase-aware */}
-          <section className="overflow-hidden">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 truncate">
-              {currentPhase === 'destination' ? 'Destinations' : 'Itinerary'} ({currentPhase === 'destination' ? destinationProposals.length : proposals.filter(p => !p.is_destination).length})
-            </h3>
-            {(() => {
-              // Show destination proposals in phase 1, itinerary items in phase 2+
-              const relevantProposals = currentPhase === 'destination'
-                ? sortedProposals.filter(p => p.is_destination)
-                : sortedProposals.filter(p => !p.is_destination);
-
-              if (relevantProposals.length === 0) {
-                return (
-                  <p className="text-sm text-muted-foreground">
-                    {currentPhase === 'destination'
-                      ? 'No destination proposals yet'
-                      : 'No itinerary items yet'}
-                  </p>
-                );
-              }
-
-              return (
-                <div className="space-y-2">
-                  {relevantProposals.slice(0, 5).map((proposal, index) => {
-                    const inCount = (proposal.votes || []).filter((v) => v.vote === 'in').length;
-                    const isPinned = proposal.id === trip.pinned_proposal_id;
-                    const isIncluded = proposal.included;
-                    const proposalType = proposal.type || 'housing';
-                    const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
-                    const displayName = proposal.name || proposal.destination;
-
-                    return (
-                      <button
-                        key={proposal.id}
-                        onClick={() => onViewProposal(proposal)}
-                        className={cn(
-                          'w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left min-w-0',
-                          isPinned && 'bg-vote-in-bg border border-vote-in/20',
-                          isIncluded && !isPinned && 'bg-vote-in/5 border border-vote-in/10'
-                        )}
-                      >
-                        <div className={cn(
-                          'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
-                          index === 0 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
-                        )}>
-                          {index + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate flex items-center gap-1">
-                            <span className="flex-shrink-0">{typeInfo?.emoji}</span>
-                            <span className="truncate">{displayName}</span>
-                            {isIncluded && (
-                              <Check className="h-3 w-3 text-vote-in flex-shrink-0" />
-                            )}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {proposal.estimated_cost_per_person > 0 ? `$${proposal.estimated_cost_per_person}/person · ` : ''}
-                            {inCount} in
-                          </p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </section>
 
           {/* Included Items Summary (Phase 2+) */}
           {currentPhase !== 'destination' && includedProposals.length > 0 && (
