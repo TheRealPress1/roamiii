@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { TripProposal, TripVote, VoteType, TripPhase, ProposalType } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
-import { IncludeToggle, IncludedBadge } from '@/components/proposal/IncludeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -31,7 +30,7 @@ interface ProposalDetailModalProps {
   onClose: () => void;
   proposal: TripProposal | null;
   tripId: string;
-  isAdmin: boolean;
+  isAdmin: boolean; // Actually isOwner - only owner can lock/pin
   onPinned: () => void;
   onDeleted?: () => void;
   tripPhase?: TripPhase;
@@ -42,7 +41,7 @@ export function ProposalDetailModal({
   onClose,
   proposal,
   tripId,
-  isAdmin,
+  isAdmin: isOwner, // Renamed for clarity - only owner can perform admin actions
   onPinned,
   onDeleted,
   tripPhase = 'destination',
@@ -60,7 +59,7 @@ export function ProposalDetailModal({
     setLocalVotes(proposal?.votes || []);
   }, [proposal?.votes]);
 
-  const canDelete = proposal && (proposal.created_by === user?.id || isAdmin);
+  const canDelete = proposal && (proposal.created_by === user?.id || isOwner);
 
   if (!proposal) return null;
 
@@ -344,27 +343,8 @@ export function ProposalDetailModal({
               />
             </div>
 
-            {/* Include in Plan Toggle (Admin only, Phase 2+, non-destination proposals) */}
-            {isAdmin &&
-              (tripPhase === 'itinerary' || tripPhase === 'finalize') &&
-              !proposal.is_destination && (
-                <IncludeToggle
-                  proposalId={proposal.id}
-                  included={proposal.included}
-                  onToggled={onPinned}
-                  className="w-full"
-                />
-              )}
-
-            {/* Show included badge for non-admins */}
-            {!isAdmin && proposal.included && !proposal.is_destination && (
-              <div className="flex justify-center">
-                <IncludedBadge />
-              </div>
-            )}
-
-            {/* Pin as Final Pick (Admin only - only show in destination phase or for ready phase) */}
-            {isAdmin && tripPhase === 'destination' && (
+            {/* Pin as Final Pick (Owner only - only show in destination phase) */}
+            {isOwner && tripPhase === 'destination' && (
               <Button
                 onClick={handlePin}
                 disabled={pinning}
@@ -385,7 +365,7 @@ export function ProposalDetailModal({
               </Button>
             )}
 
-            {/* Delete Proposal (Creator or Admin) */}
+            {/* Delete Proposal (Creator or Owner) */}
             {canDelete && (
               <Button
                 variant="outline"
@@ -493,7 +473,6 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
   const config = {
     in: {
       icon: ThumbsUp,
-      label: 'Locked in',
       gradient: 'from-emerald-500 to-green-600',
       bg: 'bg-emerald-50 dark:bg-emerald-950/30',
       text: 'text-emerald-600 dark:text-emerald-400',
@@ -502,7 +481,6 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
     },
     maybe: {
       icon: Minus,
-      label: 'Maybe',
       gradient: 'from-amber-500 to-orange-500',
       bg: 'bg-amber-50 dark:bg-amber-950/30',
       text: 'text-amber-600 dark:text-amber-400',
@@ -511,7 +489,6 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
     },
     out: {
       icon: ThumbsDown,
-      label: 'Hell nah',
       gradient: 'from-rose-500 to-red-600',
       bg: 'bg-rose-50 dark:bg-rose-950/30',
       text: 'text-rose-600 dark:text-rose-400',
@@ -520,8 +497,8 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
     },
   };
 
-  const { icon: Icon, label, gradient, bg, text, border, hoverBg } = config[type];
-  const hasVotes = votes.length > 0;
+  const { icon: Icon, gradient, bg, text, border, hoverBg } = config[type];
+  const voteCount = votes.length;
 
   return (
     <button
@@ -533,13 +510,14 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
           : `${bg} ${text} ${border} ${hoverBg}`
       )}
     >
-      {hasVotes ? (
-        <VoterAvatars votes={votes} isActive={isActive} />
-      ) : (
-        <>
-          <Icon className={cn('h-6 w-6', isActive && 'drop-shadow-sm')} />
-          <span className="text-sm">{label}</span>
-        </>
+      <Icon className={cn('h-6 w-6', isActive && 'drop-shadow-sm')} />
+      {voteCount > 0 && (
+        <span className={cn(
+          'min-w-[1.5rem] h-6 flex items-center justify-center rounded-full text-sm font-bold',
+          isActive ? 'bg-white/20' : 'bg-current/10'
+        )}>
+          {voteCount}
+        </span>
       )}
     </button>
   );

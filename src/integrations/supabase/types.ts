@@ -948,9 +948,11 @@ export type Database = {
           date_end: string | null
           date_start: string | null
           decision_deadline: string | null
+          destination_voting_deadline: string | null
           flexible_dates: boolean | null
           home_city: string | null
           id: string
+          itinerary_voting_deadline: string | null
           join_code: string | null
           name: string
           pinned_proposal_id: string | null
@@ -965,9 +967,11 @@ export type Database = {
           date_end?: string | null
           date_start?: string | null
           decision_deadline?: string | null
+          destination_voting_deadline?: string | null
           flexible_dates?: boolean | null
           home_city?: string | null
           id?: string
+          itinerary_voting_deadline?: string | null
           join_code?: string | null
           name: string
           pinned_proposal_id?: string | null
@@ -982,9 +986,11 @@ export type Database = {
           date_end?: string | null
           date_start?: string | null
           decision_deadline?: string | null
+          destination_voting_deadline?: string | null
           flexible_dates?: boolean | null
           home_city?: string | null
           id?: string
+          itinerary_voting_deadline?: string | null
           join_code?: string | null
           name?: string
           pinned_proposal_id?: string | null

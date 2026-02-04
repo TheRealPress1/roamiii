@@ -3,6 +3,7 @@ import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, Us
 import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES, TRIP_PHASES } from '@/lib/tripchat-types';
 import { PhaseActions } from '@/components/trip/PhaseActions';
+import { DeadlineSettings } from '@/components/trip/DeadlineSettings';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -107,8 +108,8 @@ export function TripPanel({
               </Badge>
             </div>
 
-            {/* Phase Actions for Admins */}
-            {isAdmin && onOpenLockDestination && onPhaseChanged && (
+            {/* Phase Actions for Owner */}
+            {isOwner && onOpenLockDestination && onPhaseChanged && (
               <PhaseActions
                 tripId={trip.id}
                 currentPhase={currentPhase}
@@ -117,8 +118,15 @@ export function TripPanel({
                 onOpenLockDestination={onOpenLockDestination}
                 onOpenTransportation={onOpenTransportation}
                 onPhaseChanged={onPhaseChanged}
-                isAdmin={isAdmin}
+                isOwner={isOwner}
               />
+            )}
+
+            {/* Deadline Settings for Owner */}
+            {isOwner && onPhaseChanged && (currentPhase === 'destination' || currentPhase === 'itinerary') && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <DeadlineSettings trip={trip} onUpdated={onPhaseChanged} />
+              </div>
             )}
 
             {/* View Transportation button in itinerary or transportation phase */}

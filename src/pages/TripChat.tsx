@@ -22,6 +22,7 @@ import { TransportationView } from '@/components/trip/TransportationView';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
+import { useAutoLock, useVotingStatus } from '@/hooks/useAutoLock';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { TripProposal, TripMember, Message } from '@/lib/tripchat-types';
@@ -75,6 +76,18 @@ export default function TripChat() {
 
   // Compare hook
   const { compareIds, compareCount, toggleCompare, clearCompare, isComparing } = useProposalCompare(tripId!);
+
+  // Voting status hook
+  const votingStatus = useVotingStatus(trip, proposals, members);
+
+  // Auto-lock hook - only enable for owner
+  useAutoLock({
+    trip,
+    proposals,
+    members,
+    onAutoLocked: refetch,
+    userId: isOwner ? user?.id : undefined, // Only owner can trigger auto-lock
+  });
 
   const isLoading = dataLoading || messagesLoading;
   const currentMember = members.find((m) => m.user_id === user?.id);
@@ -298,6 +311,7 @@ export default function TripChat() {
             onViewModeChange={handleViewModeChange}
             lockedDestinationId={trip.locked_destination_id}
             lastViewedChatAt={lastViewedChatAt}
+            votingStatus={votingStatus}
           />
           <ChatComposer
             onSend={sendMessage}
@@ -352,7 +366,7 @@ export default function TripChat() {
         onClose={() => setSelectedProposal(null)}
         proposal={selectedProposal}
         tripId={tripId!}
-        isAdmin={isAdmin}
+        isAdmin={isOwner}
         onPinned={refetch}
         onDeleted={() => {
           setSelectedProposal(null);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus, Lock } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, ThumbsUp, ThumbsDown, Minus, Lock, Clock, Users, Check } from 'lucide-react';
 import type { Message, TripProposal, TripVote, VoteType, TripPhase, ProposalType } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,12 +9,19 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { VibeTag } from '@/components/ui/VibeTag';
 import { CompareButton } from '@/components/compare/CompareButton';
-import { IncludeToggle, IncludedBadge } from '@/components/proposal/IncludeToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SFSymbol } from '@/components/icons';
 import { PROPOSAL_TYPE_ICON_MAP, TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
+
+interface VotingStatusInfo {
+  votedCount: number;
+  totalMembers: number;
+  deadline: Date | null;
+  deadlinePassed: boolean;
+  allVoted: boolean;
+}
 
 interface ProposalMessageProps {
   message: Message;
@@ -28,9 +35,10 @@ interface ProposalMessageProps {
   onProposalUpdated?: () => void;
   replies?: Message[];
   isLocked?: boolean;
+  votingStatus?: VotingStatusInfo;
 }
 
-export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, replies = [], isLocked }: ProposalMessageProps) {
+export function ProposalMessage({ message, tripId, onViewDetails, isComparing, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, replies = [], isLocked, votingStatus }: ProposalMessageProps) {
   const { user, profile } = useAuth();
   const proposal = message.proposal;
 
@@ -41,13 +49,6 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
   useEffect(() => {
     setLocalVotes(proposal?.votes || []);
   }, [proposal?.votes]);
-
-  // Show include toggle in itinerary/finalize phases for non-destination proposals
-  const showIncludeToggle = isAdmin &&
-    tripPhase &&
-    (tripPhase === 'itinerary' || tripPhase === 'finalize') &&
-    proposal &&
-    !proposal.is_destination;
 
   if (!proposal) return null;
 
@@ -297,6 +298,11 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             )}
           </div>
 
+          {/* Voting status */}
+          {votingStatus && (
+            <VotingStatusDisplay status={votingStatus} />
+          )}
+
           {/* Vote buttons */}
           <div className="flex gap-2 mb-3">
             <VoteButton
@@ -326,24 +332,6 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
                 isComparing={isComparing || false}
                 onToggle={onToggleCompare}
               />
-            </div>
-          )}
-
-          {/* Include Toggle for Admins (Phase 2+) */}
-          {showIncludeToggle && (
-            <div className="mb-3">
-              <IncludeToggle
-                proposalId={proposal.id}
-                included={proposal.included}
-                onToggled={onProposalUpdated}
-              />
-            </div>
-          )}
-
-          {/* Show included badge for non-admins */}
-          {!isAdmin && proposal.included && !proposal.is_destination && (
-            <div className="mb-3">
-              <IncludedBadge />
             </div>
           )}
 
@@ -471,11 +459,56 @@ function VoterAvatars({ votes, isActive }: { votes: TripVote[]; isActive: boolea
   );
 }
 
+function VotingStatusDisplay({ status }: { status: VotingStatusInfo }) {
+  const { votedCount, totalMembers, deadline, deadlinePassed, allVoted } = status;
+
+  return (
+    <div className="flex items-center gap-3 mb-3 px-3 py-2 bg-muted/50 rounded-lg text-xs">
+      {/* Vote count */}
+      <div className={cn(
+        'flex items-center gap-1',
+        allVoted ? 'text-vote-in' : 'text-muted-foreground'
+      )}>
+        {allVoted ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : (
+          <Users className="h-3.5 w-3.5" />
+        )}
+        <span className="font-medium">
+          {votedCount}/{totalMembers} voted
+        </span>
+      </div>
+
+      {/* Deadline */}
+      {deadline && (
+        <div className={cn(
+          'flex items-center gap-1',
+          deadlinePassed ? 'text-vote-out' : 'text-muted-foreground'
+        )}>
+          <Clock className="h-3.5 w-3.5" />
+          <span>
+            {deadlinePassed
+              ? 'Deadline passed'
+              : formatDistanceToNow(deadline, { addSuffix: true })}
+          </span>
+        </div>
+      )}
+
+      {/* All voted + deadline passed = ready to lock */}
+      {allVoted && deadlinePassed && (
+        <div className="flex items-center gap-1 text-vote-in ml-auto">
+          <Lock className="h-3.5 w-3.5" />
+          <span className="font-medium">Ready to lock</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
   const config = {
     in: {
       icon: ThumbsUp,
-      label: 'Locked in',
       gradient: 'from-emerald-500 to-green-600',
       bg: 'bg-emerald-50 dark:bg-emerald-950/30',
       text: 'text-emerald-600 dark:text-emerald-400',
@@ -484,7 +517,6 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
     },
     maybe: {
       icon: Minus,
-      label: 'Maybe',
       gradient: 'from-amber-500 to-orange-500',
       bg: 'bg-amber-50 dark:bg-amber-950/30',
       text: 'text-amber-600 dark:text-amber-400',
@@ -493,7 +525,6 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
     },
     out: {
       icon: ThumbsDown,
-      label: 'Hell nah',
       gradient: 'from-rose-500 to-red-600',
       bg: 'bg-rose-50 dark:bg-rose-950/30',
       text: 'text-rose-600 dark:text-rose-400',
@@ -502,26 +533,27 @@ function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
     },
   };
 
-  const { icon: Icon, label, gradient, bg, text, border, hoverBg } = config[type];
-  const hasVotes = votes.length > 0;
+  const { icon: Icon, gradient, bg, text, border, hoverBg } = config[type];
+  const voteCount = votes.length;
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border',
+        'flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border',
         isActive
           ? `bg-gradient-to-r ${gradient} text-white border-transparent shadow-lg shadow-${type === 'in' ? 'emerald' : type === 'maybe' ? 'amber' : 'rose'}-500/25 scale-[1.02]`
           : `${bg} ${text} ${border} ${hoverBg}`
       )}
     >
-      {hasVotes ? (
-        <VoterAvatars votes={votes} isActive={isActive} />
-      ) : (
-        <>
-          <Icon className={cn('h-4 w-4', isActive && 'drop-shadow-sm')} />
-          <span>{label}</span>
-        </>
+      <Icon className={cn('h-4 w-4', isActive && 'drop-shadow-sm')} />
+      {voteCount > 0 && (
+        <span className={cn(
+          'min-w-[1.25rem] h-5 flex items-center justify-center rounded-full text-xs font-bold',
+          isActive ? 'bg-white/20' : 'bg-current/10'
+        )}>
+          {voteCount}
+        </span>
       )}
     </button>
   );

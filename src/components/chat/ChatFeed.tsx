@@ -11,6 +11,14 @@ import type { SFSymbolName } from '@/components/icons';
 
 export type ChatViewMode = 'proposals' | 'chat';
 
+interface VotingStatusInfo {
+  votedCount: number;
+  totalMembers: number;
+  deadline: Date | null;
+  deadlinePassed: boolean;
+  allVoted: boolean;
+}
+
 interface ChatFeedProps {
   messages: Message[];
   loading: boolean;
@@ -26,6 +34,7 @@ interface ChatFeedProps {
   onViewModeChange: (mode: ChatViewMode) => void;
   lockedDestinationId?: string | null;
   lastViewedChatAt?: string | null;
+  votingStatus?: VotingStatusInfo;
 }
 
 interface ProposalGroup {
@@ -35,7 +44,7 @@ interface ProposalGroup {
   messages: Message[];
 }
 
-export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId, lastViewedChatAt }: ChatFeedProps) {
+export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId, lastViewedChatAt, votingStatus }: ChatFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -226,6 +235,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
                                 onProposalUpdated={onProposalUpdated}
                                 replies={repliesByProposalMessageId.get(message.id) || []}
                                 isLocked={isLocked}
+                                votingStatus={!isLocked ? votingStatus : undefined}
                               />
                             </div>
                           );

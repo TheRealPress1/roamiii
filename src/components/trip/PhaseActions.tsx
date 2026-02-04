@@ -27,7 +27,7 @@ interface PhaseActionsProps {
   onOpenLockDestination: (proposal: TripProposal) => void;
   onOpenTransportation?: () => void;
   onPhaseChanged: () => void;
-  isAdmin: boolean;
+  isOwner: boolean;
   className?: string;
 }
 
@@ -39,14 +39,14 @@ export function PhaseActions({
   onOpenLockDestination,
   onOpenTransportation,
   onPhaseChanged,
-  isAdmin,
+  isOwner,
   className,
 }: PhaseActionsProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [unlockTarget, setUnlockTarget] = useState<TripPhase | null>(null);
 
-  if (!isAdmin) return null;
+  if (!isOwner) return null;
 
   const handleAdvancePhase = async (targetPhase: TripPhase) => {
     if (!user) return;

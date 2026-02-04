@@ -48,6 +48,8 @@ export interface Trip {
   phase: TripPhase;
   locked_destination_id: string | null;
   travel_mode: TravelMode | null;
+  destination_voting_deadline: string | null;
+  itinerary_voting_deadline: string | null;
   created_at: string;
   updated_at: string;
 }
