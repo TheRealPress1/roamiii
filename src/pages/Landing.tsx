@@ -406,12 +406,17 @@ export default function Landing() {
           </motion.div>
         </div>
 
-        {/* Gradient fade to How It Works section */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-background pointer-events-none" />
       </section>
 
       {/* How It Works */}
-      <section className="py-20 md:py-28 bg-background relative overflow-hidden">
+      <section className="py-20 md:py-28 relative overflow-hidden">
+        {/* Top gradient: fade from hero colors to white */}
+        <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-[hsl(15,20%,88%)] to-background pointer-events-none" />
+        {/* Main background */}
+        <div className="absolute inset-0 top-40 bottom-32 bg-background pointer-events-none" />
+        {/* Bottom gradient: fade from white to secondary */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-background to-secondary/30 pointer-events-none" />
+
         <HowItWorksBackground />
 
         <div className="container relative z-10">
@@ -555,9 +560,6 @@ export default function Landing() {
             </motion.div>
           </div>
         </div>
-
-        {/* Gradient fade to Features section */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-secondary/30 pointer-events-none" />
       </section>
 
       {/* Features */}
