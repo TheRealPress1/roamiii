@@ -51,8 +51,8 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   const [loading, setLoading] = useState(false);
 
   // In Phase 1 (destination), we show destination form
-  // In Phase 2+ (itinerary), default to housing for itinerary items
-  const defaultType: ProposalType = 'housing';
+  // In Phase 2+ (itinerary), default to activity (more commonly added than housing)
+  const defaultType: ProposalType = 'activity';
 
   // Proposal type (for itinerary phase)
   const [proposalType, setProposalType] = useState<ProposalType>(defaultType);
@@ -75,7 +75,10 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   // Auto-calculate cost per person from total cost / members
   const splitCount = Math.max(memberCount, 1);
   const totalCostNum = parseFloat(totalCost) || 0;
-  const costPerPerson = totalCostNum > 0 ? Math.round(totalCostNum / splitCount) : 0;
+  // For housing: divide total by members. For activities: cost is already per-person
+  const costPerPerson = totalCostNum > 0
+    ? (proposalType === 'housing' ? Math.round(totalCostNum / splitCount) : totalCostNum)
+    : 0;
 
   const handleSubmit = async () => {
     // Validation based on phase
@@ -279,7 +282,9 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
 
                 {/* Total Cost with screenshot analyzer */}
                 <div className="space-y-2">
-                  <Label htmlFor="totalCost">Total Cost</Label>
+                  <Label htmlFor="totalCost">
+                    {proposalType === 'housing' ? 'Total Cost' : 'Cost per Person'}
+                  </Label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -300,13 +305,21 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
                   {/* Calculated cost per person */}
                   {totalCostNum > 0 && (
                     <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
-                      <span className="flex items-center gap-1.5 text-muted-foreground">
-                        <Users className="h-3.5 w-3.5" />
-                        {splitCount} {splitCount === 1 ? 'person' : 'people'}
-                      </span>
-                      <span className="font-semibold text-primary">
-                        ${costPerPerson}/person
-                      </span>
+                      {proposalType === 'housing' ? (
+                        <>
+                          <span className="flex items-center gap-1.5 text-muted-foreground">
+                            <Users className="h-3.5 w-3.5" />
+                            {splitCount} {splitCount === 1 ? 'person' : 'people'}
+                          </span>
+                          <span className="font-semibold text-primary">
+                            ${costPerPerson}/person
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-semibold text-primary ml-auto">
+                          ${costPerPerson}/person
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
