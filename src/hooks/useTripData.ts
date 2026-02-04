@@ -39,13 +39,13 @@ export function useTripData(tripId: string) {
       console.log('Fetched members:', membersData);
       setMembers((membersData || []) as unknown as TripMember[]);
 
-      // Fetch proposals with votes
+      // Fetch proposals with votes (including voter profiles)
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('trip_proposals')
         .select(`
           *,
           creator:profiles!trip_proposals_created_by_fkey(*),
-          votes:trip_votes(*)
+          votes:trip_votes(*, voter:profiles!trip_votes_user_id_fkey(id, name, email, avatar_url))
         `)
         .eq('trip_id', tripId)
         .order('created_at', { ascending: false });

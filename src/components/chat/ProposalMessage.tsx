@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, ThumbsUp, ThumbsDown, CircleHelp, Check, X, Minus } from 'lucide-react';
-import type { Message, TripProposal, VoteType, TripPhase } from '@/lib/tripchat-types';
+import type { Message, TripProposal, TripVote, VoteType, TripPhase } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -41,10 +41,10 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
 
   const votes = proposal.votes || [];
   const userVote = votes.find((v) => v.user_id === user?.id);
-  const voteCounts = {
-    in: votes.filter((v) => v.vote === 'in').length,
-    maybe: votes.filter((v) => v.vote === 'maybe').length,
-    out: votes.filter((v) => v.vote === 'out').length,
+  const votesByType = {
+    in: votes.filter((v) => v.vote === 'in'),
+    maybe: votes.filter((v) => v.vote === 'maybe'),
+    out: votes.filter((v) => v.vote === 'out'),
   };
 
   const handleVote = async (voteType: VoteType) => {
@@ -200,19 +200,19 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
           <div className="flex gap-2 mb-3">
             <VoteButton
               type="in"
-              count={voteCounts.in}
+              votes={votesByType.in}
               isActive={userVote?.vote === 'in'}
               onClick={() => handleVote('in')}
             />
             <VoteButton
               type="maybe"
-              count={voteCounts.maybe}
+              votes={votesByType.maybe}
               isActive={userVote?.vote === 'maybe'}
               onClick={() => handleVote('maybe')}
             />
             <VoteButton
               type="out"
-              count={voteCounts.out}
+              votes={votesByType.out}
               isActive={userVote?.vote === 'out'}
               onClick={() => handleVote('out')}
             />
@@ -296,12 +296,62 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
 
 interface VoteButtonProps {
   type: VoteType;
-  count: number;
+  votes: TripVote[];
   isActive: boolean;
   onClick: () => void;
 }
 
-function VoteButton({ type, count, isActive, onClick }: VoteButtonProps) {
+function VoterAvatars({ votes, isActive }: { votes: TripVote[]; isActive: boolean }) {
+  const maxVisible = 3;
+  const visibleVotes = votes.slice(0, maxVisible);
+  const overflowCount = votes.length - maxVisible;
+
+  if (votes.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center -space-x-1">
+      {visibleVotes.map((vote, index) => {
+        const voter = vote.voter;
+        const initials = voter?.name?.slice(0, 2).toUpperCase() || voter?.email?.slice(0, 2).toUpperCase() || '?';
+        return (
+          <Avatar
+            key={vote.id}
+            className={cn(
+              'h-5 w-5 ring-2',
+              isActive ? 'ring-white/30' : 'ring-background'
+            )}
+            style={{ zIndex: maxVisible - index }}
+          >
+            <AvatarImage src={voter?.avatar_url || undefined} />
+            <AvatarFallback className={cn(
+              'text-[8px] font-medium',
+              isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
+            )}>
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        );
+      })}
+      {overflowCount > 0 && (
+        <div
+          className={cn(
+            'h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-medium ring-2',
+            isActive
+              ? 'bg-white/20 text-white ring-white/30'
+              : 'bg-muted text-muted-foreground ring-background'
+          )}
+          style={{ zIndex: 0 }}
+        >
+          +{overflowCount}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
   const config = {
     in: {
       icon: ThumbsUp,
@@ -333,6 +383,7 @@ function VoteButton({ type, count, isActive, onClick }: VoteButtonProps) {
   };
 
   const { icon: Icon, label, gradient, bg, text, border, hoverBg } = config[type];
+  const hasVotes = votes.length > 0;
 
   return (
     <button
@@ -345,7 +396,11 @@ function VoteButton({ type, count, isActive, onClick }: VoteButtonProps) {
       )}
     >
       <Icon className={cn('h-4 w-4', isActive && 'drop-shadow-sm')} />
-      <span>{count > 0 ? count : label}</span>
+      {hasVotes ? (
+        <VoterAvatars votes={votes} isActive={isActive} />
+      ) : (
+        <span>{label}</span>
+      )}
     </button>
   );
 }

@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { TripProposal, VoteType, TripPhase } from '@/lib/tripchat-types';
+import type { TripProposal, TripVote, VoteType, TripPhase } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { IncludeToggle, IncludedBadge } from '@/components/proposal/IncludeToggle';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,10 +57,10 @@ export function ProposalDetailModal({
 
   const votes = proposal.votes || [];
   const userVote = votes.find((v) => v.user_id === user?.id);
-  const voteCounts = {
-    in: votes.filter((v) => v.vote === 'in').length,
-    maybe: votes.filter((v) => v.vote === 'maybe').length,
-    out: votes.filter((v) => v.vote === 'out').length,
+  const votesByType = {
+    in: votes.filter((v) => v.vote === 'in'),
+    maybe: votes.filter((v) => v.vote === 'maybe'),
+    out: votes.filter((v) => v.vote === 'out'),
   };
 
   const handleVote = async (voteType: VoteType) => {
@@ -308,19 +308,19 @@ export function ProposalDetailModal({
             <div className="flex gap-3">
               <VoteButton
                 type="in"
-                count={voteCounts.in}
+                votes={votesByType.in}
                 isActive={userVote?.vote === 'in'}
                 onClick={() => handleVote('in')}
               />
               <VoteButton
                 type="maybe"
-                count={voteCounts.maybe}
+                votes={votesByType.maybe}
                 isActive={userVote?.vote === 'maybe'}
                 onClick={() => handleVote('maybe')}
               />
               <VoteButton
                 type="out"
-                count={voteCounts.out}
+                votes={votesByType.out}
                 isActive={userVote?.vote === 'out'}
                 onClick={() => handleVote('out')}
               />
@@ -476,12 +476,62 @@ export function ProposalDetailModal({
 
 interface VoteButtonProps {
   type: VoteType;
-  count: number;
+  votes: TripVote[];
   isActive: boolean;
   onClick: () => void;
 }
 
-function VoteButton({ type, count, isActive, onClick }: VoteButtonProps) {
+function VoterAvatars({ votes, isActive }: { votes: TripVote[]; isActive: boolean }) {
+  const maxVisible = 4;
+  const visibleVotes = votes.slice(0, maxVisible);
+  const overflowCount = votes.length - maxVisible;
+
+  if (votes.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center justify-center -space-x-1.5">
+      {visibleVotes.map((vote, index) => {
+        const voter = vote.voter;
+        const initials = voter?.name?.slice(0, 2).toUpperCase() || voter?.email?.slice(0, 2).toUpperCase() || '?';
+        return (
+          <Avatar
+            key={vote.id}
+            className={cn(
+              'h-6 w-6 ring-2',
+              isActive ? 'ring-white/30' : 'ring-background'
+            )}
+            style={{ zIndex: maxVisible - index }}
+          >
+            <AvatarImage src={voter?.avatar_url || undefined} />
+            <AvatarFallback className={cn(
+              'text-[10px] font-medium',
+              isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
+            )}>
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        );
+      })}
+      {overflowCount > 0 && (
+        <div
+          className={cn(
+            'h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-medium ring-2',
+            isActive
+              ? 'bg-white/20 text-white ring-white/30'
+              : 'bg-muted text-muted-foreground ring-background'
+          )}
+          style={{ zIndex: 0 }}
+        >
+          +{overflowCount}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VoteButton({ type, votes, isActive, onClick }: VoteButtonProps) {
   const config = {
     in: {
       icon: ThumbsUp,
@@ -526,7 +576,7 @@ function VoteButton({ type, count, isActive, onClick }: VoteButtonProps) {
     >
       <Icon className={cn('h-6 w-6', isActive && 'drop-shadow-sm')} />
       <span className="text-sm">{label}</span>
-      <span className={cn('text-xs font-normal', isActive ? 'text-white/80' : 'opacity-60')}>{count} votes</span>
+      <VoterAvatars votes={votes} isActive={isActive} />
     </button>
   );
 }
