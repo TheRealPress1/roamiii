@@ -405,6 +405,9 @@ export default function Landing() {
             </div>
           </motion.div>
         </div>
+
+        {/* Gradient fade to How It Works section */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-background pointer-events-none" />
       </section>
 
       {/* How It Works */}
@@ -509,7 +512,7 @@ export default function Landing() {
               ].map((item, i) => (
                 <motion.div
                   key={item.step}
-                  className="relative group"
+                  className="relative group h-full"
                   custom={i}
                   variants={cardVariants}
                 >
@@ -520,7 +523,7 @@ export default function Landing() {
                   />
 
                   <motion.div
-                    className="relative bg-card rounded-2xl p-8 border border-border shadow-card transition-shadow duration-300 group-hover:shadow-glow"
+                    className="relative bg-card rounded-2xl p-8 border border-border shadow-card transition-shadow duration-300 group-hover:shadow-glow h-full flex flex-col"
                     whileHover={{
                       y: -8,
                       transition: { type: "spring", stiffness: 400, damping: 15 }
@@ -545,13 +548,16 @@ export default function Landing() {
                     </motion.div>
 
                     <h3 className="text-xl font-semibold text-foreground mb-3">{item.title}</h3>
-                    <p className="text-muted-foreground">{item.description}</p>
+                    <p className="text-muted-foreground flex-1">{item.description}</p>
                   </motion.div>
                 </motion.div>
               ))}
             </motion.div>
           </div>
         </div>
+
+        {/* Gradient fade to Features section */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-secondary/30 pointer-events-none" />
       </section>
 
       {/* Features */}
