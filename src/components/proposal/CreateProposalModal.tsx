@@ -183,8 +183,13 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   };
 
   const handleSubmit = async () => {
-    // Validation based on type
-    if (isQuickPost) {
+    // Validation based on phase and type
+    if (isDestinationPhase) {
+      if (!user || !destination.trim()) {
+        toast.error('Please enter a destination');
+        return;
+      }
+    } else if (isQuickPost) {
       if (!user || !name.trim()) {
         toast.error('Please enter a name');
         return;
@@ -196,7 +201,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
       }
     }
 
-    // Resolve cover image URL (selected preset or auto-pick)
+    // Resolve cover image URL (selected preset or auto-pick based on vibe tags)
     const finalCoverUrl = coverImageUrl || getAutoPickCover(vibeTags);
 
     // For quick posts, use name as destination if destination is empty
@@ -306,176 +311,23 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
           </DialogHeader>
 
           <div className="space-y-5 pt-4">
-          {/* Type Selector - Hidden in destination phase (forced to full_itinerary) */}
-          {!isDestinationPhase && (
-            <div className="space-y-2">
-              <Label>What are you adding to the itinerary?</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {PROPOSAL_TYPES.map((type) => (
-                  <button
-                    key={type.value}
-                    type="button"
-                    onClick={() => setProposalType(type.value as ProposalType)}
-                    className={cn(
-                      'flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-center',
-                      proposalType === type.value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                    )}
-                  >
-                    <span className="text-xl">{type.emoji}</span>
-                    <span className="text-xs font-medium">{type.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick Post Fields (Place/Activity/Food Spot) */}
-          {isQuickPost && (
-            <>
-              {/* Name - Primary for quick posts */}
-              <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={getPlaceholder()}
-                />
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description">Notes (optional)</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Any details you want to share..."
-                  rows={2}
-                />
-              </div>
-
-              {/* Destination - Optional for quick posts */}
-              <div className="space-y-2">
-                <Label htmlFor="destination">Location (optional)</Label>
-                <DestinationAutocomplete
-                  value={destination}
-                  onChange={setDestination}
-                  placeholder="e.g., Paris, France"
-                />
-              </div>
-
-              {/* Address - Primary for food spots */}
-              {(proposalType === 'place' || proposalType === 'food_spot') && (
-                <div className="space-y-2">
-                  <Label htmlFor="address">
-                    Address {proposalType === 'food_spot' ? '' : '(optional)'}
-                  </Label>
-                  <Input
-                    id="address"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="e.g., 123 Main St"
-                  />
-                </div>
-              )}
-
-              {/* Price Range - For food spots */}
-              {proposalType === 'food_spot' && (
-                <div className="space-y-2">
-                  <Label>Price Range</Label>
-                  <div className="flex gap-2">
-                    {['$', '$$', '$$$', '$$$$'].map((range) => (
-                      <button
-                        key={range}
-                        type="button"
-                        onClick={() => setPriceRange(priceRange === range ? '' : range)}
-                        className={cn(
-                          'flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition-all',
-                          priceRange === range
-                            ? 'border-primary bg-primary/5 text-primary'
-                            : 'border-border hover:border-primary/50'
-                        )}
-                      >
-                        {range}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* URL */}
-              <div className="space-y-2">
-                <Label htmlFor="url">Link (optional)</Label>
-                <div className="relative">
-                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="url"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-
-              {/* Dates - Optional for quick posts */}
-              {(proposalType === 'place' || proposalType === 'activity') && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="dateStart">Date (optional)</Label>
-                    <Input
-                      id="dateStart"
-                      type="date"
-                      value={dateStart}
-                      onChange={(e) => setDateStart(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dateEnd">End Date</Label>
-                    <Input
-                      id="dateEnd"
-                      type="date"
-                      value={dateEnd}
-                      onChange={(e) => setDateEnd(e.target.value)}
-                      min={dateStart}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Cover Image - Optional for quick posts */}
-              <CoverImagePicker
-                selectedKey={coverImageKey}
-                onSelect={(key, url) => {
-                  setCoverImageKey(key);
-                  setCoverImageUrl(url);
-                }}
-                vibeTags={vibeTags}
-                previewUrl={coverImageUrl}
-              />
-            </>
-          )}
-
-          {/* Full Itinerary Fields */}
-          {!isQuickPost && (
+          {/* PHASE 1: DESTINATION - Simple form */}
+          {isDestinationPhase && (
             <>
               {/* Destination */}
               <div className="space-y-2">
-                <Label htmlFor="destination">Destination *</Label>
+                <Label htmlFor="destination">Where do you want to go? *</Label>
                 <DestinationAutocomplete
                   value={destination}
                   onChange={setDestination}
-                  placeholder="e.g., Cancún, Mexico"
+                  placeholder="e.g., Tokyo, Japan"
                 />
               </div>
 
-              {/* Dates */}
+              {/* Optional: Rough dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="dateStart">Start Date</Label>
+                  <Label htmlFor="dateStart">Rough dates (optional)</Label>
                   <Input
                     id="dateStart"
                     type="date"
@@ -506,197 +358,420 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
                 </Label>
               </div>
 
-              {/* Cover Image Picker */}
-              <CoverImagePicker
-                selectedKey={coverImageKey}
-                onSelect={(key, url) => {
-                  setCoverImageKey(key);
-                  setCoverImageUrl(url);
-                }}
-                vibeTags={vibeTags}
-                previewUrl={coverImageUrl}
-              />
-
               {/* Vibe Tags */}
               <div className="space-y-2">
-                <Label>Vibe Tags</Label>
+                <Label>What's the vibe?</Label>
                 <VibeTagSelector selected={vibeTags} onChange={setVibeTags} />
               </div>
 
-              {/* Booking Links */}
+              {/* Optional notes */}
               <div className="space-y-2">
-                <Label>Booking Links</Label>
-                {links.map((link, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <Select
-                      value={link.category}
-                      onValueChange={(value) => updateLink(index, 'category', value)}
+                <Label htmlFor="description">Why this place? (optional)</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Share why you think this would be a great destination..."
+                  rows={2}
+                />
+              </div>
+            </>
+          )}
+
+          {/* PHASE 2+: ITINERARY - Type selector and appropriate fields */}
+          {!isDestinationPhase && (
+            <>
+              {/* Type Selector */}
+              <div className="space-y-2">
+                <Label>What are you adding to the itinerary?</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {PROPOSAL_TYPES.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setProposalType(type.value as ProposalType)}
+                      className={cn(
+                        'flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-center',
+                        proposalType === type.value
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                      )}
                     >
-                      <SelectTrigger className="w-28 h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="lodging">Lodging</SelectItem>
-                        <SelectItem value="transport">Transport</SelectItem>
-                        <SelectItem value="food">Food</SelectItem>
-                        <SelectItem value="activities">Activities</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <span className="text-xl">{type.emoji}</span>
+                      <span className="text-xs font-medium">{type.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Post Fields (Place/Activity/Food Spot) */}
+              {isQuickPost && (
+                <>
+                  {/* Name - Primary for quick posts */}
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name *</Label>
                     <Input
-                      placeholder="https://..."
-                      value={link.url}
-                      onChange={(e) => updateLink(index, 'url', e.target.value)}
-                      className="flex-1 h-9"
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder={getPlaceholder()}
                     />
-                    <div className="relative w-24">
-                      <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Notes (optional)</Label>
+                    <Textarea
+                      id="description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Any details you want to share..."
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* Destination - Optional for quick posts */}
+                  <div className="space-y-2">
+                    <Label htmlFor="destination">Location (optional)</Label>
+                    <DestinationAutocomplete
+                      value={destination}
+                      onChange={setDestination}
+                      placeholder="e.g., Paris, France"
+                    />
+                  </div>
+
+                  {/* Address - Primary for food spots */}
+                  {(proposalType === 'place' || proposalType === 'food_spot') && (
+                    <div className="space-y-2">
+                      <Label htmlFor="address">
+                        Address {proposalType === 'food_spot' ? '' : '(optional)'}
+                      </Label>
                       <Input
-                        type="number"
-                        placeholder="0"
-                        value={link.price}
-                        onChange={(e) => updateLink(index, 'price', e.target.value)}
-                        className="pl-7 h-9"
+                        id="address"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder="e.g., 123 Main St"
                       />
                     </div>
-                    {links.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9"
-                        onClick={() => removeLink(index)}
-                      >
-                        <X className="h-4 w-4" />
+                  )}
+
+                  {/* Price Range - For food spots */}
+                  {proposalType === 'food_spot' && (
+                    <div className="space-y-2">
+                      <Label>Price Range</Label>
+                      <div className="flex gap-2">
+                        {['$', '$$', '$$$', '$$$$'].map((range) => (
+                          <button
+                            key={range}
+                            type="button"
+                            onClick={() => setPriceRange(priceRange === range ? '' : range)}
+                            className={cn(
+                              'flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition-all',
+                              priceRange === range
+                                ? 'border-primary bg-primary/5 text-primary'
+                                : 'border-border hover:border-primary/50'
+                            )}
+                          >
+                            {range}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* URL */}
+                  <div className="space-y-2">
+                    <Label htmlFor="url">Link (optional)</Label>
+                    <div className="relative">
+                      <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="url"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dates - Optional for quick posts */}
+                  {(proposalType === 'place' || proposalType === 'activity') && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="dateStart">Date (optional)</Label>
+                        <Input
+                          id="dateStart"
+                          type="date"
+                          value={dateStart}
+                          onChange={(e) => setDateStart(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="dateEnd">End Date</Label>
+                        <Input
+                          id="dateEnd"
+                          type="date"
+                          value={dateEnd}
+                          onChange={(e) => setDateEnd(e.target.value)}
+                          min={dateStart}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cover Image - Optional for quick posts */}
+                  <CoverImagePicker
+                    selectedKey={coverImageKey}
+                    onSelect={(key, url) => {
+                      setCoverImageKey(key);
+                      setCoverImageUrl(url);
+                    }}
+                    vibeTags={vibeTags}
+                    previewUrl={coverImageUrl}
+                  />
+                </>
+              )}
+
+              {/* Full Itinerary Fields */}
+              {!isQuickPost && (
+                <>
+                  {/* Destination */}
+                  <div className="space-y-2">
+                    <Label htmlFor="destination">Destination *</Label>
+                    <DestinationAutocomplete
+                      value={destination}
+                      onChange={setDestination}
+                      placeholder="e.g., Cancún, Mexico"
+                    />
+                  </div>
+
+                  {/* Dates */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="dateStart">Start Date</Label>
+                      <Input
+                        id="dateStart"
+                        type="date"
+                        value={dateStart}
+                        onChange={(e) => setDateStart(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dateEnd">End Date</Label>
+                      <Input
+                        id="dateEnd"
+                        type="date"
+                        value={dateEnd}
+                        onChange={(e) => setDateEnd(e.target.value)}
+                        min={dateStart}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      id="flexibleDates"
+                      checked={flexibleDates}
+                      onCheckedChange={setFlexibleDates}
+                    />
+                    <Label htmlFor="flexibleDates" className="cursor-pointer">
+                      Flexible dates
+                    </Label>
+                  </div>
+
+                  {/* Cover Image Picker */}
+                  <CoverImagePicker
+                    selectedKey={coverImageKey}
+                    onSelect={(key, url) => {
+                      setCoverImageKey(key);
+                      setCoverImageUrl(url);
+                    }}
+                    vibeTags={vibeTags}
+                    previewUrl={coverImageUrl}
+                  />
+
+                  {/* Vibe Tags */}
+                  <div className="space-y-2">
+                    <Label>Vibe Tags</Label>
+                    <VibeTagSelector selected={vibeTags} onChange={setVibeTags} />
+                  </div>
+
+                  {/* Booking Links */}
+                  <div className="space-y-2">
+                    <Label>Booking Links</Label>
+                    {links.map((link, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <Select
+                          value={link.category}
+                          onValueChange={(value) => updateLink(index, 'category', value)}
+                        >
+                          <SelectTrigger className="w-28 h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="lodging">Lodging</SelectItem>
+                            <SelectItem value="transport">Transport</SelectItem>
+                            <SelectItem value="food">Food</SelectItem>
+                            <SelectItem value="activities">Activities</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          placeholder="https://..."
+                          value={link.url}
+                          onChange={(e) => updateLink(index, 'url', e.target.value)}
+                          className="flex-1 h-9"
+                        />
+                        <div className="relative w-24">
+                          <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={link.price}
+                            onChange={(e) => updateLink(index, 'price', e.target.value)}
+                            className="pl-7 h-9"
+                          />
+                        </div>
+                        {links.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9"
+                            onClick={() => removeLink(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    {links.length < 5 && (
+                      <Button variant="outline" size="sm" onClick={addLink}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Link
                       </Button>
                     )}
                   </div>
-                ))}
-                {links.length < 5 && (
-                  <Button variant="outline" size="sm" onClick={addLink}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Link
+
+                  {/* AI Estimate Button */}
+                  <Button
+                    variant="outline"
+                    onClick={getAiEstimate}
+                    disabled={estimating || !destination.trim()}
+                    className="w-full"
+                  >
+                    {estimating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Estimating costs...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Get AI Estimate
+                      </>
+                    )}
                   </Button>
-                )}
-              </div>
 
-              {/* AI Estimate Button */}
-              <Button
-                variant="outline"
-                onClick={getAiEstimate}
-                disabled={estimating || !destination.trim()}
-                className="w-full"
-              >
-                {estimating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Estimating costs...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Get AI Estimate
-                  </>
-                )}
-              </Button>
+                  {/* Cost Estimator */}
+                  <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                    <h4 className="font-medium text-foreground">Cost Estimator</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Lodging Total</Label>
+                        <div className="flex gap-1">
+                          <div className="relative flex-1">
+                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={costLodging}
+                              onChange={(e) => setCostLodging(e.target.value)}
+                              className="pl-7 h-9"
+                            />
+                          </div>
+                          <PriceScreenshotAnalyzer
+                            label="lodging"
+                            onPriceExtracted={(price) => setCostLodging(price.toString())}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Transport</Label>
+                        <div className="flex gap-1">
+                          <div className="relative flex-1">
+                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={costTransport}
+                              onChange={(e) => setCostTransport(e.target.value)}
+                              className="pl-7 h-9"
+                            />
+                          </div>
+                          <PriceScreenshotAnalyzer
+                            label="transport"
+                            onPriceExtracted={(price) => setCostTransport(price.toString())}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Food</Label>
+                        <div className="flex gap-1">
+                          <div className="relative flex-1">
+                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={costFood}
+                              onChange={(e) => setCostFood(e.target.value)}
+                              className="pl-7 h-9"
+                            />
+                          </div>
+                          <PriceScreenshotAnalyzer
+                            label="food"
+                            onPriceExtracted={(price) => setCostFood(price.toString())}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Activities</Label>
+                        <div className="flex gap-1">
+                          <div className="relative flex-1">
+                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={costActivities}
+                              onChange={(e) => setCostActivities(e.target.value)}
+                              className="pl-7 h-9"
+                            />
+                          </div>
+                          <PriceScreenshotAnalyzer
+                            label="activities"
+                            onPriceExtracted={(price) => setCostActivities(price.toString())}
+                          />
+                        </div>
+                      </div>
+                    </div>
 
-              {/* Cost Estimator */}
-              <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
-                <h4 className="font-medium text-foreground">Cost Estimator</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Lodging Total</Label>
-                    <div className="flex gap-1">
-                      <div className="relative flex-1">
-                        <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={costLodging}
-                          onChange={(e) => setCostLodging(e.target.value)}
-                          className="pl-7 h-9"
-                        />
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <span className="text-sm text-muted-foreground">
+                        Split: {splitCount} {splitCount === 1 ? 'member' : 'members'}
+                      </span>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Est. per person</p>
+                        <p className="text-xl font-bold text-primary">${costPerPerson}</p>
                       </div>
-                      <PriceScreenshotAnalyzer
-                        label="lodging"
-                        onPriceExtracted={(price) => setCostLodging(price.toString())}
-                      />
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Transport</Label>
-                    <div className="flex gap-1">
-                      <div className="relative flex-1">
-                        <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={costTransport}
-                          onChange={(e) => setCostTransport(e.target.value)}
-                          className="pl-7 h-9"
-                        />
-                      </div>
-                      <PriceScreenshotAnalyzer
-                        label="transport"
-                        onPriceExtracted={(price) => setCostTransport(price.toString())}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Food</Label>
-                    <div className="flex gap-1">
-                      <div className="relative flex-1">
-                        <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={costFood}
-                          onChange={(e) => setCostFood(e.target.value)}
-                          className="pl-7 h-9"
-                        />
-                      </div>
-                      <PriceScreenshotAnalyzer
-                        label="food"
-                        onPriceExtracted={(price) => setCostFood(price.toString())}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Activities</Label>
-                    <div className="flex gap-1">
-                      <div className="relative flex-1">
-                        <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={costActivities}
-                          onChange={(e) => setCostActivities(e.target.value)}
-                          className="pl-7 h-9"
-                        />
-                      </div>
-                      <PriceScreenshotAnalyzer
-                        label="activities"
-                        onPriceExtracted={(price) => setCostActivities(price.toString())}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <span className="text-sm text-muted-foreground">
-                    Split: {splitCount} {splitCount === 1 ? 'member' : 'members'}
-                  </span>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Est. per person</p>
-                    <p className="text-xl font-bold text-primary">${costPerPerson}</p>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
             </>
           )}
 
           {/* Submit */}
           <Button
             onClick={handleSubmit}
-            disabled={loading || (isQuickPost ? !name.trim() : !destination.trim())}
+            disabled={loading || (isDestinationPhase ? !destination.trim() : (isQuickPost ? !name.trim() : !destination.trim()))}
             className="w-full gradient-primary text-white"
             size="lg"
           >
@@ -706,7 +781,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
                 Posting...
               </>
             ) : (
-              isQuickPost ? 'Post' : 'Post Proposal'
+              isDestinationPhase ? 'Propose Destination' : (isQuickPost ? 'Post' : 'Post Proposal')
             )}
           </Button>
           </div>
