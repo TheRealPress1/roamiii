@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, ExternalLink, Reply, Link as LinkIcon, ThumbsUp, ThumbsDown, CircleHelp, Check, X, Minus } from 'lucide-react';
 import type { Message, TripProposal, VoteType, TripPhase } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -80,9 +80,11 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
   const proposalType = proposal.type || 'full_itinerary';
   const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposalType);
   const isFullItinerary = proposalType === 'full_itinerary';
+  const isDestination = proposal.is_destination;
   const displayTitle = proposal.name || proposal.destination;
 
   const getActionText = () => {
+    if (isDestination) return 'proposed a destination';
     switch (proposalType) {
       case 'place': return 'suggested a place';
       case 'activity': return 'suggested an activity';
@@ -90,6 +92,15 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
       default: return 'proposed a trip';
     }
   };
+
+  // Get badge info - special case for destinations
+  const getBadgeInfo = () => {
+    if (isDestination) {
+      return { emoji: '🌍', label: 'Destination' };
+    }
+    return typeInfo;
+  };
+  const badgeInfo = getBadgeInfo();
 
   return (
     <motion.div
@@ -128,10 +139,10 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             </div>
           )}
           {/* Type badge */}
-          {typeInfo && (
+          {badgeInfo && (
             <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium flex items-center gap-1">
-              <span>{typeInfo.emoji}</span>
-              <span>{typeInfo.label}</span>
+              <span>{badgeInfo.emoji}</span>
+              <span>{badgeInfo.label}</span>
             </div>
           )}
           {/* Vibe tags - only for full itinerary */}
@@ -174,10 +185,10 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
             {proposal.flexible_dates && (
               <span className="text-xs bg-muted px-2 py-0.5 rounded">Flexible</span>
             )}
-            {/* Price range for food spots, cost per person for full itineraries */}
+            {/* Price range for food spots, cost per person for full itineraries (NOT for destinations) */}
             {proposalType === 'food_spot' && proposal.price_range ? (
               <span className="font-medium text-foreground">{proposal.price_range}</span>
-            ) : isFullItinerary && (
+            ) : isFullItinerary && !isDestination && proposal.estimated_cost_per_person > 0 && (
               <span className="flex items-center gap-1 font-medium text-foreground">
                 <DollarSign className="h-3.5 w-3.5" />
                 ${proposal.estimated_cost_per_person}/person
@@ -292,25 +303,49 @@ interface VoteButtonProps {
 
 function VoteButton({ type, count, isActive, onClick }: VoteButtonProps) {
   const config = {
-    in: { emoji: '✅', label: 'In', bg: 'bg-vote-in-bg', text: 'text-vote-in', activeBg: 'bg-vote-in' },
-    maybe: { emoji: '🤔', label: 'Maybe', bg: 'bg-vote-maybe-bg', text: 'text-vote-maybe', activeBg: 'bg-vote-maybe' },
-    out: { emoji: '❌', label: 'Out', bg: 'bg-vote-out-bg', text: 'text-vote-out', activeBg: 'bg-vote-out' },
+    in: {
+      icon: ThumbsUp,
+      label: "I'm in",
+      gradient: 'from-emerald-500 to-green-600',
+      bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+      text: 'text-emerald-600 dark:text-emerald-400',
+      border: 'border-emerald-200 dark:border-emerald-800',
+      hoverBg: 'hover:bg-emerald-100 dark:hover:bg-emerald-900/50',
+    },
+    maybe: {
+      icon: Minus,
+      label: 'Maybe',
+      gradient: 'from-amber-500 to-orange-500',
+      bg: 'bg-amber-50 dark:bg-amber-950/30',
+      text: 'text-amber-600 dark:text-amber-400',
+      border: 'border-amber-200 dark:border-amber-800',
+      hoverBg: 'hover:bg-amber-100 dark:hover:bg-amber-900/50',
+    },
+    out: {
+      icon: ThumbsDown,
+      label: "I'm out",
+      gradient: 'from-rose-500 to-red-600',
+      bg: 'bg-rose-50 dark:bg-rose-950/30',
+      text: 'text-rose-600 dark:text-rose-400',
+      border: 'border-rose-200 dark:border-rose-800',
+      hoverBg: 'hover:bg-rose-100 dark:hover:bg-rose-900/50',
+    },
   };
 
-  const { emoji, label, bg, text, activeBg } = config[type];
+  const { icon: Icon, label, gradient, bg, text, border, hoverBg } = config[type];
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+        'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border',
         isActive
-          ? `${activeBg} text-white`
-          : `${bg} ${text} hover:opacity-80`
+          ? `bg-gradient-to-r ${gradient} text-white border-transparent shadow-lg shadow-${type === 'in' ? 'emerald' : type === 'maybe' ? 'amber' : 'rose'}-500/25 scale-[1.02]`
+          : `${bg} ${text} ${border} ${hoverBg}`
       )}
     >
-      <span>{emoji}</span>
-      <span>{count}</span>
+      <Icon className={cn('h-4 w-4', isActive && 'drop-shadow-sm')} />
+      <span>{count > 0 ? count : label}</span>
     </button>
   );
 }
