@@ -46,12 +46,12 @@ export function LockDestinationModal({
 
     setLoading(true);
     try {
-      // Update trip: set locked_destination_id and move to transportation phase
+      // Update trip: set locked_destination_id and move to itinerary phase
       const { error } = await supabase
         .from('trips')
         .update({
           locked_destination_id: proposal.id,
-          phase: 'transportation',
+          phase: 'itinerary',
         })
         .eq('id', tripId);
 
@@ -68,10 +68,10 @@ export function LockDestinationModal({
         trip_id: tripId,
         user_id: user.id,
         type: 'system',
-        body: `Destination locked: ${proposal.name || proposal.destination}! Now let's plan transportation.`,
+        body: `Destination locked: ${proposal.name || proposal.destination}! Now let's build the itinerary.`,
       });
 
-      toast.success('Destination locked! Moving to transportation planning.');
+      toast.success('Destination locked! Moving to itinerary planning.');
       onLocked();
       onClose();
     } catch (error: any) {
@@ -93,7 +93,7 @@ export function LockDestinationModal({
             Lock Destination
           </DialogTitle>
           <DialogDescription>
-            This will finalize the destination and move the trip to itinerary planning.
+            This will finalize the destination and move the trip to building the itinerary.
           </DialogDescription>
         </DialogHeader>
 
@@ -154,8 +154,8 @@ export function LockDestinationModal({
             </p>
             <ul className="list-disc list-inside mt-1 space-y-1">
               <li>Destination voting ends</li>
-              <li>Plan how everyone is getting there (flying or driving)</li>
-              <li>Coordinate carpools if driving</li>
+              <li>Plan housing and activities for your trip</li>
+              <li>Then coordinate how everyone gets there</li>
               <li>You can unlock the destination later if needed</li>
             </ul>
           </div>

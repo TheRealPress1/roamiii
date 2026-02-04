@@ -152,7 +152,39 @@ export function PhaseActions({
           </>
         )}
 
-        {/* Phase 2: Transportation */}
+        {/* Phase 2: Build Itinerary */}
+        {currentPhase === 'itinerary' && (
+          <>
+            <Button
+              onClick={() => handleAdvancePhase('transportation')}
+              disabled={loading || includedProposals.length === 0}
+              className="w-full bg-primary hover:bg-primary/90"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ArrowRight className="h-4 w-4 mr-2" />
+              )}
+              Plan Transportation
+            </Button>
+            {includedProposals.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center">
+                Include at least one item in the itinerary first
+              </p>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setUnlockTarget('destination')}
+              className="w-full text-muted-foreground hover:text-foreground"
+            >
+              <Unlock className="h-3.5 w-3.5 mr-1.5" />
+              Reopen Destination Selection
+            </Button>
+          </>
+        )}
+
+        {/* Phase 3: Transportation */}
         {currentPhase === 'transportation' && (
           <>
             {onOpenTransportation && (
@@ -167,43 +199,11 @@ export function PhaseActions({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setUnlockTarget('destination')}
+              onClick={() => setUnlockTarget('itinerary')}
               className="w-full text-muted-foreground hover:text-foreground"
             >
               <Unlock className="h-3.5 w-3.5 mr-1.5" />
-              Reopen Destination Selection
-            </Button>
-          </>
-        )}
-
-        {/* Phase 3: Build Itinerary */}
-        {currentPhase === 'itinerary' && (
-          <>
-            <Button
-              onClick={() => handleAdvancePhase('finalize')}
-              disabled={loading || includedProposals.length === 0}
-              className="w-full bg-primary hover:bg-primary/90"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <ArrowRight className="h-4 w-4 mr-2" />
-              )}
-              Finalize Trip
-            </Button>
-            {includedProposals.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center">
-                Include at least one item in the itinerary first
-              </p>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setUnlockTarget('transportation')}
-              className="w-full text-muted-foreground hover:text-foreground"
-            >
-              <Unlock className="h-3.5 w-3.5 mr-1.5" />
-              Reopen Transportation
+              Reopen Itinerary
             </Button>
           </>
         )}
@@ -226,11 +226,11 @@ export function PhaseActions({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setUnlockTarget('itinerary')}
+              onClick={() => setUnlockTarget('transportation')}
               className="w-full text-muted-foreground hover:text-foreground"
             >
               <Unlock className="h-3.5 w-3.5 mr-1.5" />
-              Reopen Itinerary Planning
+              Reopen Transportation
             </Button>
           </>
         )}

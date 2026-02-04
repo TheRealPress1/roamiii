@@ -121,8 +121,8 @@ export function TripPanel({
               />
             )}
 
-            {/* View Transportation button in transportation phase */}
-            {currentPhase === 'transportation' && onOpenTransportation && (
+            {/* View Transportation button in itinerary or transportation phase */}
+            {(currentPhase === 'itinerary' || currentPhase === 'transportation') && onOpenTransportation && (
               <Button
                 variant="outline"
                 size="sm"

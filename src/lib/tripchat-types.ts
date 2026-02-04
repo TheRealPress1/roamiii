@@ -5,7 +5,7 @@ export type MessageType = 'text' | 'proposal' | 'system';
 export type VoteType = 'in' | 'maybe' | 'out';
 export type MemberStatus = 'active' | 'removed';
 export type ProposalType = 'housing' | 'activity';
-export type TripPhase = 'destination' | 'transportation' | 'itinerary' | 'finalize' | 'ready';
+export type TripPhase = 'destination' | 'itinerary' | 'transportation' | 'finalize' | 'ready';
 export type TravelMode = 'flying' | 'driving';
 
 export const PROPOSAL_TYPES = [
@@ -15,8 +15,8 @@ export const PROPOSAL_TYPES = [
 
 export const TRIP_PHASES = [
   { value: 'destination', label: 'Pick Destination', step: 1 },
-  { value: 'transportation', label: 'Transportation', step: 2 },
-  { value: 'itinerary', label: 'Build Itinerary', step: 3 },
+  { value: 'itinerary', label: 'Build Itinerary', step: 2 },
+  { value: 'transportation', label: 'Transportation', step: 3 },
   { value: 'finalize', label: 'Finalize & Book', step: 4 },
   { value: 'ready', label: 'Ready!', step: 5 },
 ] as const;

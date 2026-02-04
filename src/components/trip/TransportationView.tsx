@@ -229,7 +229,7 @@ export function TransportationView({
     }
   };
 
-  // Advance to itinerary phase
+  // Advance to finalize phase
   const handleContinue = async () => {
     if (!user || !isAdmin) return;
 
@@ -237,7 +237,7 @@ export function TransportationView({
     try {
       const { error } = await supabase
         .from('trips')
-        .update({ phase: 'itinerary' })
+        .update({ phase: 'finalize' })
         .eq('id', trip.id);
 
       if (error) throw error;
@@ -246,10 +246,10 @@ export function TransportationView({
         trip_id: trip.id,
         user_id: user.id,
         type: 'system',
-        body: 'Trip moved to: Build Itinerary',
+        body: 'Trip moved to: Finalize & Book',
       });
 
-      toast.success('Moving to itinerary planning!');
+      toast.success('Moving to finalize!');
       onUpdated();
       onClose();
     } catch (error: any) {
@@ -480,11 +480,11 @@ export function TransportationView({
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Moving to Itinerary...
+                    Moving to Finalize...
                   </>
                 ) : (
                   <>
-                    Continue to Itinerary
+                    Continue to Finalize
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </>
                 )}
