@@ -99,8 +99,12 @@ export default function Landing() {
             <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
               {/* Chat Header */}
               <div className="px-4 py-3 border-b border-border flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                  <MessageCircle className="h-5 w-5 text-primary" />
+                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                  <img
+                    src="/trip-group.png"
+                    alt="Trip chat"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Senior Spring Break</h3>
@@ -112,7 +116,11 @@ export default function Landing() {
               <div className="p-4 space-y-4">
                 {/* Text message */}
                 <div className="flex items-start gap-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">JM</div>
+                  <img
+                    src="/avatars/avatar-1.png"
+                    alt="User avatar"
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
                   <div className="bg-muted px-4 py-2 rounded-2xl rounded-tl-sm max-w-xs">
                     <p className="text-sm">We need to decide soon! Who's looking into options?</p>
                   </div>
@@ -120,11 +128,20 @@ export default function Landing() {
 
                 {/* Proposal Card in Chat */}
                 <div className="flex items-start gap-2">
-                  <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">SK</div>
+                  <img
+                    src="/avatars/avatar-2.png"
+                    alt="User avatar"
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
                   <div className="max-w-sm">
                     <p className="text-xs text-muted-foreground mb-1">proposed a trip</p>
                     <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
-                      <div className="aspect-[2/1] bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 relative">
+                      <div className="aspect-[2/1] relative overflow-hidden">
+                        <img
+                          src="/cancun.jpg"
+                          alt="Cancun beach"
+                          className="w-full h-full object-cover"
+                        />
                         <div className="absolute bottom-2 left-2 flex gap-1">
                           <VibeTag vibe="beach" size="sm" />
                           <VibeTag vibe="party" size="sm" />
@@ -151,9 +168,16 @@ export default function Landing() {
                 </div>
 
                 {/* Reaction text */}
-                <div className="flex justify-end">
+                <div className="flex justify-end items-start gap-2">
                   <div className="bg-primary text-white px-4 py-2 rounded-2xl rounded-tr-sm max-w-xs">
-                    <p className="text-sm">This looks amazing! I'm in 🙌</p>
+                    <p className="text-sm">This looks amazing! I'm in</p>
+                  </div>
+                  <div className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-full overflow-hidden flex-shrink-0">
+                    <img
+                      src="/avatars/avatar-3.png"
+                      alt="User avatar"
+                      className="w-full h-full object-cover scale-[2] translate-y-[15%]"
+                    />
                   </div>
                 </div>
               </div>

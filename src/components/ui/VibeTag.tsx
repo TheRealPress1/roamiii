@@ -10,16 +10,16 @@ interface VibeTagProps {
 }
 
 const vibeColors: Record<string, string> = {
-  party: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
-  chill: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-  adventure: 'bg-orange-100 text-orange-700 border-orange-200',
-  culture: 'bg-violet-100 text-violet-700 border-violet-200',
-  nature: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  luxury: 'bg-amber-100 text-amber-700 border-amber-200',
-  beach: 'bg-sky-100 text-sky-700 border-sky-200',
-  city: 'bg-slate-100 text-slate-700 border-slate-200',
-  food: 'bg-red-100 text-red-700 border-red-200',
-  romantic: 'bg-pink-100 text-pink-700 border-pink-200',
+  party: 'bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white border-transparent shadow-sm',
+  chill: 'bg-gradient-to-r from-cyan-400 to-teal-400 text-white border-transparent shadow-sm',
+  adventure: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-transparent shadow-sm',
+  culture: 'bg-gradient-to-r from-violet-500 to-purple-500 text-white border-transparent shadow-sm',
+  nature: 'bg-gradient-to-r from-emerald-500 to-green-500 text-white border-transparent shadow-sm',
+  luxury: 'bg-gradient-to-r from-amber-400 to-yellow-400 text-white border-transparent shadow-sm',
+  beach: 'bg-gradient-to-r from-sky-400 to-blue-500 text-white border-transparent shadow-sm',
+  city: 'bg-gradient-to-r from-slate-500 to-gray-600 text-white border-transparent shadow-sm',
+  food: 'bg-gradient-to-r from-red-500 to-rose-500 text-white border-transparent shadow-sm',
+  romantic: 'bg-gradient-to-r from-pink-500 to-rose-400 text-white border-transparent shadow-sm',
 };
 
 export function VibeTag({ vibe, size = 'sm', interactive, selected, onClick }: VibeTagProps) {

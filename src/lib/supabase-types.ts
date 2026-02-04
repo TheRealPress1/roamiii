@@ -106,14 +106,14 @@ export interface Comment {
 }
 
 export const VIBE_TAGS = [
-  { value: 'party', label: '🎉 Party', color: 'vibe-party' },
-  { value: 'chill', label: '🌴 Chill', color: 'vibe-chill' },
-  { value: 'adventure', label: '🏔️ Adventure', color: 'vibe-adventure' },
-  { value: 'culture', label: '🏛️ Culture', color: 'vibe-culture' },
-  { value: 'nature', label: '🌿 Nature', color: 'vibe-nature' },
-  { value: 'luxury', label: '✨ Luxury', color: 'vibe-luxury' },
-  { value: 'beach', label: '🏖️ Beach', color: 'vibe-chill' },
-  { value: 'city', label: '🌆 City', color: 'vibe-culture' },
-  { value: 'food', label: '🍜 Foodie', color: 'vibe-adventure' },
-  { value: 'romantic', label: '💕 Romantic', color: 'vibe-party' },
+  { value: 'party', label: 'Party', color: 'vibe-party' },
+  { value: 'chill', label: 'Chill', color: 'vibe-chill' },
+  { value: 'adventure', label: 'Adventure', color: 'vibe-adventure' },
+  { value: 'culture', label: 'Culture', color: 'vibe-culture' },
+  { value: 'nature', label: 'Nature', color: 'vibe-nature' },
+  { value: 'luxury', label: 'Luxury', color: 'vibe-luxury' },
+  { value: 'beach', label: 'Beach', color: 'vibe-chill' },
+  { value: 'city', label: 'City', color: 'vibe-culture' },
+  { value: 'food', label: 'Foodie', color: 'vibe-adventure' },
+  { value: 'romantic', label: 'Romantic', color: 'vibe-party' },
 ] as const;
