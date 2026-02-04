@@ -1,6 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Crown, Users, Copy, Check, MessageCircle } from 'lucide-react';
+import { Crown, Users, Copy, Check, MessageCircle, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 
 interface TripWithDetails {
@@ -19,9 +25,11 @@ interface TripCardProps {
   trip: TripWithDetails;
   onCopyInvite: (e: React.MouseEvent, trip: TripWithDetails) => void;
   isCopied: boolean;
+  isOwner?: boolean;
+  onDelete?: (e: React.MouseEvent, trip: TripWithDetails) => void;
 }
 
-export function TripCard({ trip, onCopyInvite, isCopied }: TripCardProps) {
+export function TripCard({ trip, onCopyInvite, isCopied, isOwner, onDelete }: TripCardProps) {
   // Generate initials from trip name
   const initials = trip.name
     .split(' ')
@@ -93,6 +101,31 @@ export function TripCard({ trip, onCopyInvite, isCopied }: TripCardProps) {
               <Copy className="h-4 w-4 text-muted-foreground" />
             )}
           </Button>
+
+          {/* More options menu - only for owners */}
+          {isOwner && onDelete && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute bottom-3 left-3 h-8 w-8 bg-white/90 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={(e) => onDelete(e, trip)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Trip
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* Content */}

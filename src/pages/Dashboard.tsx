@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Users, Loader2, MessageCircle } from 'lucide-react';
 import { TripCard } from '@/components/TripCard';
+import { DeleteTripDialog } from '@/components/trip/DeleteTripDialog';
 
 // Rotating greetings system
 const GREETINGS = [
@@ -50,6 +51,7 @@ interface TripWithDetails {
   join_code: string | null;
   created_at: string;
   updated_at: string;
+  created_by: string;
   member_count: number;
   proposal_count: number;
   last_message: string | null;
@@ -64,6 +66,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deleteTrip, setDeleteTrip] = useState<TripWithDetails | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Memoized greeting - computed once per render, persists for the day
   const headline = useMemo(() => {
@@ -153,14 +157,43 @@ export default function Dashboard() {
   const handleCopyInvite = async (e: React.MouseEvent, trip: TripWithDetails) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!trip.join_code) return;
-    
+
     const inviteLink = `${window.location.origin}/join/${trip.join_code}`;
     await navigator.clipboard.writeText(inviteLink);
     setCopiedId(trip.id);
     toast.success('Invite link copied!');
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, trip: TripWithDetails) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDeleteTrip(trip);
+  };
+
+  const handleDeleteTrip = async () => {
+    if (!deleteTrip) return;
+
+    setDeleteLoading(true);
+
+    const { error } = await supabase
+      .from('trips')
+      .delete()
+      .eq('id', deleteTrip.id);
+
+    if (error) {
+      toast.error('Failed to delete trip');
+      console.error('Error deleting trip:', error);
+      setDeleteLoading(false);
+      return;
+    }
+
+    toast.success('Trip deleted');
+    setDeleteTrip(null);
+    setDeleteLoading(false);
+    fetchTrips();
   };
 
   return (
@@ -253,6 +286,8 @@ export default function Dashboard() {
                       trip={trip}
                       onCopyInvite={handleCopyInvite}
                       isCopied={copiedId === trip.id}
+                      isOwner={trip.created_by === user?.id}
+                      onDelete={handleDeleteClick}
                     />
                   </motion.div>
                 ))}
@@ -263,6 +298,15 @@ export default function Dashboard() {
       </main>
 
       <Footer />
+
+      {/* Delete Trip Dialog */}
+      <DeleteTripDialog
+        open={!!deleteTrip}
+        onClose={() => setDeleteTrip(null)}
+        tripName={deleteTrip?.name || ''}
+        onConfirm={handleDeleteTrip}
+        loading={deleteLoading}
+      />
     </div>
   );
 }
