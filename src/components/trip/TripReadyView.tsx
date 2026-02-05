@@ -7,8 +7,6 @@ import {
   Hotel,
   Ticket,
   Plane,
-  Car,
-  Users,
   CheckCircle2,
   MessageCircle,
   X,
@@ -17,7 +15,6 @@ import { getSiteName } from '@/lib/url-utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { VibeTag } from '@/components/ui/VibeTag';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -26,13 +23,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { ChatFeed, type ChatViewMode } from '@/components/chat/ChatFeed';
+import { ChatFeed } from '@/components/chat/ChatFeed';
 import { ChatComposer } from '@/components/chat/ChatComposer';
 import type { Trip, TripProposal, TripMember, Message } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { SFSymbol } from '@/components/icons';
 import { PROPOSAL_TYPE_ICON_MAP } from '@/lib/icon-mappings';
-import { cn, getDisplayName } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface TripReadyViewProps {
   trip: Trip;
@@ -92,28 +89,6 @@ export function TripReadyView({
   const transportCost = trip.flight_cost || 0;
   const totalCost = activityCost + housingCost + transportCost;
 
-  // Group members by travel status for driving mode
-  const { drivers, flyingMembers } = useMemo(() => {
-    const drivers: TripMember[] = [];
-    const flyingMembers: TripMember[] = [];
-
-    members.forEach((member) => {
-      const effectiveMode = member.travel_mode || trip.travel_mode;
-      if (effectiveMode === 'flying') {
-        flyingMembers.push(member);
-      } else if (effectiveMode === 'driving' && member.is_driver) {
-        drivers.push(member);
-      }
-    });
-
-    return { drivers, flyingMembers };
-  }, [members, trip.travel_mode]);
-
-  // Get passengers for a specific driver
-  const getPassengersForDriver = (driverId: string) => {
-    return members.filter((m) => m.rides_with_id === driverId);
-  };
-
   const getCategoryIcon = (type: string) => {
     switch (type) {
       case 'housing':
@@ -152,6 +127,7 @@ export function TripReadyView({
           viewMode="chat"
           onViewModeChange={() => {}}
           tripPhase="ready"
+          hideViewToggle
         />
       </div>
       <ChatComposer
@@ -346,129 +322,6 @@ export function TripReadyView({
             </div>
           );
         })}
-
-        {/* Transportation Section */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
-            {trip.travel_mode === 'flying' ? (
-              <Plane className="h-4 w-4" />
-            ) : (
-              <Car className="h-4 w-4" />
-            )}
-            Transportation
-          </h3>
-
-          {/* Flying Mode */}
-          {trip.travel_mode === 'flying' && (
-            <div className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
-                  <Plane className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-foreground">Flying</p>
-                  {trip.flight_cost && trip.flight_cost > 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      ${trip.flight_cost.toLocaleString()}/person × {flyingMembers.length} people
-                      {' = '}
-                      <span className="font-medium text-foreground">
-                        ${(trip.flight_cost * flyingMembers.length).toLocaleString()} total
-                      </span>
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {flyingMembers.length} people flying
-                    </p>
-                  )}
-                </div>
-                {/* Book Flights button */}
-                {trip.flight_booking_url && (
-                  <a
-                    href={trip.flight_booking_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 text-sm font-medium rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-1.5 flex-shrink-0"
-                  >
-                    Book Flights
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Driving Mode - Carpool Summary */}
-          {trip.travel_mode === 'driving' && drivers.length > 0 && (
-            <div className="space-y-3">
-              {drivers.map((driver) => {
-                const passengers = getPassengersForDriver(driver.id);
-                const driverName = getDisplayName(driver.profile, 'Driver');
-
-                return (
-                  <div
-                    key={driver.id}
-                    className="rounded-xl border border-border bg-card p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center">
-                        <Car className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-foreground">{driverName}'s Car</p>
-                        <p className="text-sm text-muted-foreground">
-                          {passengers.length + 1} people
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Passengers */}
-                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
-                      {/* Driver */}
-                      <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800">
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage src={driver.profile?.avatar_url || undefined} />
-                          <AvatarFallback className="text-xs bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400">
-                            {driverName.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                          {driverName}
-                        </span>
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400">(Driver)</span>
-                      </div>
-
-                      {/* Passengers */}
-                      {passengers.map((passenger) => {
-                        const name = getDisplayName(passenger.profile, '?');
-                        return (
-                          <div
-                            key={passenger.id}
-                            className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted"
-                          >
-                            <Avatar className="h-5 w-5">
-                              <AvatarImage src={passenger.profile?.avatar_url || undefined} />
-                              <AvatarFallback className="text-xs">
-                                {name.slice(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs font-medium">{name}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* No transportation set */}
-          {!trip.travel_mode && (
-            <div className="rounded-xl border border-border bg-card p-4 text-center text-muted-foreground">
-              <p>Transportation not set</p>
-            </div>
-          )}
-        </div>
 
         {/* Empty State */}
         {includedProposals.length === 0 && (

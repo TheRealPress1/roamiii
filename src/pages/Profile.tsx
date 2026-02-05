@@ -22,6 +22,7 @@ export default function Profile() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [tagline, setTagline] = useState('');
+  const [venmoUsername, setVenmoUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Avatar cropper state
@@ -36,6 +37,7 @@ export default function Profile() {
       setName(profile.name || '');
       setPhone(profile.phone || '');
       setTagline(profile.tagline || '');
+      setVenmoUsername(profile.venmo_username || '');
       setAvatarUrl(profile.avatar_url);
     }
   }, [profile]);
@@ -135,6 +137,7 @@ export default function Profile() {
           name: name.trim() || null,
           phone: phone.trim() || null,
           tagline: tagline.trim() || null,
+          venmo_username: venmoUsername.trim() || null,
           avatar_url: avatarUrl,
         });
 
@@ -289,6 +292,22 @@ export default function Profile() {
                   onChange={(e) => setPhone(e.target.value)}
                   className="h-11 bg-background"
                 />
+              </div>
+
+              {/* Venmo Username */}
+              <div className="bg-muted/50 rounded-xl p-4 space-y-2">
+                <p className="text-xs text-muted-foreground font-medium">
+                  Venmo username · For trip payments
+                </p>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
+                  <Input
+                    placeholder="your-venmo-username"
+                    value={venmoUsername}
+                    onChange={(e) => setVenmoUsername(e.target.value)}
+                    className="h-11 bg-background pl-8"
+                  />
+                </div>
               </div>
 
               {/* Email - Private block (read-only) */}

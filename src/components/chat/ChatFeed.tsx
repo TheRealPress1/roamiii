@@ -57,6 +57,7 @@ interface ChatFeedProps {
   onJoinCar?: (driverId: string) => void;
   onLeaveCar?: () => void;
   isJoiningCar?: boolean;
+  hideViewToggle?: boolean;
 }
 
 interface ProposalGroup {
@@ -66,7 +67,7 @@ interface ProposalGroup {
   messages: Message[];
 }
 
-export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId, lastViewedChatAt, votingStatus, includedProposals = [], lockedDestination, onProposalIncludedChange, members = [], currentUserId, onJoinCar, onLeaveCar, isJoiningCar }: ChatFeedProps) {
+export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId, lastViewedChatAt, votingStatus, includedProposals = [], lockedDestination, onProposalIncludedChange, members = [], currentUserId, onJoinCar, onLeaveCar, isJoiningCar, hideViewToggle = false }: ChatFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [activeProposal, setActiveProposal] = useState<TripProposal | null>(null);
 
@@ -204,12 +205,14 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
   if (loading) {
     return (
       <div className="flex-1 flex flex-col">
-        <ViewModeToggle
-          viewMode={viewMode}
-          onViewModeChange={onViewModeChange}
-          proposalCount={proposalCount}
-          chatCount={unreadChatCount}
-        />
+        {!hideViewToggle && (
+          <ViewModeToggle
+            viewMode={viewMode}
+            onViewModeChange={onViewModeChange}
+            proposalCount={proposalCount}
+            chatCount={unreadChatCount}
+          />
+        )}
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -220,12 +223,14 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
   if (messages.length === 0) {
     return (
       <div className="flex-1 flex flex-col">
-        <ViewModeToggle
-          viewMode={viewMode}
-          onViewModeChange={onViewModeChange}
-          proposalCount={proposalCount}
-          chatCount={unreadChatCount}
-        />
+        {!hideViewToggle && (
+          <ViewModeToggle
+            viewMode={viewMode}
+            onViewModeChange={onViewModeChange}
+            proposalCount={proposalCount}
+            chatCount={unreadChatCount}
+          />
+        )}
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center">
             <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
@@ -248,12 +253,14 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0">
       {/* View Mode Toggle */}
-      <ViewModeToggle
-        viewMode={viewMode}
-        onViewModeChange={onViewModeChange}
-        proposalCount={proposalCount}
-        chatCount={unreadChatCount}
-      />
+      {!hideViewToggle && (
+        <ViewModeToggle
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          proposalCount={proposalCount}
+          chatCount={unreadChatCount}
+        />
+      )}
 
       {/* Proposals View with DnD */}
       {viewMode === 'proposals' && (

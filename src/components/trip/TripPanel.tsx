@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye, Car, Receipt, Sparkles, Users, CheckCircle2, CircleDashed, DollarSign, RotateCcw, Loader2 } from 'lucide-react';
+import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye, Car, Receipt, Sparkles, Users, CheckCircle2, CircleDashed, DollarSign, RotateCcw, Loader2, ExternalLink, Plane } from 'lucide-react';
 import type { Trip, TripMember, TripProposal, SettlementSummary } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES, TRIP_PHASES } from '@/lib/tripchat-types';
 import { PhaseActions } from '@/components/trip/PhaseActions';
@@ -245,7 +245,9 @@ export function TripPanel({
                 Booking Status
               </h3>
               <div className="space-y-3">
-                {includedProposals.map((proposal) => {
+                {includedProposals
+                  .filter(p => !p.is_destination)
+                  .map((proposal) => {
                   const displayName = proposal.name || proposal.destination;
                   const isBooked = !!proposal.booked_by;
                   const bookerName = getDisplayName(proposal.booker, '');
@@ -274,6 +276,18 @@ export function TripPanel({
                               </>
                             )}
                           </div>
+                          {/* Venmo payment link */}
+                          {isBooked && proposal.booker?.venmo_username && (
+                            <a
+                              href={`https://venmo.com/${proposal.booker.venmo_username}?txn=pay&amount=${proposal.estimated_cost_per_person || ''}&note=${encodeURIComponent(`${trip.name} - ${displayName}`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs text-[#008CFF] hover:underline mt-1"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              Pay via Venmo
+                            </a>
+                          )}
                         </div>
                       </div>
                       {proposal.estimated_cost_per_person > 0 && (
@@ -302,7 +316,7 @@ export function TripPanel({
                     </div>
                   );
                 })}
-                {includedProposals.length === 0 && (
+                {includedProposals.filter(p => !p.is_destination).length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     No items in the itinerary yet.
                   </p>
@@ -357,6 +371,108 @@ export function TripPanel({
                 )}
               </div>
             </section>
+
+            {/* Transportation Section */}
+            {trip.travel_mode && (
+              <section>
+                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                  {trip.travel_mode === 'flying' ? (
+                    <Plane className="h-4 w-4" />
+                  ) : (
+                    <Car className="h-4 w-4" />
+                  )}
+                  Transportation
+                </h3>
+
+                {trip.travel_mode === 'flying' && (
+                  <div className="p-3 rounded-lg border border-border bg-muted/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Plane className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm font-medium text-foreground">Flying</span>
+                    </div>
+                    {trip.flight_cost && trip.flight_cost > 0 && (
+                      <p className="text-xs text-muted-foreground mb-2">
+                        ${trip.flight_cost.toLocaleString()}/person
+                      </p>
+                    )}
+                    {trip.flight_description && (
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {trip.flight_description}
+                      </p>
+                    )}
+                    {trip.flight_booking_url && (
+                      <a
+                        href={trip.flight_booking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Book Flights
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {trip.travel_mode === 'driving' && (
+                  <div className="space-y-2">
+                    {members.filter(m => m.is_driver).map(driver => {
+                      const driverName = getDisplayName(driver.profile, 'Driver');
+                      const passengers = members.filter(m => m.rides_with_id === driver.id);
+                      return (
+                        <div key={driver.id} className="p-3 rounded-lg border border-border bg-muted/30">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Car className="h-4 w-4 text-emerald-500" />
+                            <span className="text-sm font-medium text-foreground">{driverName}'s car</span>
+                            {driver.car_capacity && (
+                              <span className="text-xs text-muted-foreground">
+                                ({passengers.length + 1}/{driver.car_capacity})
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {/* Driver chip */}
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-xs">
+                              <Avatar className="h-4 w-4">
+                                <AvatarImage src={driver.profile?.avatar_url || undefined} />
+                                <AvatarFallback className="text-[8px]">
+                                  {driverName.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              {driverName}
+                              <span className="text-emerald-500">(Driver)</span>
+                            </div>
+                            {/* Passenger chips */}
+                            {passengers.map(passenger => {
+                              const passengerName = getDisplayName(passenger.profile, '?');
+                              return (
+                                <div
+                                  key={passenger.id}
+                                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
+                                >
+                                  <Avatar className="h-4 w-4">
+                                    <AvatarImage src={passenger.profile?.avatar_url || undefined} />
+                                    <AvatarFallback className="text-[8px]">
+                                      {passengerName.slice(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  {passengerName}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {members.filter(m => m.is_driver).length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No drivers assigned yet.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
 
             {/* Reopen for Changes (Owner only) */}
             {isOwner && onPhaseChanged && (
