@@ -135,12 +135,13 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
     // Group proposals by type
     const groups: ProposalGroup[] = [];
 
-    // Destinations group - only show locked destination if one is locked
+    // Destinations group - exclude locked destinations entirely
+    // (locked destination is shown in the ItineraryBoard chip bar instead)
     const destinationMsgs = proposalMessages.filter(m => {
       if (!m.proposal?.is_destination) return false;
-      // If a destination is locked, only show the locked one
+      // If a destination is locked, don't show ANY destination cards
       if (lockedDestinationId) {
-        return m.proposal.id === lockedDestinationId;
+        return false;
       }
       return true;
     });
