@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { Snowflake, Flame } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getDisplayName } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { TripVote } from "@/lib/tripchat-types";
 
@@ -144,7 +144,7 @@ export function VoterAvatarsBar({
       {/* Stacked avatars */}
       <div className="flex items-center -space-x-2">
         {votes.slice(0, 5).map((vote, index) => {
-          const voterName = vote.voter?.name || vote.voter?.email?.split('@')[0] || 'U';
+          const voterName = getDisplayName(vote.voter, 'U');
           const initials = voterName.slice(0, 2).toUpperCase();
           return (
             <Avatar

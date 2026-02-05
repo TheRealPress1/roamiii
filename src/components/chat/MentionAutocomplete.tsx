@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { TripMember } from '@/lib/tripchat-types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 
 interface MentionAutocompleteProps {
   suggestions: TripMember[];
@@ -47,7 +47,7 @@ export function MentionAutocomplete({
         style={position ? { top: position.top, left: position.left } : { bottom: '100%', left: 0 }}
       >
         {suggestions.map((member, index) => {
-          const name = member.profile?.name || member.profile?.email?.split('@')[0] || 'Unknown';
+          const name = getDisplayName(member.profile);
           const email = member.profile?.email || '';
           const initials = name.slice(0, 2).toUpperCase();
 

@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PROPOSAL_TYPES, type ProposalType, type TripPhase, type ActivitySuggestion } from '@/lib/tripchat-types';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 
 // Generate static map URL for destination cover images
 const getMapCoverUrl = (coords: [number, number]): string => {
@@ -257,7 +257,7 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
       });
 
       // Notify other trip members
-      const actorName = profile?.name || profile?.email?.split('@')[0] || 'Someone';
+      const actorName = getDisplayName(profile, 'Someone');
       const displayName = name.trim() || finalDestination;
       await notifyTripMembers(tripId, user.id, actorName, displayName);
 

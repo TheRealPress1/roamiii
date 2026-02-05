@@ -1,5 +1,6 @@
 import type { Profile, TripMember } from './tripchat-types';
 import { supabase } from '@/integrations/supabase/client';
+import { getDisplayName } from './utils';
 
 // Regular expression to find @mentions in text
 // Matches @username or @"full name with spaces"
@@ -48,7 +49,7 @@ export function findMentionedMembers(
     // Find member by name match (case insensitive)
     const member = members.find(m => {
       const memberName = m.profile?.name?.toLowerCase() || '';
-      const memberEmail = m.profile?.email?.split('@')[0].toLowerCase() || '';
+      const memberEmail = (m.profile?.email?.split('@')[0] || '').toLowerCase();
 
       return (
         memberName === lowerName ||
@@ -84,7 +85,7 @@ export function getMentionSuggestions(
     .filter(m => m.user_id !== currentUserId)
     .filter(m => {
       const name = m.profile?.name?.toLowerCase() || '';
-      const email = m.profile?.email?.split('@')[0].toLowerCase() || '';
+      const email = (m.profile?.email?.split('@')[0] || '').toLowerCase();
       return name.includes(lowerSearch) || email.includes(lowerSearch);
     })
     .slice(0, 5);
@@ -101,13 +102,13 @@ export function formatMentions(text: string, members: TripMember[]): string {
   for (const mention of mentions) {
     const member = members.find(m => {
       const name = m.profile?.name?.toLowerCase() || '';
-      const email = m.profile?.email?.split('@')[0].toLowerCase() || '';
+      const email = (m.profile?.email?.split('@')[0] || '').toLowerCase();
       const mentionLower = mention.name.toLowerCase();
       return name === mentionLower || email === mentionLower;
     });
 
     if (member) {
-      const displayName = member.profile?.name || member.profile?.email?.split('@')[0] || 'Unknown';
+      const displayName = getDisplayName(member.profile);
       const replacement = `@${displayName}`;
       const start = mention.startIndex + offset;
       const end = mention.endIndex + offset;
@@ -146,7 +147,7 @@ export async function createMentionNotifications(
     .eq('id', actorId)
     .single();
 
-  const actorName = actorProfile?.name || actorProfile?.email?.split('@')[0] || 'Someone';
+  const actorName = getDisplayName(actorProfile, 'Someone');
 
   // Create notifications for each mentioned user
   const notifications = mentionedUserIds.map(userId => ({
@@ -202,7 +203,7 @@ export function insertMention(
     return { newText: text, newCursorPosition: cursorPosition };
   }
 
-  const displayName = member.profile?.name || member.profile?.email?.split('@')[0] || 'Unknown';
+  const displayName = getDisplayName(member.profile);
   const needsQuotes = displayName.includes(' ');
   const mentionText = needsQuotes ? `@"${displayName}" ` : `@${displayName} `;
 

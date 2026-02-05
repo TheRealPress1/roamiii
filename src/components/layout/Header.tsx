@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getDisplayName } from '@/lib/utils';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { NotificationDrawer } from '@/components/notifications/NotificationDrawer';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -83,7 +84,7 @@ export function Header() {
                         </AvatarFallback>
                       </Avatar>
                       <span className="hidden sm:inline-block max-w-[120px] truncate">
-                        {profile?.name || profile?.email?.split('@')[0]}
+                        {getDisplayName(profile)}
                       </span>
                     </Button>
                   </DropdownMenuTrigger>

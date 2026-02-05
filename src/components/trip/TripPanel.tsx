@@ -20,7 +20,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface TripPanelProps {
@@ -143,7 +143,7 @@ export function TripPanel({
       <div className="flex items-center gap-2">
         <div className="flex items-center -space-x-1">
           {members.slice(0, 6).map((member, index) => {
-            const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
+            const name = getDisplayName(member.profile, '?');
             const isOwnerMember = member.role === 'owner';
             const isAdminMember = member.role === 'admin';
 
@@ -204,7 +204,7 @@ export function TripPanel({
               {members
                 .filter(m => m.user_id !== user?.id && m.role !== 'owner')
                 .map(member => {
-                  const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
+                  const name = getDisplayName(member.profile, '?');
                   return (
                     <DropdownMenuItem
                       key={member.id}
@@ -222,7 +222,7 @@ export function TripPanel({
       </div>
       {prominent && (
         <p className="text-xs text-muted-foreground mt-2">
-          {members.map(m => m.profile?.name || m.profile?.email?.split('@')[0]).slice(0, 3).join(', ')}
+          {members.map(m => getDisplayName(m.profile, '?')).slice(0, 3).join(', ')}
           {members.length > 3 && `, +${members.length - 3}`}
         </p>
       )}
@@ -248,7 +248,7 @@ export function TripPanel({
                 {includedProposals.map((proposal) => {
                   const displayName = proposal.name || proposal.destination;
                   const isBooked = !!proposal.booked_by;
-                  const bookerName = proposal.booker?.name || proposal.booker?.email?.split('@')[0];
+                  const bookerName = getDisplayName(proposal.booker, '');
                   const isClaiming = claimingBookingId === proposal.id;
                   const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposal.type);
 
@@ -327,7 +327,7 @@ export function TripPanel({
                 {userOwes.length > 0 && (
                   <div className="pt-2 border-t border-border space-y-2">
                     {userOwes.map((settlement, idx) => {
-                      const toName = settlement.to_user?.name || settlement.to_user?.email?.split('@')[0] || 'Unknown';
+                      const toName = getDisplayName(settlement.to_user);
                       return (
                         <div key={idx} className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">You owe {toName}</span>

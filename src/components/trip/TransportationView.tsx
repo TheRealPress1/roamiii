@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 import type { Trip, TripMember, TravelMode } from '@/lib/tripchat-types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -163,7 +163,7 @@ export function TransportationView({
 
       // Send driver announcement to chat when becoming a driver
       if (isDriver && onSendDriverMessage) {
-        const driverName = currentMember.profile?.name || currentMember.profile?.email?.split('@')[0] || 'Driver';
+        const driverName = getDisplayName(currentMember.profile, 'Driver');
         onSendDriverMessage(currentMember.id, driverName);
       }
 
@@ -347,7 +347,7 @@ export function TransportationView({
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {needsRide.map((member) => {
-                        const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
+                        const name = getDisplayName(member.profile, '?');
                         const isCurrentUser = member.user_id === user?.id;
                         return (
                           <div
@@ -407,7 +407,7 @@ export function TransportationView({
                 {/* Flying member avatars (read-only) */}
                 <div className="flex flex-wrap gap-2">
                   {flying.map((member) => {
-                    const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
+                    const name = getDisplayName(member.profile, '?');
                     const isCurrentUser = member.user_id === user?.id;
                     return (
                       <div

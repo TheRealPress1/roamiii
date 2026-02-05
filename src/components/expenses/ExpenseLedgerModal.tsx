@@ -25,7 +25,7 @@ import type { TripExpense, TripMember, SettlementSummary } from '@/lib/tripchat-
 import { useTripExpenses } from '@/hooks/useTripExpenses';
 import { formatCurrency } from '@/lib/expense-utils';
 import { AddExpenseModal } from './AddExpenseModal';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface ExpenseLedgerModalProps {
@@ -152,7 +152,7 @@ export function ExpenseLedgerModal({
                   <div className="divide-y divide-border">
                     {expenses.map((expense) => {
                       const payer = expense.payer;
-                      const payerName = payer?.name || payer?.email?.split('@')[0] || 'Unknown';
+                      const payerName = getDisplayName(payer);
                       const isOwn = expense.paid_by === currentUserId;
 
                       return (
@@ -189,7 +189,7 @@ export function ExpenseLedgerModal({
                                   <div className="flex -space-x-1">
                                     {expense.splits.slice(0, 5).map((split) => {
                                       const splitUser = split.user;
-                                      const name = splitUser?.name || splitUser?.email || '?';
+                                      const name = getDisplayName(splitUser, '?');
                                       return (
                                         <Avatar key={split.id} className="h-5 w-5 border-2 border-background">
                                           <AvatarImage src={splitUser?.avatar_url || undefined} />
@@ -248,7 +248,7 @@ export function ExpenseLedgerModal({
                       <div className="space-y-2">
                         {mySettlements.map((settlement, i) => {
                           const toUser = settlement.to_user;
-                          const name = toUser?.name || toUser?.email?.split('@')[0] || 'Unknown';
+                          const name = getDisplayName(toUser);
                           const initials = name.slice(0, 2).toUpperCase();
 
                           return (
@@ -299,7 +299,7 @@ export function ExpenseLedgerModal({
                       <div className="space-y-2">
                         {owedToMe.map((settlement, i) => {
                           const fromUser = settlement.from_user;
-                          const name = fromUser?.name || fromUser?.email?.split('@')[0] || 'Unknown';
+                          const name = getDisplayName(fromUser);
                           const initials = name.slice(0, 2).toUpperCase();
 
                           return (

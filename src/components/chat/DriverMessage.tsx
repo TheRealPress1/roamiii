@@ -1,7 +1,7 @@
 import { Car, Plus, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 import type { Message, TripMember } from '@/lib/tripchat-types';
 
 interface DriverMessageProps {
@@ -28,7 +28,7 @@ export function DriverMessage({
     return null;
   }
 
-  const driverName = driver.profile?.name || driver.profile?.email?.split('@')[0] || 'Driver';
+  const driverName = getDisplayName(driver.profile, 'Driver');
   const capacity = driver.car_capacity || 4;
 
   // Get passengers riding with this driver
@@ -84,7 +84,7 @@ export function DriverMessage({
           <div className="flex flex-wrap gap-2">
             {/* Filled seats */}
             {passengers.map((passenger) => {
-              const passengerName = passenger.profile?.name || passenger.profile?.email?.split('@')[0] || '?';
+              const passengerName = getDisplayName(passenger.profile, '?');
               const isCurrentUser = passenger.user_id === currentUserId;
               return (
                 <div

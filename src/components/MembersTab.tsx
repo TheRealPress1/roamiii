@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { BoardMember, Profile } from '@/lib/supabase-types';
 import { toast } from 'sonner';
+import { getDisplayName } from '@/lib/utils';
 
 interface MembersTabProps {
   boardId: string;
@@ -139,7 +140,7 @@ export function MembersTab({ boardId, members, currentMember, onRefresh }: Membe
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-foreground">
-                        {profile?.name || profile?.email?.split('@')[0] || 'Unknown'}
+                        {getDisplayName(profile)}
                       </span>
                       {getRoleBadge(member.role)}
                     </div>

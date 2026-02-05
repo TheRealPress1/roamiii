@@ -33,7 +33,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { TripProposal, TripMember, Message, TripPhase, ActivitySuggestion, TripTemplate, PollType } from '@/lib/tripchat-types';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { NotificationDrawer } from '@/components/notifications/NotificationDrawer';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -236,7 +236,7 @@ export default function TripChat() {
       return;
     }
 
-    const memberName = memberToRemove.profile?.name || memberToRemove.profile?.email?.split('@')[0] || 'Member';
+    const memberName = getDisplayName(memberToRemove.profile, 'Member');
     toast.success(`${memberName} has been removed from the trip`);
     setMemberToRemove(null);
     setRemoveLoading(false);
@@ -638,7 +638,7 @@ export default function TripChat() {
       <RemoveMemberDialog
         open={!!memberToRemove}
         onClose={() => setMemberToRemove(null)}
-        memberName={memberToRemove?.profile?.name || memberToRemove?.profile?.email?.split('@')[0] || 'Member'}
+        memberName={getDisplayName(memberToRemove?.profile, 'Member')}
         onConfirm={handleRemoveMember}
         loading={removeLoading}
       />

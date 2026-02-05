@@ -21,7 +21,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { ExpenseCategory, TripMember } from '@/lib/tripchat-types';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 
 interface AddExpenseModalProps {
   open: boolean;
@@ -216,7 +216,7 @@ export function AddExpenseModal({
 
             <div className="border border-border rounded-lg max-h-48 overflow-y-auto">
               {members.map((member) => {
-                const name = member.profile?.name || member.profile?.email?.split('@')[0] || 'Unknown';
+                const name = getDisplayName(member.profile);
                 const initials = name.slice(0, 2).toUpperCase();
                 const isSelected = selectedMembers.has(member.user_id);
                 const isCurrentUser = member.user_id === currentUserId;

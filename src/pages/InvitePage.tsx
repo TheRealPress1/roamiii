@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfileComplete } from '@/hooks/useProfileComplete';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getDisplayName } from '@/lib/utils';
 
 type InviteState = 
   | 'loading'
@@ -136,7 +137,7 @@ export default function InvitePage() {
         .eq('id', user.id)
         .single();
 
-      const displayName = profile?.name || profile?.email?.split('@')[0] || 'Someone';
+      const displayName = getDisplayName(profile, 'Someone');
 
       await supabase.from('messages').insert({
         trip_id: trip.id,

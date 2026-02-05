@@ -6,7 +6,7 @@ import type { Message, Poll, PollVote } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -22,7 +22,7 @@ export function PollMessage({ message, poll, onVoteChange }: PollMessageProps) {
   const [localVotes, setLocalVotes] = useState<PollVote[]>(poll.votes || []);
 
   const isOwn = message.user_id === user?.id;
-  const authorName = message.author?.name || message.author?.email?.split('@')[0] || 'Unknown';
+  const authorName = getDisplayName(message.author);
   const authorInitials = authorName.slice(0, 2).toUpperCase();
 
   // Check if poll is expired
@@ -189,7 +189,7 @@ export function PollMessage({ message, poll, onVoteChange }: PollMessageProps) {
                             <Avatar key={vote.user_id} className="h-5 w-5 border-2 border-background">
                               <AvatarImage src={vote.voter?.avatar_url || undefined} />
                               <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
-                                {(vote.voter?.name || vote.voter?.email || '?').slice(0, 1)}
+                                {getDisplayName(vote.voter, '?').slice(0, 1)}
                               </AvatarFallback>
                             </Avatar>
                           ))}

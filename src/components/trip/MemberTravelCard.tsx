@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 import type { TripMember, TravelMode } from '@/lib/tripchat-types';
 import { TravelModeSelector } from './TravelModeSelector';
 
@@ -39,7 +39,7 @@ export function MemberTravelCard({
   isUpdating = false,
   className,
 }: MemberTravelCardProps) {
-  const memberName = member.profile?.name || member.profile?.email?.split('@')[0] || 'Member';
+  const memberName = getDisplayName(member.profile, 'Member');
   const effectiveTravelMode = member.travel_mode || tripTravelMode;
   const isDriving = effectiveTravelMode === 'driving';
   const isDriver = member.is_driver;
@@ -166,7 +166,7 @@ export function MemberTravelCard({
                         <SelectContent>
                           <SelectItem value="none">No ride selected</SelectItem>
                           {availableDrivers.map((driver) => {
-                            const driverName = driver.profile?.name || driver.profile?.email?.split('@')[0] || 'Driver';
+                            const driverName = getDisplayName(driver.profile, 'Driver');
                             return (
                               <SelectItem key={driver.id} value={driver.id}>
                                 {driverName}'s car ({driver.car_capacity || 4} seats)
@@ -192,7 +192,7 @@ export function MemberTravelCard({
                 </span>
               ) : ridingWithDriver ? (
                 <span>
-                  Riding with {ridingWithDriver.profile?.name || ridingWithDriver.profile?.email?.split('@')[0]}
+                  Riding with {getDisplayName(ridingWithDriver.profile)}
                 </span>
               ) : (
                 <span className="text-vote-maybe">Needs a ride</span>

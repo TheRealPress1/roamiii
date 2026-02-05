@@ -11,7 +11,7 @@ import { VibeTag } from '@/components/ui/VibeTag';
 import { CompareButton } from '@/components/compare/CompareButton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 import { SFSymbol } from '@/components/icons';
 import { PROPOSAL_TYPE_ICON_MAP, TRIP_PHASE_ICON_MAP } from '@/lib/icon-mappings';
 import { TemperatureSlider, VoterAvatarsBar } from '@/components/ui/TemperatureSlider';
@@ -160,7 +160,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
     }
   };
 
-  const authorName = message.author?.name || message.author?.email?.split('@')[0] || 'Unknown';
+  const authorName = getDisplayName(message.author);
   const authorInitials = authorName.slice(0, 2).toUpperCase();
 
   // Get proposal type info
@@ -353,7 +353,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
                           <Avatar key={vote.id} className="h-5 w-5 border border-background">
                             <AvatarImage src={vote.voter?.avatar_url || undefined} />
                             <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
-                              {(vote.voter?.name || vote.voter?.email || '?').slice(0, 2).toUpperCase()}
+                              {getDisplayName(vote.voter, '?').slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                         ))}
@@ -529,7 +529,7 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
               {replies.length > 0 && (
                 <div className="border-t border-border px-4 py-3 space-y-2 bg-muted/30">
                   {replies.map((reply) => {
-                    const replyAuthorName = reply.author?.name || reply.author?.email?.split('@')[0] || 'Unknown';
+                    const replyAuthorName = getDisplayName(reply.author);
                     const replyAuthorInitials = replyAuthorName.slice(0, 2).toUpperCase();
                     return (
                       <div key={reply.id} className="flex items-start gap-2">

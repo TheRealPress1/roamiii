@@ -32,7 +32,7 @@ import type { Trip, TripProposal, TripMember, Message } from '@/lib/tripchat-typ
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { SFSymbol } from '@/components/icons';
 import { PROPOSAL_TYPE_ICON_MAP } from '@/lib/icon-mappings';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 
 interface TripReadyViewProps {
   trip: Trip;
@@ -402,8 +402,7 @@ export function TripReadyView({
             <div className="space-y-3">
               {drivers.map((driver) => {
                 const passengers = getPassengersForDriver(driver.id);
-                const driverName =
-                  driver.profile?.name || driver.profile?.email?.split('@')[0] || 'Driver';
+                const driverName = getDisplayName(driver.profile, 'Driver');
 
                 return (
                   <div
@@ -440,10 +439,7 @@ export function TripReadyView({
 
                       {/* Passengers */}
                       {passengers.map((passenger) => {
-                        const name =
-                          passenger.profile?.name ||
-                          passenger.profile?.email?.split('@')[0] ||
-                          '?';
+                        const name = getDisplayName(passenger.profile, '?');
                         return (
                           <div
                             key={passenger.id}

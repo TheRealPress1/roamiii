@@ -6,7 +6,7 @@ import type { Message } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayName } from '@/lib/utils';
 import { extractUrls } from '@/lib/url-utils';
 import { LinkPreviewCard } from '@/components/ui/LinkPreviewCard';
 
@@ -40,14 +40,14 @@ export function ChatMessage({ message, onReply }: ChatMessageProps) {
     );
   }
 
-  const authorName = message.author?.name || message.author?.email?.split('@')[0] || 'Unknown';
+  const authorName = getDisplayName(message.author);
   const authorInitials = authorName.slice(0, 2).toUpperCase();
 
   // Get reply preview content
   const getReplyPreview = () => {
     if (!message.reply_to) return null;
 
-    const replyAuthorName = message.reply_to.author?.name || 'Unknown';
+    const replyAuthorName = getDisplayName(message.reply_to.author);
 
     if (message.reply_to.type === 'proposal' && message.reply_to.proposal) {
       return (
