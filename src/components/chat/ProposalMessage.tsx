@@ -74,38 +74,40 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
     // Store previous state for rollback
     const previousVotes = [...localVotes];
 
-    try {
-      if (userVote) {
-        // Optimistically update vote
-        setLocalVotes(prev => prev.map(v =>
-          v.user_id === user.id
-            ? { ...v, vote: voteType, score }
-            : v
-        ));
-        await supabase.from('trip_votes').update({ vote: voteType, score }).eq('id', userVote.id);
-      } else {
-        // Optimistically add new vote
-        const optimisticVote: TripVote = {
-          id: `temp-${Date.now()}`,
-          trip_id: tripId,
-          proposal_id: proposal.id,
-          user_id: user.id,
-          vote: voteType,
-          score,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          voter: profile,
-        };
-        setLocalVotes(prev => [...prev, optimisticVote]);
+    // Optimistically update local state
+    if (userVote) {
+      setLocalVotes(prev => prev.map(v =>
+        v.user_id === user.id
+          ? { ...v, vote: voteType, score }
+          : v
+      ));
+    } else {
+      const optimisticVote: TripVote = {
+        id: `temp-${Date.now()}`,
+        trip_id: tripId,
+        proposal_id: proposal.id,
+        user_id: user.id,
+        vote: voteType,
+        score,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        voter: profile,
+      };
+      setLocalVotes(prev => [...prev, optimisticVote]);
+    }
 
-        await supabase.from('trip_votes').insert({
+    try {
+      // Use upsert to handle race conditions - unique constraint on (proposal_id, user_id)
+      await supabase.from('trip_votes').upsert(
+        {
           trip_id: tripId,
           proposal_id: proposal.id,
           user_id: user.id,
           vote: voteType,
           score,
-        });
-      }
+        },
+        { onConflict: 'proposal_id,user_id' }
+      );
     } catch (error) {
       // Revert on error
       setLocalVotes(previousVotes);
