@@ -46,6 +46,7 @@ export const VOTE_INDICATOR_ICON_MAP: Record<VoteType, SFSymbolName> = {
 
 // Cover preset to SF Symbol mapping
 export const COVER_PRESET_ICON_MAP: Record<string, SFSymbolName> = {
+  // Original presets
   skiing: 'figure.skiing.downhill',
   beach: 'beach.umbrella.fill',
   cruise: 'ferry.fill',
@@ -55,4 +56,29 @@ export const COVER_PRESET_ICON_MAP: Record<string, SFSymbolName> = {
   europe: 'castle.fill',
   party: 'party.popper.fill',
   nature: 'tree.fill',
+  // Museums & Culture
+  museum: 'building.columns.fill',
+  gallery: 'photo.artframe',
+  landmark: 'mappin.circle.fill',
+  historical: 'castle.fill',
+  // Restaurants & Food
+  restaurant: 'fork.knife',
+  cafe: 'cup.and.saucer.fill',
+  foodmarket: 'cart.fill',
+  winery: 'wineglass.fill',
+  // Outdoor & Nature
+  hiking: 'figure.hiking',
+  lake: 'water.waves',
+  tropical: 'leaf.fill',
+  waterfall: 'drop.fill',
+  // Urban & Nightlife
+  nightlife: 'moon.stars.fill',
+  rooftop: 'building.fill',
+  shopping: 'bag.fill',
+  skyline: 'building.2.fill',
+  // Adventure & Sports
+  surfing: 'figure.surfing',
+  diving: 'figure.open.water.swim',
+  kayak: 'figure.rowing',
+  safari: 'pawprint.fill',
 };

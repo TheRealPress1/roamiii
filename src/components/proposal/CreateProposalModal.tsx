@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Loader2, DollarSign, Link as LinkIcon, ChevronDown, ChevronUp, Calendar, Users } from 'lucide-react';
-import { getAutoPickCover } from '@/lib/cover-presets';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Loader2, DollarSign, Link as LinkIcon, ChevronDown, ChevronUp, Calendar, Users, Pencil, ImageIcon } from 'lucide-react';
+import { getAutoPickCover, getAutoPickCoverFromName } from '@/lib/cover-presets';
+import { resolveCoverImage, type CoverImageResult, type CoverImageSource } from '@/lib/cover-image-resolver';
+import { useLinkPreview } from '@/hooks/useLinkPreview';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { DestinationAutocomplete } from '@/components/ui/DestinationAutocomplete';
 import { MapPreview } from '@/components/ui/MapPreview';
 import { PriceScreenshotAnalyzer } from '@/components/proposal/PriceScreenshotAnalyzer';
+import { CoverImagePickerModal } from '@/components/proposal/CoverImagePickerModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -80,7 +83,95 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   const [showNotes, setShowNotes] = useState(false);
   const [showDate, setShowDate] = useState(false);
 
+  // Cover image state
+  const [coverImage, setCoverImage] = useState<CoverImageResult | null>(null);
+  const [coverLoading, setCoverLoading] = useState(false);
+  const [showCoverPicker, setShowCoverPicker] = useState(false);
+  const [manualCoverSelected, setManualCoverSelected] = useState(false);
+
+  // Debounce refs
+  const urlDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const nameDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Link preview hook for URL
+  const { preview: linkPreview, loading: linkPreviewLoading } = useLinkPreview(
+    url.startsWith('http') ? url : null
+  );
+
   const isDestinationPhase = tripPhase === 'destination';
+
+  // Auto-resolve cover image when URL changes
+  useEffect(() => {
+    if (isDestinationPhase || manualCoverSelected) return;
+
+    // If link preview has an image, use it immediately
+    if (linkPreview?.image_url) {
+      setCoverImage({
+        url: linkPreview.image_url,
+        source: 'og',
+      });
+      return;
+    }
+
+    // If URL is being typed but no preview yet, wait
+    if (url.startsWith('http') && linkPreviewLoading) {
+      setCoverLoading(true);
+      return;
+    }
+
+    setCoverLoading(false);
+  }, [linkPreview, linkPreviewLoading, url, isDestinationPhase, manualCoverSelected]);
+
+  // Auto-resolve cover image when name changes (if no URL image)
+  useEffect(() => {
+    if (isDestinationPhase || manualCoverSelected) return;
+
+    // If we have an OG image from URL, don't override
+    if (linkPreview?.image_url) return;
+
+    // Clear any pending debounce
+    if (nameDebounceRef.current) {
+      clearTimeout(nameDebounceRef.current);
+    }
+
+    // If name is empty, clear cover
+    if (!name.trim()) {
+      setCoverImage(null);
+      return;
+    }
+
+    // Debounce the search
+    setCoverLoading(true);
+    nameDebounceRef.current = setTimeout(async () => {
+      const result = await resolveCoverImage({
+        proposalUrl: url.startsWith('http') ? url : null,
+        proposalName: name,
+        vibeTags,
+      });
+      setCoverImage(result);
+      setCoverLoading(false);
+    }, 500);
+
+    return () => {
+      if (nameDebounceRef.current) {
+        clearTimeout(nameDebounceRef.current);
+      }
+    };
+  }, [name, url, vibeTags, linkPreview?.image_url, isDestinationPhase, manualCoverSelected]);
+
+  // Handle manual cover image selection
+  const handleCoverSelect = useCallback((
+    imageUrl: string,
+    source: CoverImageSource,
+    attribution?: { photographer?: string; link?: string }
+  ) => {
+    setCoverImage({
+      url: imageUrl,
+      source,
+      attribution,
+    });
+    setManualCoverSelected(true);
+  }, []);
 
   // Auto-calculate cost per person from total cost / members
   const splitCount = Math.max(memberCount, 1);
@@ -104,10 +195,18 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
       }
     }
 
-    // Use map image for destination proposals, otherwise auto-pick based on vibe tags
-    const finalCoverUrl = (isDestinationPhase && coordinates)
-      ? getMapCoverUrl(coordinates)
-      : getAutoPickCover(vibeTags);
+    // Use map image for destination proposals
+    // For itinerary items, use the resolved cover image or fall back to auto-pick
+    let finalCoverUrl: string;
+    if (isDestinationPhase && coordinates) {
+      finalCoverUrl = getMapCoverUrl(coordinates);
+    } else if (coverImage?.url) {
+      finalCoverUrl = coverImage.url;
+    } else if (name.trim()) {
+      finalCoverUrl = getAutoPickCoverFromName(name);
+    } else {
+      finalCoverUrl = getAutoPickCover(vibeTags);
+    }
 
     // For itinerary items, use name as destination if destination is empty
     const finalDestination = destination.trim() || name.trim();
@@ -173,6 +272,9 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
     setVibeTags([]);
     setShowNotes(false);
     setShowDate(false);
+    setCoverImage(null);
+    setCoverLoading(false);
+    setManualCoverSelected(false);
   };
 
   const getTitle = () => {
@@ -293,6 +395,78 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
                   </div>
                 </div>
 
+                {/* Cover Image Preview */}
+                {(coverImage || coverLoading || name.trim()) && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Cover Image</Label>
+                      {coverImage && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCoverPicker(true)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <Pencil className="h-3 w-3" />
+                          Change
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border">
+                      {coverLoading ? (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : coverImage ? (
+                        <>
+                          <img
+                            src={coverImage.url}
+                            alt="Cover preview"
+                            className="w-full h-full object-cover"
+                            onError={() => {
+                              // Fallback if image fails to load
+                              setCoverImage({
+                                url: getAutoPickCoverFromName(name),
+                                source: 'preset',
+                              });
+                            }}
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-white/80">
+                                {coverImage.source === 'og' && linkPreview?.site_name
+                                  ? `From ${linkPreview.site_name}`
+                                  : coverImage.source === 'unsplash'
+                                  ? `Photo by ${coverImage.attribution?.photographer}`
+                                  : 'Preset image'}
+                              </span>
+                              {coverImage.source === 'unsplash' && coverImage.attribution?.link && (
+                                <a
+                                  href={coverImage.attribution.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] text-white/60 hover:text-white underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Unsplash
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowCoverPicker(true)}
+                          className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                        >
+                          <ImageIcon className="h-8 w-8 mb-1" />
+                          <span className="text-xs">Add cover image</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Total Cost with screenshot analyzer */}
                 <div className="space-y-2">
                   <Label htmlFor="totalCost">
@@ -400,6 +574,14 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
           </div>
         </div>
       </DialogContent>
+
+      {/* Cover Image Picker Modal */}
+      <CoverImagePickerModal
+        open={showCoverPicker}
+        onClose={() => setShowCoverPicker(false)}
+        onSelect={handleCoverSelect}
+        initialSearch={name}
+      />
     </Dialog>
   );
 }
