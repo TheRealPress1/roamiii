@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { TravelModeSelector } from './TravelModeSelector';
 import { DriverCard } from './DriverCard';
+import { FlightCostCard } from './FlightCostCard';
 
 interface TransportationViewProps {
   open: boolean;
@@ -361,38 +362,45 @@ export function TransportationView({
               </>
             )}
 
-            {/* Flying Mode: Simple List */}
+            {/* Flying Mode: Cards with costs */}
             {tripTravelMode === 'flying' && flying.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Plane className="h-4 w-4" />
-                  Flying ({flying.length})
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {flying.map((member) => {
-                    const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
-                    const isCurrentUser = member.user_id === user?.id;
-                    return (
-                      <div
-                        key={member.id}
-                        className={cn(
-                          'flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800',
-                          isCurrentUser && 'ring-2 ring-primary/50'
-                        )}
-                      >
-                        <Avatar className="h-6 w-6">
-                          <AvatarImage src={member.profile?.avatar_url || undefined} />
-                          <AvatarFallback className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400">
-                            {name.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                          {name}
-                          {isCurrentUser && ' (You)'}
-                        </span>
-                      </div>
-                    );
-                  })}
+                {/* Header with totals */}
+                {(() => {
+                  const totalFlightCost = flying.reduce((sum, m) => sum + (m.flight_cost || 0), 0);
+                  const membersWithCost = flying.filter(m => m.flight_cost && m.flight_cost > 0).length;
+                  const avgFlightCost = membersWithCost > 0 ? totalFlightCost / membersWithCost : 0;
+
+                  return (
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Plane className="h-4 w-4" />
+                        Flying ({flying.length})
+                      </h3>
+                      {totalFlightCost > 0 && (
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-foreground">
+                            Total: ${totalFlightCost.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            ~${Math.round(avgFlightCost).toLocaleString()}/person
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Flight cost cards */}
+                <div className="space-y-2">
+                  {flying.map((member) => (
+                    <FlightCostCard
+                      key={member.id}
+                      member={member}
+                      isCurrentUser={member.user_id === user?.id}
+                      onCostUpdated={onUpdated}
+                    />
+                  ))}
                 </div>
               </div>
             )}

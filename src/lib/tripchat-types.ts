@@ -70,6 +70,8 @@ export interface TripMember {
   is_driver: boolean;
   car_capacity: number | null;
   rides_with_id: string | null;
+  flight_cost: number | null;
+  flight_description: string | null;
   profile?: Profile;
 }
 
