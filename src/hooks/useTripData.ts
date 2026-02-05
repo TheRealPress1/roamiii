@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
+import { useAuth } from '@/contexts/AuthContext';
+import type { Trip, TripMember, TripProposal, ExpenseCategory } from '@/lib/tripchat-types';
 
 export function useTripData(tripId: string) {
+  const { user } = useAuth();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [members, setMembers] = useState<TripMember[]>([]);
   const [proposals, setProposals] = useState<TripProposal[]>([]);
@@ -39,13 +41,14 @@ export function useTripData(tripId: string) {
       console.log('Fetched members:', membersData);
       setMembers((membersData || []) as unknown as TripMember[]);
 
-      // Fetch proposals with votes (including voter profiles)
+      // Fetch proposals with votes (including voter profiles) and booker
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('trip_proposals')
         .select(`
           *,
           creator:profiles!trip_proposals_created_by_fkey(*),
-          votes:trip_votes(*, voter:profiles!trip_votes_user_id_fkey(id, name, email, avatar_url))
+          votes:trip_votes(*, voter:profiles!trip_votes_user_id_fkey(id, name, email, avatar_url)),
+          booker:profiles!trip_proposals_booked_by_fkey(id, name, email, avatar_url)
         `)
         .eq('trip_id', tripId)
         .order('created_at', { ascending: false });
@@ -123,6 +126,82 @@ export function useTripData(tripId: string) {
     };
   }, [tripId, fetchTrip]);
 
+  // Claim a booking for a proposal - marks it as booked by current user and creates an expense
+  const claimBooking = useCallback(async (proposalId: string): Promise<{ error: Error | null }> => {
+    if (!user) return { error: new Error('Not authenticated') };
+
+    const proposal = proposals.find(p => p.id === proposalId);
+    if (!proposal) return { error: new Error('Proposal not found') };
+    if (proposal.booked_by) return { error: new Error('Already booked') };
+
+    try {
+      // 1. Update proposal with booked_by
+      const { error: updateError } = await supabase
+        .from('trip_proposals')
+        .update({
+          booked_by: user.id,
+          booked_at: new Date().toISOString(),
+        })
+        .eq('id', proposalId);
+
+      if (updateError) throw updateError;
+
+      // 2. Create an expense for the proposal cost
+      const totalCost = proposal.estimated_cost_per_person * members.length;
+      if (totalCost > 0) {
+        // Determine category based on proposal type
+        const categoryMap: Record<string, ExpenseCategory> = {
+          housing: 'housing',
+          activity: 'activity',
+        };
+        const category = categoryMap[proposal.type] || 'other';
+
+        // Create expense
+        const { data: expenseData, error: expenseError } = await supabase
+          .from('trip_expenses')
+          .insert({
+            trip_id: tripId,
+            paid_by: user.id,
+            amount: totalCost,
+            description: `Booking: ${proposal.name || proposal.destination}`,
+            category,
+            expense_date: new Date().toISOString().split('T')[0],
+          })
+          .select('id')
+          .single();
+
+        if (expenseError) throw expenseError;
+
+        // Create splits for all members
+        const perPerson = Math.round((totalCost * 100) / members.length) / 100;
+        const remainder = Math.round((totalCost - perPerson * members.length) * 100) / 100;
+
+        const splits = members.map((member, index) => ({
+          expense_id: expenseData.id,
+          user_id: member.user_id,
+          amount: index === 0 ? perPerson + remainder : perPerson,
+        }));
+
+        const { error: splitError } = await supabase
+          .from('expense_splits')
+          .insert(splits);
+
+        if (splitError) {
+          // Cleanup expense if splits fail
+          await supabase.from('trip_expenses').delete().eq('id', expenseData.id);
+          throw splitError;
+        }
+      }
+
+      // Refresh data
+      await fetchTrip();
+      return { error: null };
+    } catch (err) {
+      console.error('[useTripData] Claim booking error:', err);
+      return { error: err instanceof Error ? err : new Error('Failed to claim booking') };
+    }
+  }, [user, proposals, members, tripId, fetchTrip]);
+
   return {
     trip,
     members,
@@ -130,5 +209,6 @@ export function useTripData(tripId: string) {
     loading,
     error,
     refetch: fetchTrip,
+    claimBooking,
   };
 }

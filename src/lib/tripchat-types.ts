@@ -168,11 +168,14 @@ export interface TripProposal {
   attendee_count: number;
   included: boolean;
   is_destination: boolean;
+  booked_by: string | null;
+  booked_at: string | null;
   created_at: string;
   updated_at: string;
   creator?: Profile;
   votes?: TripVote[];
   reactions?: ProposalReaction[];
+  booker?: Profile;
 }
 
 export interface TripVote {

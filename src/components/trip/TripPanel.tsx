@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye, Car, Receipt, Sparkles } from 'lucide-react';
-import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
+import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye, Car, Receipt, Sparkles, Users, CheckCircle2, CircleDashed, DollarSign, RotateCcw, Loader2 } from 'lucide-react';
+import type { Trip, TripMember, TripProposal, SettlementSummary } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES, TRIP_PHASES } from '@/lib/tripchat-types';
 import { PhaseActions } from '@/components/trip/PhaseActions';
 import { DeadlineSettings } from '@/components/trip/DeadlineSettings';
@@ -42,6 +43,10 @@ interface TripPanelProps {
   includedProposals?: TripProposal[];
   onOpenTemplates?: () => void;
   onOpenExpenses?: () => void;
+  // Ready phase specific props
+  onClaimBooking?: (proposalId: string) => Promise<{ error: Error | null }>;
+  settlements?: SettlementSummary[];
+  totalPerPerson?: number;
 }
 
 export function TripPanel({
@@ -64,12 +69,28 @@ export function TripPanel({
   includedProposals = [],
   onOpenTemplates,
   onOpenExpenses,
+  onClaimBooking,
+  settlements = [],
+  totalPerPerson = 0,
 }: TripPanelProps) {
   const { user } = useAuth();
+  const [claimingBookingId, setClaimingBookingId] = useState<string | null>(null);
   const hasDeadline = trip.decision_deadline && new Date(trip.decision_deadline) > new Date();
   const currentPhase = trip.phase || 'destination';
   const phaseInfo = TRIP_PHASES.find(p => p.value === currentPhase);
-  
+  const isReadyPhase = currentPhase === 'ready';
+
+  // Handle claim booking
+  const handleClaimBooking = async (proposalId: string) => {
+    if (!onClaimBooking) return;
+    setClaimingBookingId(proposalId);
+    await onClaimBooking(proposalId);
+    setClaimingBookingId(null);
+  };
+
+  // Get settlements where current user owes someone
+  const userOwes = settlements.filter(s => s.from_user_id === user?.id);
+
   // Sort proposals by vote count
   const sortedProposals = [...proposals].sort((a, b) => {
     const aScore = (a.votes || []).filter((v) => v.vote === 'in').length * 2 +
@@ -103,6 +124,291 @@ export function TripPanel({
     return null;
   };
 
+  // Members section component (shared between layouts)
+  const MembersSection = ({ prominent = false }: { prominent?: boolean }) => (
+    <section className={cn(prominent && "pb-4 border-b border-border")}>
+      <div className="flex items-center justify-between mb-3 min-w-0">
+        <h3 className={cn(
+          "font-semibold uppercase tracking-wider truncate flex items-center gap-2",
+          prominent ? "text-sm text-foreground" : "text-xs text-muted-foreground"
+        )}>
+          {prominent && <Users className="h-4 w-4" />}
+          {prominent ? "Who's Going" : `Members (${members.length})`}
+        </h3>
+        <Button variant="ghost" size="sm" onClick={onInvite} className="h-7 text-xs flex-shrink-0">
+          Invite
+        </Button>
+      </div>
+      {/* Stacked avatars */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center -space-x-1">
+          {members.slice(0, 6).map((member, index) => {
+            const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
+            const isOwnerMember = member.role === 'owner';
+            const isAdminMember = member.role === 'admin';
+
+            return (
+              <Tooltip key={member.id}>
+                <TooltipTrigger asChild>
+                  <div className="relative" style={{ zIndex: 6 - index }}>
+                    <Avatar className={cn(
+                      'h-8 w-8 ring-2 ring-background',
+                      isOwnerMember && 'ring-primary/50',
+                      isAdminMember && 'ring-muted-foreground/30'
+                    )}>
+                      <AvatarImage src={member.profile?.avatar_url || undefined} />
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                        {name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {isOwnerMember && (
+                      <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
+                        <Crown className="h-2 w-2 text-white" />
+                      </div>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  <p className="font-medium">{name}</p>
+                  {isOwnerMember && <p className="text-muted-foreground">Owner</p>}
+                  {isAdminMember && <p className="text-muted-foreground">Admin</p>}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+          {members.length > 6 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground ring-2 ring-background"
+                  style={{ zIndex: 0 }}
+                >
+                  +{members.length - 6}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                <p className="font-medium">{members.length - 6} more members</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+        {/* Member management dropdown for owner */}
+        {isOwner && members.some(m => m.user_id !== user?.id && m.role !== 'owner') && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6">
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {members
+                .filter(m => m.user_id !== user?.id && m.role !== 'owner')
+                .map(member => {
+                  const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
+                  return (
+                    <DropdownMenuItem
+                      key={member.id}
+                      onClick={() => onRemoveMember?.(member)}
+                      className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <UserMinus className="mr-2 h-4 w-4" />
+                      Remove {name}
+                    </DropdownMenuItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+      {prominent && (
+        <p className="text-xs text-muted-foreground mt-2">
+          {members.map(m => m.profile?.name || m.profile?.email?.split('@')[0]).slice(0, 3).join(', ')}
+          {members.length > 3 && `, +${members.length - 3}`}
+        </p>
+      )}
+    </section>
+  );
+
+  // Ready phase layout
+  if (isReadyPhase) {
+    return (
+      <div className="w-80 min-w-0 border-l border-border bg-card flex flex-col h-full overflow-hidden">
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-6 overflow-hidden">
+            {/* Who's Going - Prominent members section */}
+            <MembersSection prominent />
+
+            {/* Booking Status */}
+            <section>
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Booking Status
+              </h3>
+              <div className="space-y-3">
+                {includedProposals.map((proposal) => {
+                  const displayName = proposal.name || proposal.destination;
+                  const isBooked = !!proposal.booked_by;
+                  const bookerName = proposal.booker?.name || proposal.booker?.email?.split('@')[0];
+                  const isClaiming = claimingBookingId === proposal.id;
+                  const typeInfo = PROPOSAL_TYPES.find(t => t.value === proposal.type);
+
+                  return (
+                    <div
+                      key={proposal.id}
+                      className="p-3 rounded-lg border border-border bg-muted/30"
+                    >
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="flex-shrink-0 text-base">{typeInfo?.emoji || '📍'}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-foreground truncate">{displayName}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {isBooked ? (
+                              <>
+                                <CheckCircle2 className="h-3.5 w-3.5 text-vote-in flex-shrink-0" />
+                                <span className="text-xs text-vote-in">Booked by {bookerName}</span>
+                              </>
+                            ) : (
+                              <>
+                                <CircleDashed className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                <span className="text-xs text-muted-foreground">Not booked</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {proposal.estimated_cost_per_person > 0 && (
+                        <p className="text-xs text-muted-foreground mb-2">
+                          ${proposal.estimated_cost_per_person.toLocaleString()}/person
+                        </p>
+                      )}
+                      {!isBooked && onClaimBooking && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full h-7 text-xs"
+                          onClick={() => handleClaimBooking(proposal.id)}
+                          disabled={isClaiming}
+                        >
+                          {isClaiming ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              Claiming...
+                            </>
+                          ) : (
+                            "I'll book it"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+                {includedProposals.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No items in the itinerary yet.
+                  </p>
+                )}
+              </div>
+            </section>
+
+            {/* Payment Summary */}
+            <section>
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Payment Summary
+              </h3>
+              <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-3">
+                {totalPerPerson > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Total</span>
+                    <span className="font-semibold text-foreground">${totalPerPerson.toLocaleString()}/person</span>
+                  </div>
+                )}
+
+                {userOwes.length > 0 && (
+                  <div className="pt-2 border-t border-border space-y-2">
+                    {userOwes.map((settlement, idx) => {
+                      const toName = settlement.to_user?.name || settlement.to_user?.email?.split('@')[0] || 'Unknown';
+                      return (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">You owe {toName}</span>
+                          <span className="font-medium text-foreground">${settlement.amount.toLocaleString()}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {userOwes.length === 0 && totalPerPerson === 0 && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    No expenses tracked yet.
+                  </p>
+                )}
+
+                {onOpenExpenses && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full h-8 text-xs"
+                    onClick={onOpenExpenses}
+                  >
+                    View All Expenses
+                    <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                )}
+              </div>
+            </section>
+
+            {/* Reopen for Changes (Owner only) */}
+            {isOwner && onPhaseChanged && (
+              <section>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    // Reopen to finalize phase
+                    // This would need a handler to update the trip phase
+                  }}
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reopen for Changes
+                </Button>
+              </section>
+            )}
+
+            {/* Trip Settings (Owner dropdown) */}
+            {isOwner && (
+              <section className="pt-2 border-t border-border">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground">
+                      <MoreVertical className="h-4 w-4 mr-2" />
+                      Trip Settings
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={onEditCover}>
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Edit Cover Image
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={onDeleteTrip}
+                      className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Trip
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </section>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
+
+  // Default layout for non-ready phases
   return (
     <div className="w-80 min-w-0 border-l border-border bg-card flex flex-col h-full overflow-hidden">
       <ScrollArea className="flex-1">
@@ -273,97 +579,7 @@ export function TripPanel({
           </section>
 
           {/* Members */}
-          <section>
-            <div className="flex items-center justify-between mb-3 min-w-0">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">
-                Members ({members.length})
-              </h3>
-              <Button variant="ghost" size="sm" onClick={onInvite} className="h-7 text-xs flex-shrink-0">
-                Invite
-              </Button>
-            </div>
-            {/* Stacked avatars */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center -space-x-1">
-                {members.slice(0, 6).map((member, index) => {
-                  const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
-                  const isOwnerMember = member.role === 'owner';
-                  const isAdminMember = member.role === 'admin';
-
-                  return (
-                    <Tooltip key={member.id}>
-                      <TooltipTrigger asChild>
-                        <div className="relative" style={{ zIndex: 6 - index }}>
-                          <Avatar className={cn(
-                            'h-8 w-8 ring-2 ring-background',
-                            isOwnerMember && 'ring-primary/50',
-                            isAdminMember && 'ring-muted-foreground/30'
-                          )}>
-                            <AvatarImage src={member.profile?.avatar_url || undefined} />
-                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                              {name.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          {isOwnerMember && (
-                            <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
-                              <Crown className="h-2 w-2 text-white" />
-                            </div>
-                          )}
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="text-xs">
-                        <p className="font-medium">{name}</p>
-                        {isOwnerMember && <p className="text-muted-foreground">Owner</p>}
-                        {isAdminMember && <p className="text-muted-foreground">Admin</p>}
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                })}
-                {members.length > 6 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div
-                        className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground ring-2 ring-background"
-                        style={{ zIndex: 0 }}
-                      >
-                        +{members.length - 6}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs">
-                      <p className="font-medium">{members.length - 6} more members</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-              {/* Member management dropdown for owner */}
-              {isOwner && members.some(m => m.user_id !== user?.id && m.role !== 'owner') && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
-                      <MoreVertical className="h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {members
-                      .filter(m => m.user_id !== user?.id && m.role !== 'owner')
-                      .map(member => {
-                        const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
-                        return (
-                          <DropdownMenuItem
-                            key={member.id}
-                            onClick={() => onRemoveMember?.(member)}
-                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                          >
-                            <UserMinus className="mr-2 h-4 w-4" />
-                            Remove {name}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          </section>
+          <MembersSection />
 
           {/* Pinned Decision */}
           {pinnedProposal && (

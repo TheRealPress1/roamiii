@@ -26,6 +26,7 @@ import { TemplateGalleryModal } from '@/components/templates/TemplateGalleryModa
 import { ExpenseLedgerModal } from '@/components/expenses/ExpenseLedgerModal';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
+import { useTripExpenses } from '@/hooks/useTripExpenses';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
 import { useAutoLock, useVotingStatus } from '@/hooks/useAutoLock';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,8 +43,9 @@ export default function TripChat() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const { trip, members, proposals, loading: dataLoading, error: dataError, refetch } = useTripData(tripId!);
+  const { trip, members, proposals, loading: dataLoading, error: dataError, refetch, claimBooking } = useTripData(tripId!);
   const { messages, loading: messagesLoading, sendMessage, sendDriverMessage, sendPollMessage } = useTripMessages(tripId!);
+  const { settlements, totalExpenses } = useTripExpenses(tripId!, members);
   const [joiningCarFor, setJoiningCarFor] = useState<string | null>(null);
 
   // New feature states
@@ -135,6 +137,12 @@ export default function TripChat() {
   const destinationProposals = proposals.filter(p => p.is_destination);
   const itineraryProposals = proposals.filter(p => !p.is_destination);
   const includedProposals = proposals.filter(p => p.included);
+
+  // Calculate total cost per person from included proposals
+  const totalPerPerson = includedProposals.reduce(
+    (sum, p) => sum + (p.estimated_cost_per_person || 0),
+    0
+  ) + (trip?.flight_cost || 0);
 
   // Handler for opening lock destination modal
   const handleOpenLockDestination = (proposal: TripProposal) => {
@@ -444,6 +452,9 @@ export default function TripChat() {
               includedProposals={includedProposals}
               onOpenTemplates={() => setTemplateGalleryOpen(true)}
               onOpenExpenses={() => setExpenseLedgerOpen(true)}
+              onClaimBooking={claimBooking}
+              settlements={settlements}
+              totalPerPerson={totalPerPerson}
             />
           </SheetContent>
         </Sheet>
@@ -482,6 +493,7 @@ export default function TripChat() {
               messagesLoading={messagesLoading}
               onSendMessage={sendMessage}
               tripId={tripId}
+              onViewProposal={handleViewProposal}
             />
           ) : (
             <>
@@ -530,26 +542,29 @@ export default function TripChat() {
         {showPanel && (
           <div className="hidden md:block w-80 flex-shrink-0 overflow-hidden">
             <TripPanel
-            trip={trip}
-            members={members}
-            proposals={proposals}
-            onInvite={() => setInviteModalOpen(true)}
-            onViewProposal={handleViewProposal}
-            isOwner={isOwner}
-            isAdmin={isAdmin}
-            onDeleteTrip={() => setDeleteModalOpen(true)}
-            onRemoveMember={(member) => setMemberToRemove(member)}
-            onEditCover={() => setEditCoverModalOpen(true)}
-            onOpenLockDestination={handleOpenLockDestination}
-            onOpenFinalizeView={() => setFinalizeViewOpen(true)}
-            onOpenTransportation={() => setTransportationViewOpen(true)}
-            onPhaseChanged={refetch}
-            lockedDestination={lockedDestination}
-            destinationProposals={destinationProposals}
-            includedProposals={includedProposals}
-            onOpenTemplates={() => setTemplateGalleryOpen(true)}
-            onOpenExpenses={() => setExpenseLedgerOpen(true)}
-          />
+              trip={trip}
+              members={members}
+              proposals={proposals}
+              onInvite={() => setInviteModalOpen(true)}
+              onViewProposal={handleViewProposal}
+              isOwner={isOwner}
+              isAdmin={isAdmin}
+              onDeleteTrip={() => setDeleteModalOpen(true)}
+              onRemoveMember={(member) => setMemberToRemove(member)}
+              onEditCover={() => setEditCoverModalOpen(true)}
+              onOpenLockDestination={handleOpenLockDestination}
+              onOpenFinalizeView={() => setFinalizeViewOpen(true)}
+              onOpenTransportation={() => setTransportationViewOpen(true)}
+              onPhaseChanged={refetch}
+              lockedDestination={lockedDestination}
+              destinationProposals={destinationProposals}
+              includedProposals={includedProposals}
+              onOpenTemplates={() => setTemplateGalleryOpen(true)}
+              onOpenExpenses={() => setExpenseLedgerOpen(true)}
+              onClaimBooking={claimBooking}
+              settlements={settlements}
+              totalPerPerson={totalPerPerson}
+            />
           </div>
         )}
       </div>

@@ -44,6 +44,8 @@ interface TripReadyViewProps {
   messagesLoading?: boolean;
   onSendMessage?: (message: string, replyToId?: string) => Promise<{ error: Error | null }>;
   tripId?: string;
+  // Proposal interaction
+  onViewProposal?: (proposal: TripProposal) => void;
 }
 
 export function TripReadyView({
@@ -55,6 +57,7 @@ export function TripReadyView({
   messagesLoading = false,
   onSendMessage,
   tripId,
+  onViewProposal,
 }: TripReadyViewProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [showDesktopChat, setShowDesktopChat] = useState(true);
@@ -273,9 +276,10 @@ export function TripReadyView({
               </h3>
               <div className="space-y-3">
                 {proposals.map((proposal) => (
-                  <div
+                  <button
                     key={proposal.id}
-                    className="rounded-xl border border-border bg-card p-4"
+                    onClick={() => onViewProposal?.(proposal)}
+                    className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:ring-2 hover:ring-primary/50 hover:border-primary/50"
                   >
                     <div className="flex gap-4">
                       {/* Thumbnail */}
@@ -326,6 +330,7 @@ export function TripReadyView({
                               href={proposal.url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="px-3 py-1.5 text-xs font-medium rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1 flex-shrink-0"
                             >
                               Book on {getSiteName(proposal.url)}
@@ -335,7 +340,7 @@ export function TripReadyView({
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
