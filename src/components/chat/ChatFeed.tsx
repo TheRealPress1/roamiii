@@ -127,7 +127,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
         // This message is a reply - add it to the replies map
         const existingReplies = repliesMap.get(msg.reply_to_id) || [];
         repliesMap.set(msg.reply_to_id, [...existingReplies, msg]);
-      } else {
+      } else if (msg.type !== 'system') {
         regularMsgs.push(msg);
       }
     });

@@ -33,6 +33,9 @@ import { supabase } from '@/integrations/supabase/client';
 import type { TripProposal, TripMember, Message, TripPhase, ActivitySuggestion, TripTemplate, PollType } from '@/lib/tripchat-types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { NotificationDrawer } from '@/components/notifications/NotificationDrawer';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export default function TripChat() {
   const { tripId } = useParams<{ tripId: string }>();
@@ -69,6 +72,8 @@ export default function TripChat() {
   const [finalizeReadOnly, setFinalizeReadOnly] = useState(false);
   const [chatViewMode, setChatViewMode] = useState<ChatViewMode>('proposals');
   const [lastViewedChatAt, setLastViewedChatAt] = useState<string | null>(null);
+  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
+  const { notifications, loading: notificationsLoading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   // Initialize lastViewedChatAt from localStorage on mount
   useEffect(() => {
@@ -292,6 +297,13 @@ export default function TripChat() {
     }
   };
 
+  // Handler for notification click
+  const handleNotificationClick = (href: string | null, id: string) => {
+    markAsRead(id);
+    setNotificationDrawerOpen(false);
+    if (href) navigate(href);
+  };
+
   // Handler for adding an AI suggestion to the trip
   const handleAddSuggestion = (suggestion: ActivitySuggestion) => {
     setSuggestionToPropose(suggestion);
@@ -387,6 +399,12 @@ export default function TripChat() {
             </button>
           </div>
         </div>
+
+        {/* Notification Bell */}
+        <NotificationBell
+          count={unreadCount}
+          onClick={() => setNotificationDrawerOpen(true)}
+        />
 
         {/* Desktop panel toggle */}
         <Button
@@ -686,6 +704,17 @@ export default function TripChat() {
         tripId={tripId!}
         members={members}
         currentUserId={user?.id || ''}
+      />
+
+      {/* Notification Drawer */}
+      <NotificationDrawer
+        open={notificationDrawerOpen}
+        onClose={() => setNotificationDrawerOpen(false)}
+        notifications={notifications}
+        loading={notificationsLoading}
+        onMarkAsRead={markAsRead}
+        onMarkAllAsRead={markAllAsRead}
+        onNavigate={handleNotificationClick}
       />
     </div>
   );
