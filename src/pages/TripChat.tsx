@@ -704,15 +704,10 @@ export default function TripChat() {
         readOnly={transportationReadOnly}
       />
 
-      {/* AI Suggestions Drawer */}
+      {/* Navi AI Drawer */}
       <SuggestionsDrawer
         open={suggestionsDrawerOpen}
         onClose={() => setSuggestionsDrawerOpen(false)}
-        trip={trip}
-        lockedDestination={lockedDestination}
-        includedProposals={includedProposals}
-        memberCount={members.length}
-        onAddSuggestion={handleAddSuggestion}
       />
 
       {/* Trip Templates Gallery */}

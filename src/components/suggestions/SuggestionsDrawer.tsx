@@ -1,56 +1,17 @@
-import { useEffect } from 'react';
-import { X, Sparkles, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { X, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { ActivitySuggestion, Trip, TripProposal } from '@/lib/tripchat-types';
-import { useSuggestions } from '@/hooks/useSuggestions';
-import { SuggestionCard } from './SuggestionCard';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface SuggestionsDrawerProps {
   open: boolean;
   onClose: () => void;
-  trip: Trip | null;
-  lockedDestination: TripProposal | null;
-  includedProposals: TripProposal[];
-  memberCount: number;
-  onAddSuggestion: (suggestion: ActivitySuggestion) => void;
 }
 
 export function SuggestionsDrawer({
   open,
   onClose,
-  trip,
-  lockedDestination,
-  includedProposals,
-  memberCount,
-  onAddSuggestion,
 }: SuggestionsDrawerProps) {
-  const {
-    suggestions,
-    loading,
-    error,
-    fetchSuggestions,
-    clearCache,
-  } = useSuggestions(trip, lockedDestination, includedProposals, memberCount);
-
-  // Fetch suggestions when drawer opens
-  useEffect(() => {
-    if (open && suggestions.length === 0 && !loading && !error) {
-      fetchSuggestions();
-    }
-  }, [open, suggestions.length, loading, error, fetchSuggestions]);
-
-  const handleRefresh = () => {
-    clearCache();
-    fetchSuggestions();
-  };
-
-  const handleAdd = (suggestion: ActivitySuggestion) => {
-    onAddSuggestion(suggestion);
-    // Optionally close drawer or stay open for more selections
-  };
-
   return (
     <AnimatePresence>
       {open && (
@@ -79,89 +40,54 @@ export function SuggestionsDrawer({
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-amber-500" />
-                <h2 className="text-lg font-semibold">AI Suggestions</h2>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold">Navi AI</h2>
+                </div>
+                <p className="text-sm text-muted-foreground">Your travel agent expert</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={handleRefresh}
-                  disabled={loading}
-                  className="h-8 w-8"
-                  title="Refresh suggestions"
-                >
-                  <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={onClose}
-                  className="h-8 w-8"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onClose}
+                className="h-8 w-8"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
 
-            {/* Destination info */}
-            {lockedDestination && (
-              <div className="px-4 py-3 bg-muted/50 border-b border-border">
-                <p className="text-sm text-muted-foreground">
-                  Suggestions for <span className="font-medium text-foreground">{lockedDestination.destination}</span>
-                </p>
-              </div>
-            )}
+            {/* Content - Coming Soon Placeholder */}
+            <div className="flex-1 flex flex-col items-center justify-center px-6">
+              {/* Chat bubble style container */}
+              <div className="w-full max-w-sm">
+                {/* Bot message bubble */}
+                <div className="flex items-start gap-3 mb-6">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Bot className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
+                    <p className="text-sm text-foreground">
+                      Hi! I'm Navi, your AI travel assistant. I'll help you discover amazing activities, hidden gems, and personalized recommendations for your trips.
+                    </p>
+                  </div>
+                </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-3">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Getting AI suggestions...</p>
-                </div>
-              ) : error ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-3 px-4">
-                  <AlertCircle className="h-10 w-10 text-destructive" />
-                  <p className="text-sm text-destructive text-center">{error}</p>
-                  <Button variant="outline" onClick={handleRefresh}>
-                    Try Again
-                  </Button>
-                </div>
-              ) : suggestions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-3 px-4">
-                  <Sparkles className="h-10 w-10 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground text-center">
-                    No suggestions yet. Click refresh to get AI-powered activity ideas.
+                {/* Coming Soon badge */}
+                <div className="flex flex-col items-center text-center mt-8">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm mb-3">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                    </span>
+                    Coming Soon
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    We're building something special. Stay tuned!
                   </p>
-                  <Button variant="outline" onClick={fetchSuggestions}>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Get Suggestions
-                  </Button>
                 </div>
-              ) : (
-                <div className="p-4 space-y-4">
-                  {suggestions.map((suggestion, index) => (
-                    <SuggestionCard
-                      key={`${suggestion.name}-${index}`}
-                      suggestion={suggestion}
-                      onAdd={handleAdd}
-                      index={index}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Footer hint */}
-            {suggestions.length > 0 && (
-              <div className="px-4 py-3 border-t border-border bg-muted/30">
-                <p className="text-xs text-muted-foreground text-center">
-                  Click "Add" to create a proposal from a suggestion
-                </p>
               </div>
-            )}
+            </div>
           </motion.div>
         </>
       )}
