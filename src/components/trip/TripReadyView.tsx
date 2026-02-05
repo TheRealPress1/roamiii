@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { getSiteName } from '@/lib/url-utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { VibeTag } from '@/components/ui/VibeTag';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -480,31 +481,52 @@ export function TripReadyView({
 
   return (
     <div className="flex-1 flex min-h-0">
-      {/* Summary content - scrollable */}
-      <ScrollArea className="flex-1">
-        <SummaryContent />
-      </ScrollArea>
+      {/* Desktop: Resizable split view */}
+      <div className="hidden lg:flex flex-1 min-h-0">
+        {chatEnabled && showDesktopChat ? (
+          <ResizablePanelGroup
+            direction="horizontal"
+            autoSaveId="trip-ready-layout"
+          >
+            <ResizablePanel defaultSize={50} minSize={30}>
+              <ScrollArea className="h-full">
+                <SummaryContent />
+              </ScrollArea>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={50} minSize={25}>
+              <div className="flex flex-col h-full bg-card">
+                <div className="flex items-center justify-between p-3 border-b border-border">
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Chat
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setShowDesktopChat(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <ChatSection className="flex-1 min-h-0" />
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <ScrollArea className="flex-1">
+            <SummaryContent />
+          </ScrollArea>
+        )}
+      </div>
 
-      {/* Desktop: Chat sidebar */}
-      {chatEnabled && showDesktopChat && (
-        <div className="hidden lg:flex w-80 border-l border-border flex-col bg-card">
-          <div className="flex items-center justify-between p-3 border-b border-border">
-            <h3 className="font-semibold text-foreground flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              Chat
-            </h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setShowDesktopChat(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <ChatSection className="flex-1 min-h-0" />
-        </div>
-      )}
+      {/* Mobile: Full-width summary */}
+      <div className="lg:hidden flex-1 min-h-0">
+        <ScrollArea className="h-full">
+          <SummaryContent />
+        </ScrollArea>
+      </div>
 
       {/* Desktop: Show chat button when hidden */}
       {chatEnabled && !showDesktopChat && (
