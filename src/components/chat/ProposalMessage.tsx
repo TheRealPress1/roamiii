@@ -462,8 +462,8 @@ export function ProposalMessage({ message, tripId, onViewDetails, isComparing, o
                   />
                 </div>
 
-                {/* Compare button */}
-                {onToggleCompare && (
+                {/* Compare button - only for non-destination proposals (housing/activities with prices) */}
+                {onToggleCompare && !isDestination && (
                   <div className="mb-3">
                     <CompareButton
                       isComparing={isComparing || false}
