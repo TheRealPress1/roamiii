@@ -1,0 +1,416 @@
+import { useMemo } from 'react';
+import {
+  MapPin,
+  Calendar,
+  ExternalLink,
+  DollarSign,
+  Hotel,
+  Ticket,
+  Plane,
+  Car,
+  Users,
+  CheckCircle2,
+} from 'lucide-react';
+import { getSiteName } from '@/lib/url-utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { VibeTag } from '@/components/ui/VibeTag';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import type { Trip, TripProposal, TripMember } from '@/lib/tripchat-types';
+import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
+import { SFSymbol } from '@/components/icons';
+import { PROPOSAL_TYPE_ICON_MAP } from '@/lib/icon-mappings';
+import { cn } from '@/lib/utils';
+
+interface TripReadyViewProps {
+  trip: Trip;
+  lockedDestination: TripProposal | null;
+  includedProposals: TripProposal[];
+  members: TripMember[];
+}
+
+export function TripReadyView({
+  trip,
+  lockedDestination,
+  includedProposals,
+  members,
+}: TripReadyViewProps) {
+  // Group included proposals by type
+  const groupedProposals = useMemo(() => {
+    return includedProposals.reduce((acc, proposal) => {
+      const type = proposal.type || 'housing';
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(proposal);
+      return acc;
+    }, {} as Record<string, TripProposal[]>);
+  }, [includedProposals]);
+
+  // Calculate costs
+  const activityCost = useMemo(() => {
+    return includedProposals
+      .filter((p) => p.type === 'activity')
+      .reduce((sum, p) => sum + (p.estimated_cost_per_person || 0), 0);
+  }, [includedProposals]);
+
+  const housingCost = useMemo(() => {
+    return includedProposals
+      .filter((p) => p.type === 'housing')
+      .reduce((sum, p) => sum + (p.estimated_cost_per_person || 0), 0);
+  }, [includedProposals]);
+
+  const transportCost = trip.flight_cost || 0;
+  const totalCost = activityCost + housingCost + transportCost;
+
+  // Group members by travel status for driving mode
+  const { drivers, flyingMembers } = useMemo(() => {
+    const drivers: TripMember[] = [];
+    const flyingMembers: TripMember[] = [];
+
+    members.forEach((member) => {
+      const effectiveMode = member.travel_mode || trip.travel_mode;
+      if (effectiveMode === 'flying') {
+        flyingMembers.push(member);
+      } else if (effectiveMode === 'driving' && member.is_driver) {
+        drivers.push(member);
+      }
+    });
+
+    return { drivers, flyingMembers };
+  }, [members, trip.travel_mode]);
+
+  // Get passengers for a specific driver
+  const getPassengersForDriver = (driverId: string) => {
+    return members.filter((m) => m.rides_with_id === driverId);
+  };
+
+  const getCategoryIcon = (type: string) => {
+    switch (type) {
+      case 'housing':
+        return <Hotel className="h-4 w-4" />;
+      case 'activity':
+        return <Ticket className="h-4 w-4" />;
+      default:
+        return <Ticket className="h-4 w-4" />;
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const displayName = lockedDestination?.name || lockedDestination?.destination || 'Your Trip';
+
+  return (
+    <ScrollArea className="flex-1">
+      <div className="max-w-3xl mx-auto pb-8">
+        {/* Destination Header */}
+        <div className="h-56 relative bg-gradient-to-br from-primary/20 to-accent/20">
+          {lockedDestination?.cover_image_url && (
+            <img
+              src={lockedDestination.cover_image_url}
+              alt={displayName}
+              className="w-full h-full object-cover"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+          <div className="absolute bottom-6 left-6 right-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="px-3 py-1.5 bg-vote-in/90 rounded-full text-white text-sm font-medium flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4" />
+                Trip Ready
+              </div>
+            </div>
+            <h1 className="text-3xl font-display font-bold text-white flex items-center gap-3 mb-2">
+              <MapPin className="h-7 w-7" />
+              {displayName}
+            </h1>
+            {lockedDestination?.vibe_tags && lockedDestination.vibe_tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {lockedDestination.vibe_tags.map((vibe) => (
+                  <VibeTag key={vibe} vibe={vibe as any} size="sm" />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Trip Dates */}
+          {(trip.date_start || trip.date_end) && (
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-semibold text-foreground">
+                    {formatDate(trip.date_start)}
+                    {trip.date_end && trip.date_start !== trip.date_end && (
+                      <> — {formatDate(trip.date_end)}</>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Cost Summary Card */}
+          {totalCost > 0 && (
+            <div className="rounded-xl border border-border bg-card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-primary" />
+                  <span className="font-semibold text-foreground">Cost Summary</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-foreground">
+                    ${totalCost.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">per person</p>
+                </div>
+              </div>
+
+              {/* Breakdown */}
+              <div className="space-y-2 pt-3 border-t border-border">
+                {activityCost > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Ticket className="h-4 w-4" />
+                      Activities
+                    </span>
+                    <span className="font-medium">${activityCost.toLocaleString()}</span>
+                  </div>
+                )}
+                {housingCost > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Hotel className="h-4 w-4" />
+                      Housing
+                    </span>
+                    <span className="font-medium">${housingCost.toLocaleString()}</span>
+                  </div>
+                )}
+                {transportCost > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Plane className="h-4 w-4" />
+                      Flights
+                    </span>
+                    <span className="font-medium">${transportCost.toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Itinerary Sections by Category */}
+          {Object.entries(groupedProposals).map(([type, proposals]) => {
+            const typeInfo = PROPOSAL_TYPES.find((t) => t.value === type);
+            return (
+              <div key={type} className="space-y-3">
+                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
+                  {getCategoryIcon(type)}
+                  {typeInfo?.label || type} ({proposals.length})
+                </h3>
+                <div className="space-y-3">
+                  {proposals.map((proposal) => (
+                    <div
+                      key={proposal.id}
+                      className="rounded-xl border border-border bg-card p-4"
+                    >
+                      <div className="flex gap-4">
+                        {/* Thumbnail */}
+                        <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                          {proposal.cover_image_url ? (
+                            <img
+                              src={proposal.cover_image_url}
+                              alt={proposal.name || proposal.destination}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                              {type &&
+                                PROPOSAL_TYPE_ICON_MAP[
+                                  type as keyof typeof PROPOSAL_TYPE_ICON_MAP
+                                ] && (
+                                  <SFSymbol
+                                    name={
+                                      PROPOSAL_TYPE_ICON_MAP[
+                                        type as keyof typeof PROPOSAL_TYPE_ICON_MAP
+                                      ]
+                                    }
+                                    size="md"
+                                  />
+                                )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold text-foreground">
+                                {proposal.name || proposal.destination}
+                              </p>
+                              {proposal.estimated_cost_per_person > 0 && (
+                                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                                  <DollarSign className="h-3 w-3" />
+                                  {proposal.estimated_cost_per_person.toLocaleString()}/person
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Book button */}
+                            {proposal.url && (
+                              <a
+                                href={proposal.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 text-xs font-medium rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1 flex-shrink-0"
+                              >
+                                Book on {getSiteName(proposal.url)}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Transportation Section */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
+              {trip.travel_mode === 'flying' ? (
+                <Plane className="h-4 w-4" />
+              ) : (
+                <Car className="h-4 w-4" />
+              )}
+              Transportation
+            </h3>
+
+            {/* Flying Mode */}
+            {trip.travel_mode === 'flying' && (
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+                    <Plane className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground">Flying</p>
+                    {trip.flight_cost && trip.flight_cost > 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        ${trip.flight_cost.toLocaleString()}/person × {flyingMembers.length} people
+                        {' = '}
+                        <span className="font-medium text-foreground">
+                          ${(trip.flight_cost * flyingMembers.length).toLocaleString()} total
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {flyingMembers.length} people flying
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Driving Mode - Carpool Summary */}
+            {trip.travel_mode === 'driving' && drivers.length > 0 && (
+              <div className="space-y-3">
+                {drivers.map((driver) => {
+                  const passengers = getPassengersForDriver(driver.id);
+                  const driverName =
+                    driver.profile?.name || driver.profile?.email?.split('@')[0] || 'Driver';
+
+                  return (
+                    <div
+                      key={driver.id}
+                      className="rounded-xl border border-border bg-card p-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center">
+                          <Car className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-foreground">{driverName}'s Car</p>
+                          <p className="text-sm text-muted-foreground">
+                            {passengers.length + 1} people
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Passengers */}
+                      <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
+                        {/* Driver */}
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={driver.profile?.avatar_url || undefined} />
+                            <AvatarFallback className="text-xs bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400">
+                              {driverName.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                            {driverName}
+                          </span>
+                          <span className="text-xs text-emerald-600 dark:text-emerald-400">(Driver)</span>
+                        </div>
+
+                        {/* Passengers */}
+                        {passengers.map((passenger) => {
+                          const name =
+                            passenger.profile?.name ||
+                            passenger.profile?.email?.split('@')[0] ||
+                            '?';
+                          return (
+                            <div
+                              key={passenger.id}
+                              className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted"
+                            >
+                              <Avatar className="h-5 w-5">
+                                <AvatarImage src={passenger.profile?.avatar_url || undefined} />
+                                <AvatarFallback className="text-xs">
+                                  {name.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs font-medium">{name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* No transportation set */}
+            {!trip.travel_mode && (
+              <div className="rounded-xl border border-border bg-card p-4 text-center text-muted-foreground">
+                <p>Transportation not set</p>
+              </div>
+            )}
+          </div>
+
+          {/* Empty State */}
+          {includedProposals.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>No items in the itinerary.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </ScrollArea>
+  );
+}

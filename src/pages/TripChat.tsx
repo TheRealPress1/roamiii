@@ -19,6 +19,7 @@ import { PhaseProgress } from '@/components/trip/PhaseProgress';
 import { LockDestinationModal } from '@/components/trip/LockDestinationModal';
 import { FinalizeView } from '@/components/trip/FinalizeView';
 import { TransportationView } from '@/components/trip/TransportationView';
+import { TripReadyView } from '@/components/trip/TripReadyView';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
@@ -356,40 +357,51 @@ export default function TripChat() {
 
       {/* Main content */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Chat area */}
+        {/* Chat area or Ready View */}
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
-          <ChatFeed
-            messages={messages}
-            loading={messagesLoading}
-            tripId={tripId!}
-            onViewProposal={handleViewProposal}
-            compareIds={compareIds}
-            onToggleCompare={toggleCompare}
-            onReply={setReplyingTo}
-            isAdmin={isAdmin}
-            tripPhase={trip.phase}
-            onProposalUpdated={refetch}
-            viewMode={chatViewMode}
-            onViewModeChange={handleViewModeChange}
-            lockedDestinationId={trip.locked_destination_id}
-            lastViewedChatAt={lastViewedChatAt}
-            votingStatus={votingStatus}
-            includedProposals={includedProposals}
-            lockedDestination={lockedDestination}
-            onProposalIncludedChange={handleProposalIncludedChange}
-            members={members}
-            currentUserId={user?.id}
-            onJoinCar={handleJoinCar}
-            onLeaveCar={handleLeaveCar}
-            isJoiningCar={!!joiningCarFor}
-          />
-          <ChatComposer
-            onSend={sendMessage}
-            onPropose={() => setProposalModalOpen(true)}
-            replyTo={replyingTo}
-            onCancelReply={() => setReplyingTo(null)}
-            tripPhase={trip.phase}
-          />
+          {trip.phase === 'ready' ? (
+            <TripReadyView
+              trip={trip}
+              lockedDestination={lockedDestination}
+              includedProposals={includedProposals}
+              members={members}
+            />
+          ) : (
+            <>
+              <ChatFeed
+                messages={messages}
+                loading={messagesLoading}
+                tripId={tripId!}
+                onViewProposal={handleViewProposal}
+                compareIds={compareIds}
+                onToggleCompare={toggleCompare}
+                onReply={setReplyingTo}
+                isAdmin={isAdmin}
+                tripPhase={trip.phase}
+                onProposalUpdated={refetch}
+                viewMode={chatViewMode}
+                onViewModeChange={handleViewModeChange}
+                lockedDestinationId={trip.locked_destination_id}
+                lastViewedChatAt={lastViewedChatAt}
+                votingStatus={votingStatus}
+                includedProposals={includedProposals}
+                lockedDestination={lockedDestination}
+                onProposalIncludedChange={handleProposalIncludedChange}
+                members={members}
+                currentUserId={user?.id}
+                onJoinCar={handleJoinCar}
+                onLeaveCar={handleLeaveCar}
+                isJoiningCar={!!joiningCarFor}
+              />
+              <ChatComposer
+                onSend={sendMessage}
+                onPropose={() => setProposalModalOpen(true)}
+                replyTo={replyingTo}
+                onCancelReply={() => setReplyingTo(null)}
+                tripPhase={trip.phase}
+              />
+            </>
+          )}
         </div>
 
         {/* Desktop panel */}
