@@ -42,10 +42,16 @@ export default function TripChat() {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  
-  const { trip, members, proposals, loading: dataLoading, error: dataError, refetch, claimBooking } = useTripData(tripId!);
-  const { messages, loading: messagesLoading, sendMessage, sendDriverMessage, sendPollMessage } = useTripMessages(tripId!);
-  const { settlements, totalExpenses } = useTripExpenses(tripId!, members);
+
+  // Redirect to dashboard if tripId is missing
+  if (!tripId) {
+    navigate('/app', { replace: true });
+    return null;
+  }
+
+  const { trip, members, proposals, loading: dataLoading, error: dataError, refetch, claimBooking } = useTripData(tripId);
+  const { messages, loading: messagesLoading, sendMessage, sendDriverMessage, sendPollMessage } = useTripMessages(tripId);
+  const { settlements, totalExpenses } = useTripExpenses(tripId, members);
   const [joiningCarFor, setJoiningCarFor] = useState<string | null>(null);
 
   // New feature states
@@ -168,10 +174,14 @@ export default function TripChat() {
 
   const handleCopyCode = async () => {
     if (!trip?.join_code) return;
-    await navigator.clipboard.writeText(trip.join_code);
-    setCodeCopied(true);
-    toast.success('Join code copied!');
-    setTimeout(() => setCodeCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(trip.join_code);
+      setCodeCopied(true);
+      toast.success('Join code copied!');
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
   };
 
   const handleViewProposal = (proposal: TripProposal) => {

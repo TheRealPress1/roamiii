@@ -20,17 +20,25 @@ export function InviteModal({ open, onClose, tripId, joinCode }: InviteModalProp
   const inviteLink = `${window.location.origin}/invite/${joinCode}`;
 
   const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(inviteLink);
-    setCopiedLink(true);
-    toast.success('Invite link copied!');
-    setTimeout(() => setCopiedLink(false), 2000);
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopiedLink(true);
+      toast.success('Invite link copied!');
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
   };
 
   const handleCopyCode = async () => {
-    await navigator.clipboard.writeText(joinCode);
-    setCopiedCode(true);
-    toast.success('Invite code copied!');
-    setTimeout(() => setCopiedCode(false), 2000);
+    try {
+      await navigator.clipboard.writeText(joinCode);
+      setCopiedCode(true);
+      toast.success('Invite code copied!');
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
   };
 
   return (

@@ -160,11 +160,15 @@ export default function Dashboard() {
 
     if (!trip.join_code) return;
 
-    const inviteLink = `${window.location.origin}/join/${trip.join_code}`;
-    await navigator.clipboard.writeText(inviteLink);
-    setCopiedId(trip.id);
-    toast.success('Invite link copied!');
-    setTimeout(() => setCopiedId(null), 2000);
+    try {
+      const inviteLink = `${window.location.origin}/join/${trip.join_code}`;
+      await navigator.clipboard.writeText(inviteLink);
+      setCopiedId(trip.id);
+      toast.success('Invite link copied!');
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
   };
 
   const handleDeleteClick = (e: React.MouseEvent, trip: TripWithDetails) => {

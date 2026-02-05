@@ -49,18 +49,26 @@ export default function CreateTrip() {
   };
 
   const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(getInviteLink());
-    setCopiedLink(true);
-    toast.success('Invite link copied!');
-    setTimeout(() => setCopiedLink(false), 2000);
+    try {
+      await navigator.clipboard.writeText(getInviteLink());
+      setCopiedLink(true);
+      toast.success('Invite link copied!');
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
   };
 
   const handleCopyCode = async () => {
     if (!createdTrip) return;
-    await navigator.clipboard.writeText(createdTrip.join_code);
-    setCopiedCode(true);
-    toast.success('Invite code copied!');
-    setTimeout(() => setCopiedCode(false), 2000);
+    try {
+      await navigator.clipboard.writeText(createdTrip.join_code);
+      setCopiedCode(true);
+      toast.success('Invite code copied!');
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
   };
 
   const canProceed = () => {
