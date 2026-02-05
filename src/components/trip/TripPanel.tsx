@@ -14,6 +14,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -256,32 +261,48 @@ export function TripPanel({
                   const isAdminMember = member.role === 'admin';
 
                   return (
-                    <div key={member.id} className="relative" style={{ zIndex: 6 - index }}>
-                      <Avatar className={cn(
-                        'h-8 w-8 ring-2 ring-background',
-                        isOwnerMember && 'ring-primary/50',
-                        isAdminMember && 'ring-muted-foreground/30'
-                      )}>
-                        <AvatarImage src={member.profile?.avatar_url || undefined} />
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      {isOwnerMember && (
-                        <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
-                          <Crown className="h-2 w-2 text-white" />
+                    <Tooltip key={member.id}>
+                      <TooltipTrigger asChild>
+                        <div className="relative" style={{ zIndex: 6 - index }}>
+                          <Avatar className={cn(
+                            'h-8 w-8 ring-2 ring-background',
+                            isOwnerMember && 'ring-primary/50',
+                            isAdminMember && 'ring-muted-foreground/30'
+                          )}>
+                            <AvatarImage src={member.profile?.avatar_url || undefined} />
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                              {name.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          {isOwnerMember && (
+                            <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
+                              <Crown className="h-2 w-2 text-white" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">
+                        <p className="font-medium">{name}</p>
+                        {isOwnerMember && <p className="text-muted-foreground">Owner</p>}
+                        {isAdminMember && <p className="text-muted-foreground">Admin</p>}
+                      </TooltipContent>
+                    </Tooltip>
                   );
                 })}
                 {members.length > 6 && (
-                  <div
-                    className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground ring-2 ring-background"
-                    style={{ zIndex: 0 }}
-                  >
-                    +{members.length - 6}
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground ring-2 ring-background"
+                        style={{ zIndex: 0 }}
+                      >
+                        +{members.length - 6}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      <p className="font-medium">{members.length - 6} more members</p>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
               </div>
               {/* Member management dropdown for owner */}

@@ -1,7 +1,7 @@
 // roamiii type definitions
 export type TripStatus = 'planning' | 'decided';
 export type TripRole = 'owner' | 'admin' | 'member';
-export type MessageType = 'text' | 'proposal' | 'system';
+export type MessageType = 'text' | 'proposal' | 'system' | 'driver';
 export type VoteType = 'in' | 'maybe' | 'out';
 export type MemberStatus = 'active' | 'removed';
 export type ProposalType = 'housing' | 'activity';
@@ -83,11 +83,13 @@ export interface Message {
   body: string | null;
   proposal_id: string | null;
   reply_to_id: string | null;
+  driver_id: string | null;
   created_at: string;
   author?: Profile;
   proposal?: TripProposal;
   reactions?: MessageReaction[];
   reply_to?: MessageReplyPreview | null;
+  driver?: TripMember;
 }
 
 // Lightweight preview of a message for reply context

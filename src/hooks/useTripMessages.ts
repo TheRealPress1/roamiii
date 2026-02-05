@@ -17,6 +17,10 @@ export function useTripMessages(tripId: string) {
     proposal:trip_proposals(
       *,
       votes:trip_votes(*, voter:profiles!trip_votes_user_id_fkey(id, name, email, avatar_url))
+    ),
+    driver:trip_members!messages_driver_id_fkey(
+      *,
+      profile:profiles!trip_members_user_id_fkey(*)
     )
   `;
 
@@ -104,12 +108,27 @@ export function useTripMessages(tripId: string) {
     return { error };
   };
 
+  const sendDriverMessage = async (driverId: string, driverName: string) => {
+    if (!user) return { error: new Error('Not authenticated') };
+
+    const { error } = await supabase.from('messages').insert({
+      trip_id: tripId,
+      user_id: user.id,
+      type: 'driver',
+      body: `${driverName} is offering a ride!`,
+      driver_id: driverId,
+    });
+
+    return { error };
+  };
+
   return {
     messages,
     loading,
     error,
     sendMessage,
     sendSystemMessage,
+    sendDriverMessage,
     refetch: fetchMessages,
   };
 }

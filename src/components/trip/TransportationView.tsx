@@ -26,6 +26,7 @@ interface TransportationViewProps {
   members: TripMember[];
   isAdmin: boolean;
   onUpdated: () => void;
+  onSendDriverMessage?: (driverId: string, driverName: string) => void;
 }
 
 export function TransportationView({
@@ -35,6 +36,7 @@ export function TransportationView({
   members,
   isAdmin,
   onUpdated,
+  onSendDriverMessage,
 }: TransportationViewProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -156,6 +158,13 @@ export function TransportationView({
 
       if (error) throw error;
       toast.success(isDriver ? 'You are now offering to drive!' : 'Removed driver status');
+
+      // Send driver announcement to chat when becoming a driver
+      if (isDriver && onSendDriverMessage) {
+        const driverName = currentMember.profile?.name || currentMember.profile?.email?.split('@')[0] || 'Driver';
+        onSendDriverMessage(currentMember.id, driverName);
+      }
+
       onUpdated();
     } catch (error: any) {
       console.error('Error toggling driver:', error);

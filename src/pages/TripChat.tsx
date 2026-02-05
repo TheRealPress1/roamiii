@@ -35,7 +35,8 @@ export default function TripChat() {
   const { user } = useAuth();
   
   const { trip, members, proposals, loading: dataLoading, error: dataError, refetch } = useTripData(tripId!);
-  const { messages, loading: messagesLoading, sendMessage } = useTripMessages(tripId!);
+  const { messages, loading: messagesLoading, sendMessage, sendDriverMessage } = useTripMessages(tripId!);
+  const [joiningCarFor, setJoiningCarFor] = useState<string | null>(null);
   
   const [showPanel, setShowPanel] = useState(true);
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
@@ -190,12 +191,12 @@ export default function TripChat() {
 
   const handleRemoveMember = async () => {
     if (!memberToRemove || !user) return;
-    
+
     setRemoveLoading(true);
-    
+
     const { error } = await supabase
       .from('trip_members')
-      .update({ 
+      .update({
         status: 'removed',
         removed_at: new Date().toISOString(),
         removed_by: user.id,
@@ -214,6 +215,49 @@ export default function TripChat() {
     setMemberToRemove(null);
     setRemoveLoading(false);
     refetch();
+  };
+
+  // Carpool handlers for chat driver messages
+  const handleJoinCar = async (driverId: string) => {
+    if (!user || !currentMember) return;
+
+    setJoiningCarFor(driverId);
+    try {
+      const { error } = await supabase
+        .from('trip_members')
+        .update({ rides_with_id: driverId, is_driver: false })
+        .eq('id', currentMember.id);
+
+      if (error) throw error;
+      toast.success('Joined car!');
+      refetch();
+    } catch (error: any) {
+      console.error('Error joining car:', error);
+      toast.error(error.message || 'Failed to join car');
+    } finally {
+      setJoiningCarFor(null);
+    }
+  };
+
+  const handleLeaveCar = async () => {
+    if (!user || !currentMember) return;
+
+    setJoiningCarFor('leaving');
+    try {
+      const { error } = await supabase
+        .from('trip_members')
+        .update({ rides_with_id: null })
+        .eq('id', currentMember.id);
+
+      if (error) throw error;
+      toast.success('Left car');
+      refetch();
+    } catch (error: any) {
+      console.error('Error leaving car:', error);
+      toast.error(error.message || 'Failed to leave car');
+    } finally {
+      setJoiningCarFor(null);
+    }
   };
 
   if (isLoading) {
@@ -333,6 +377,11 @@ export default function TripChat() {
             includedProposals={includedProposals}
             lockedDestination={lockedDestination}
             onProposalIncludedChange={handleProposalIncludedChange}
+            members={members}
+            currentUserId={user?.id}
+            onJoinCar={handleJoinCar}
+            onLeaveCar={handleLeaveCar}
+            isJoiningCar={!!joiningCarFor}
           />
           <ChatComposer
             onSend={sendMessage}
@@ -478,6 +527,7 @@ export default function TripChat() {
         members={members}
         isAdmin={isAdmin}
         onUpdated={refetch}
+        onSendDriverMessage={sendDriverMessage}
       />
     </div>
   );

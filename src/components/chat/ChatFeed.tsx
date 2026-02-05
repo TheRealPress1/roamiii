@@ -9,10 +9,11 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { Loader2, Vote, MessageCircle } from 'lucide-react';
-import type { Message, TripProposal, TripPhase, ProposalType } from '@/lib/tripchat-types';
+import type { Message, TripProposal, TripPhase, ProposalType, TripMember } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { ChatMessage } from './ChatMessage';
 import { ProposalMessage } from './ProposalMessage';
+import { DriverMessage } from './DriverMessage';
 import { ItineraryBoard } from '@/components/trip/ItineraryBoard';
 import { DraggableProposalWrapper } from '@/components/trip/DraggableProposalWrapper';
 import { BoardItemPreview } from '@/components/trip/BoardItemPreview';
@@ -50,6 +51,11 @@ interface ChatFeedProps {
   includedProposals?: TripProposal[];
   lockedDestination?: TripProposal | null;
   onProposalIncludedChange?: (proposalId: string, included: boolean) => Promise<void>;
+  members?: TripMember[];
+  currentUserId?: string;
+  onJoinCar?: (driverId: string) => void;
+  onLeaveCar?: () => void;
+  isJoiningCar?: boolean;
 }
 
 interface ProposalGroup {
@@ -59,7 +65,7 @@ interface ProposalGroup {
   messages: Message[];
 }
 
-export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId, lastViewedChatAt, votingStatus, includedProposals = [], lockedDestination, onProposalIncludedChange }: ChatFeedProps) {
+export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds, onToggleCompare, onReply, isAdmin, tripPhase, onProposalUpdated, viewMode, onViewModeChange, lockedDestinationId, lastViewedChatAt, votingStatus, includedProposals = [], lockedDestination, onProposalIncludedChange, members = [], currentUserId, onJoinCar, onLeaveCar, isJoiningCar }: ChatFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [activeProposal, setActiveProposal] = useState<TripProposal | null>(null);
 
@@ -364,7 +370,19 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
             ) : (
               <div className="space-y-1">
                 {regularMessages.map((message) => (
-                  <ChatMessage key={message.id} message={message} onReply={onReply} />
+                  message.type === 'driver' ? (
+                    <DriverMessage
+                      key={message.id}
+                      message={message}
+                      members={members}
+                      currentUserId={currentUserId || ''}
+                      onJoinCar={onJoinCar || (() => {})}
+                      onLeaveCar={onLeaveCar || (() => {})}
+                      isJoining={isJoiningCar}
+                    />
+                  ) : (
+                    <ChatMessage key={message.id} message={message} onReply={onReply} />
+                  )
                 ))}
               </div>
             )}
