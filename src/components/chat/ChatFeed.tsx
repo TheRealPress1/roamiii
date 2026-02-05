@@ -297,6 +297,11 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
                       <span className="text-xs text-muted-foreground">
                         ({group.messages.length})
                       </span>
+                      {group.type === 'destination' && tripPhase === 'destination' && (
+                        <span className="text-xs text-muted-foreground italic">
+                          — How hot are you on these?
+                        </span>
+                      )}
                     </div>
 
                     {/* Horizontal scrollable container for proposal cards */}
