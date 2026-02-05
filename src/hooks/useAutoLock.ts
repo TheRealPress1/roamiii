@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Trip, TripProposal, TripMember, TripPhase } from '@/lib/tripchat-types';
+import type { Trip, TripProposal, TripMember, TripPhase, TripVote } from '@/lib/tripchat-types';
+import { voteTypeToScore } from '@/lib/tripchat-types';
 import { toast } from 'sonner';
 
 interface UseAutoLockProps {
@@ -80,33 +81,21 @@ export function useAutoLock({
   }, [deadline]);
 
   /**
-   * Get the winning proposal (most thumbs up votes)
-   * Tiebreaker: fewer thumbs down, then more maybes
+   * Get the winning proposal by highest average temperature score
    */
   const getWinningProposal = useCallback((): TripProposal | null => {
     if (relevantProposals.length === 0) return null;
 
+    // Helper to calculate average temperature
+    const getAverageTemperature = (votes: TripVote[]): number => {
+      if (votes.length === 0) return 0;
+      return votes.reduce((sum, v) => sum + (v.score ?? voteTypeToScore(v.vote)), 0) / votes.length;
+    };
+
     return [...relevantProposals].sort((a, b) => {
-      const aVotes = a.votes || [];
-      const bVotes = b.votes || [];
-
-      const aIn = aVotes.filter(v => v.vote === 'in').length;
-      const bIn = bVotes.filter(v => v.vote === 'in').length;
-
-      // Primary: most thumbs up
-      if (aIn !== bIn) return bIn - aIn;
-
-      const aOut = aVotes.filter(v => v.vote === 'out').length;
-      const bOut = bVotes.filter(v => v.vote === 'out').length;
-
-      // Secondary: fewer thumbs down
-      if (aOut !== bOut) return aOut - bOut;
-
-      const aMaybe = aVotes.filter(v => v.vote === 'maybe').length;
-      const bMaybe = bVotes.filter(v => v.vote === 'maybe').length;
-
-      // Tertiary: more maybes
-      return bMaybe - aMaybe;
+      const aAvg = getAverageTemperature(a.votes || []);
+      const bAvg = getAverageTemperature(b.votes || []);
+      return bAvg - aAvg; // Higher average temperature wins
     })[0] || null;
   }, [relevantProposals]);
 

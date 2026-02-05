@@ -11,8 +11,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { TripPhase, TripProposal } from '@/lib/tripchat-types';
-import { TRIP_PHASES } from '@/lib/tripchat-types';
+import type { TripPhase, TripProposal, TripVote } from '@/lib/tripchat-types';
+import { TRIP_PHASES, voteTypeToScore } from '@/lib/tripchat-types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -120,13 +120,17 @@ export function PhaseActions({
     }
   };
 
-  // Get the top destination proposal by votes
+  // Helper to calculate average temperature score
+  const getAverageTemperature = (votes: TripVote[]): number => {
+    if (votes.length === 0) return 0;
+    return votes.reduce((sum, v) => sum + (v.score ?? voteTypeToScore(v.vote)), 0) / votes.length;
+  };
+
+  // Get the top destination proposal by average temperature
   const topDestination = [...destinationProposals].sort((a, b) => {
-    const aScore = (a.votes || []).filter((v) => v.vote === 'in').length * 2 +
-      (a.votes || []).filter((v) => v.vote === 'maybe').length;
-    const bScore = (b.votes || []).filter((v) => v.vote === 'in').length * 2 +
-      (b.votes || []).filter((v) => v.vote === 'maybe').length;
-    return bScore - aScore;
+    const aAvg = getAverageTemperature(a.votes || []);
+    const bAvg = getAverageTemperature(b.votes || []);
+    return bAvg - aAvg; // Higher average wins
   })[0];
 
   return (
