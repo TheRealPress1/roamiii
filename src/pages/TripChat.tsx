@@ -20,6 +20,7 @@ import { LockDestinationModal } from '@/components/trip/LockDestinationModal';
 import { FinalizeView } from '@/components/trip/FinalizeView';
 import { TransportationView } from '@/components/trip/TransportationView';
 import { TripReadyView } from '@/components/trip/TripReadyView';
+import { TripBuilderView } from '@/components/trip/TripBuilderView';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
@@ -368,8 +369,8 @@ export default function TripChat() {
         </Sheet>
       </header>
 
-      {/* Phase Progress - show below header */}
-      {trip.phase && (
+      {/* Phase Progress - show below header (hide for freeform building phase) */}
+      {trip.phase && !(trip.planning_mode === 'freeform' && trip.phase === 'building') && (
         <PhaseProgress
           currentPhase={trip.phase}
           lockedDestination={lockedDestination}
@@ -379,14 +380,28 @@ export default function TripChat() {
 
       {/* Main content */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Chat area or Ready View */}
+        {/* Chat area, Builder View, or Ready View */}
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
-          {trip.phase === 'ready' ? (
+          {/* Freeform trips in building phase show TripBuilderView */}
+          {trip.planning_mode === 'freeform' && trip.phase === 'building' ? (
+            <TripBuilderView
+              trip={trip}
+              proposals={proposals}
+              members={members}
+              isAdmin={isAdmin}
+              onUpdated={refetch}
+            />
+          ) : trip.phase === 'ready' ? (
             <TripReadyView
               trip={trip}
               lockedDestination={lockedDestination}
               includedProposals={includedProposals}
               members={members}
+              // Chat props for ready view
+              messages={messages}
+              messagesLoading={messagesLoading}
+              onSendMessage={sendMessage}
+              tripId={tripId}
             />
           ) : (
             <>

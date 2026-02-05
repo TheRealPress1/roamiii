@@ -5,7 +5,8 @@ export type MessageType = 'text' | 'proposal' | 'system' | 'driver';
 export type VoteType = 'in' | 'maybe' | 'out';
 export type MemberStatus = 'active' | 'removed';
 export type ProposalType = 'housing' | 'activity';
-export type TripPhase = 'destination' | 'itinerary' | 'transportation' | 'finalize' | 'ready';
+export type TripPhase = 'building' | 'destination' | 'itinerary' | 'transportation' | 'finalize' | 'ready';
+export type PlanningMode = 'collaborative' | 'freeform';
 export type TravelMode = 'flying' | 'driving';
 
 export const PROPOSAL_TYPES = [
@@ -14,6 +15,7 @@ export const PROPOSAL_TYPES = [
 ] as const;
 
 export const TRIP_PHASES = [
+  { value: 'building', label: 'Building', step: 0 },
   { value: 'destination', label: 'Pick Destination', step: 1 },
   { value: 'itinerary', label: 'Build Itinerary', step: 2 },
   { value: 'transportation', label: 'Transportation', step: 3 },
@@ -52,6 +54,8 @@ export interface Trip {
   itinerary_voting_deadline: string | null;
   flight_cost: number | null;
   flight_description: string | null;
+  planning_mode: PlanningMode;
+  flight_booking_url: string | null;
   created_at: string;
   updated_at: string;
 }

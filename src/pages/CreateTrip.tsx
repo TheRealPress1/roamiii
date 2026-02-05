@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, Loader2, MapPin, Users, Copy, Link as LinkIcon, PartyPopper } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, MapPin, Users, Copy, Link as LinkIcon, PartyPopper, UsersRound, UserCog } from 'lucide-react';
+import type { PlanningMode } from '@/lib/tripchat-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +41,7 @@ export default function CreateTrip() {
   const [flexibleDates, setFlexibleDates] = useState(false);
   const [coverImageKey, setCoverImageKey] = useState('nature');
   const [decisionDeadline, setDecisionDeadline] = useState('');
+  const [planningMode, setPlanningMode] = useState<PlanningMode>('collaborative');
 
   const getInviteLink = () => {
     if (!createdTrip) return '';
@@ -90,6 +92,8 @@ export default function CreateTrip() {
           flexible_dates: flexibleDates,
           cover_image_url: coverPreset?.imageUrl || null,
           decision_deadline: decisionDeadline || null,
+          planning_mode: planningMode,
+          phase: planningMode === 'freeform' ? 'building' : 'destination',
         })
         .select('id, name, join_code')
         .single();
@@ -135,6 +139,59 @@ export default function CreateTrip() {
                 onChange={(e) => setName(e.target.value)}
                 className="text-lg"
               />
+            </div>
+
+            {/* Planning Mode Selector */}
+            <div className="space-y-2">
+              <Label>How do you want to plan?</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPlanningMode('collaborative')}
+                  className={cn(
+                    'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-left',
+                    planningMode === 'collaborative'
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                      : 'border-border hover:border-primary/50'
+                  )}
+                >
+                  <div className={cn(
+                    'w-10 h-10 rounded-full flex items-center justify-center',
+                    planningMode === 'collaborative' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                  )}>
+                    <UsersRound className="h-5 w-5" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-semibold text-foreground">Plan Together</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Group voting on destinations & activities
+                    </p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlanningMode('freeform')}
+                  className={cn(
+                    'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-left',
+                    planningMode === 'freeform'
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                      : 'border-border hover:border-primary/50'
+                  )}
+                >
+                  <div className={cn(
+                    'w-10 h-10 rounded-full flex items-center justify-center',
+                    planningMode === 'freeform' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                  )}>
+                    <UserCog className="h-5 w-5" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-semibold text-foreground">I'll Plan It</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Build the trip yourself, share when ready
+                    </p>
+                  </div>
+                </button>
+              </div>
             </div>
 
             {/* Cover Image Picker */}

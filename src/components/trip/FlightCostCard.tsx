@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Camera, Upload, Loader2, Check, X, Pencil, DollarSign, Plane } from 'lucide-react';
+import { Camera, Upload, Loader2, Check, X, Pencil, DollarSign, Plane, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -45,6 +45,7 @@ export function FlightCostCard({
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [manualCost, setManualCost] = useState('');
   const [manualDescription, setManualDescription] = useState('');
+  const [bookingUrl, setBookingUrl] = useState(trip.flight_booking_url || '');
   const [saving, setSaving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -178,7 +179,7 @@ export function FlightCostCard({
     }
   };
 
-  const saveCost = async (cost: number, description: string) => {
+  const saveCost = async (cost: number, description: string, url?: string) => {
     setSaving(true);
     try {
       const { error } = await supabase
@@ -186,6 +187,7 @@ export function FlightCostCard({
         .update({
           flight_cost: cost,
           flight_description: description || null,
+          flight_booking_url: url || bookingUrl || null,
         })
         .eq('id', trip.id);
 
@@ -440,6 +442,16 @@ export function FlightCostCard({
                   value={manualDescription}
                   onChange={(e) => setManualDescription(e.target.value)}
                 />
+                <div className="relative">
+                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="url"
+                    placeholder="Booking URL (optional)"
+                    value={bookingUrl}
+                    onChange={(e) => setBookingUrl(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
                 <Button
                   onClick={handleManualSave}
                   disabled={saving || !manualCost}

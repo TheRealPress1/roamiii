@@ -23,6 +23,7 @@ export const PROPOSAL_TYPE_ICON_MAP: Record<ProposalType, SFSymbolName> = {
 
 // Trip phase to SF Symbol mapping
 export const TRIP_PHASE_ICON_MAP: Record<TripPhase, SFSymbolName> = {
+  building: 'hammer.fill',
   destination: 'globe.europe.africa.fill',
   transportation: 'car.fill',
   itinerary: 'list.bullet.clipboard.fill',

@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -11,6 +12,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -241,6 +267,39 @@ export type Database = {
           },
         ]
       }
+      link_previews: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          fetched_at: string | null
+          id: string
+          image_url: string | null
+          site_name: string | null
+          title: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          fetched_at?: string | null
+          id?: string
+          image_url?: string | null
+          site_name?: string | null
+          title?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          fetched_at?: string | null
+          id?: string
+          image_url?: string | null
+          site_name?: string | null
+          title?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       message_reactions: {
         Row: {
           created_at: string
@@ -284,8 +343,10 @@ export type Database = {
         Row: {
           body: string | null
           created_at: string
+          driver_id: string | null
           id: string
           proposal_id: string | null
+          reply_to_id: string | null
           trip_id: string
           type: Database["public"]["Enums"]["message_type"]
           user_id: string
@@ -293,8 +354,10 @@ export type Database = {
         Insert: {
           body?: string | null
           created_at?: string
+          driver_id?: string | null
           id?: string
           proposal_id?: string | null
+          reply_to_id?: string | null
           trip_id: string
           type?: Database["public"]["Enums"]["message_type"]
           user_id: string
@@ -302,18 +365,34 @@ export type Database = {
         Update: {
           body?: string | null
           created_at?: string
+          driver_id?: string | null
           id?: string
           proposal_id?: string | null
+          reply_to_id?: string | null
           trip_id?: string
           type?: Database["public"]["Enums"]["message_type"]
           user_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "messages_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "messages_proposal_fkey"
             columns: ["proposal_id"]
             isOneToOne: false
             referencedRelation: "trip_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {
@@ -744,12 +823,18 @@ export type Database = {
           availability_json: Json | null
           budget_max: number | null
           budget_min: number | null
+          car_capacity: number | null
           created_at: string
+          flight_cost: number | null
+          flight_description: string | null
           id: string
+          is_driver: boolean | null
           removed_at: string | null
           removed_by: string | null
+          rides_with_id: string | null
           role: Database["public"]["Enums"]["trip_role"]
           status: Database["public"]["Enums"]["member_status"]
+          travel_mode: string | null
           trip_id: string
           user_id: string
         }
@@ -757,12 +842,18 @@ export type Database = {
           availability_json?: Json | null
           budget_max?: number | null
           budget_min?: number | null
+          car_capacity?: number | null
           created_at?: string
+          flight_cost?: number | null
+          flight_description?: string | null
           id?: string
+          is_driver?: boolean | null
           removed_at?: string | null
           removed_by?: string | null
+          rides_with_id?: string | null
           role?: Database["public"]["Enums"]["trip_role"]
           status?: Database["public"]["Enums"]["member_status"]
+          travel_mode?: string | null
           trip_id: string
           user_id: string
         }
@@ -770,12 +861,18 @@ export type Database = {
           availability_json?: Json | null
           budget_max?: number | null
           budget_min?: number | null
+          car_capacity?: number | null
           created_at?: string
+          flight_cost?: number | null
+          flight_description?: string | null
           id?: string
+          is_driver?: boolean | null
           removed_at?: string | null
           removed_by?: string | null
+          rides_with_id?: string | null
           role?: Database["public"]["Enums"]["trip_role"]
           status?: Database["public"]["Enums"]["member_status"]
+          travel_mode?: string | null
           trip_id?: string
           user_id?: string
         }
@@ -785,6 +882,13 @@ export type Database = {
             columns: ["removed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_members_rides_with_id_fkey"
+            columns: ["rides_with_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
             referencedColumns: ["id"]
           },
           {
@@ -805,6 +909,7 @@ export type Database = {
       }
       trip_proposals: {
         Row: {
+          address: string | null
           attendee_count: number | null
           cost_activities_total: number | null
           cost_food_total: number | null
@@ -815,17 +920,25 @@ export type Database = {
           created_by: string
           date_end: string | null
           date_start: string | null
+          description: string | null
           destination: string
           estimated_cost_per_person: number | null
           flexible_dates: boolean | null
           id: string
           image_urls: string[] | null
+          included: boolean
+          is_destination: boolean
           lodging_links: string[] | null
+          name: string | null
+          price_range: string | null
           trip_id: string
+          type: Database["public"]["Enums"]["proposal_type"]
           updated_at: string
+          url: string | null
           vibe_tags: string[] | null
         }
         Insert: {
+          address?: string | null
           attendee_count?: number | null
           cost_activities_total?: number | null
           cost_food_total?: number | null
@@ -836,17 +949,25 @@ export type Database = {
           created_by: string
           date_end?: string | null
           date_start?: string | null
+          description?: string | null
           destination: string
           estimated_cost_per_person?: number | null
           flexible_dates?: boolean | null
           id?: string
           image_urls?: string[] | null
+          included?: boolean
+          is_destination?: boolean
           lodging_links?: string[] | null
+          name?: string | null
+          price_range?: string | null
           trip_id: string
+          type?: Database["public"]["Enums"]["proposal_type"]
           updated_at?: string
+          url?: string | null
           vibe_tags?: string[] | null
         }
         Update: {
+          address?: string | null
           attendee_count?: number | null
           cost_activities_total?: number | null
           cost_food_total?: number | null
@@ -857,14 +978,21 @@ export type Database = {
           created_by?: string
           date_end?: string | null
           date_start?: string | null
+          description?: string | null
           destination?: string
           estimated_cost_per_person?: number | null
           flexible_dates?: boolean | null
           id?: string
           image_urls?: string[] | null
+          included?: boolean
+          is_destination?: boolean
           lodging_links?: string[] | null
+          name?: string | null
+          price_range?: string | null
           trip_id?: string
+          type?: Database["public"]["Enums"]["proposal_type"]
           updated_at?: string
+          url?: string | null
           vibe_tags?: string[] | null
         }
         Relationships: [
@@ -943,6 +1071,7 @@ export type Database = {
         Row: {
           budget_max: number | null
           budget_min: number | null
+          cover_image_url: string | null
           created_at: string
           created_by: string
           date_end: string | null
@@ -950,18 +1079,26 @@ export type Database = {
           decision_deadline: string | null
           destination_voting_deadline: string | null
           flexible_dates: boolean | null
+          flight_booking_url: string | null
+          flight_cost: number | null
+          flight_description: string | null
           home_city: string | null
           id: string
           itinerary_voting_deadline: string | null
           join_code: string | null
+          locked_destination_id: string | null
           name: string
+          phase: Database["public"]["Enums"]["trip_phase"]
           pinned_proposal_id: string | null
+          planning_mode: string | null
           status: Database["public"]["Enums"]["trip_status"]
+          travel_mode: string | null
           updated_at: string
         }
         Insert: {
           budget_max?: number | null
           budget_min?: number | null
+          cover_image_url?: string | null
           created_at?: string
           created_by: string
           date_end?: string | null
@@ -969,18 +1106,26 @@ export type Database = {
           decision_deadline?: string | null
           destination_voting_deadline?: string | null
           flexible_dates?: boolean | null
+          flight_booking_url?: string | null
+          flight_cost?: number | null
+          flight_description?: string | null
           home_city?: string | null
           id?: string
           itinerary_voting_deadline?: string | null
           join_code?: string | null
+          locked_destination_id?: string | null
           name: string
+          phase?: Database["public"]["Enums"]["trip_phase"]
           pinned_proposal_id?: string | null
+          planning_mode?: string | null
           status?: Database["public"]["Enums"]["trip_status"]
+          travel_mode?: string | null
           updated_at?: string
         }
         Update: {
           budget_max?: number | null
           budget_min?: number | null
+          cover_image_url?: string | null
           created_at?: string
           created_by?: string
           date_end?: string | null
@@ -988,16 +1133,30 @@ export type Database = {
           decision_deadline?: string | null
           destination_voting_deadline?: string | null
           flexible_dates?: boolean | null
+          flight_booking_url?: string | null
+          flight_cost?: number | null
+          flight_description?: string | null
           home_city?: string | null
           id?: string
           itinerary_voting_deadline?: string | null
           join_code?: string | null
+          locked_destination_id?: string | null
           name?: string
+          phase?: Database["public"]["Enums"]["trip_phase"]
           pinned_proposal_id?: string | null
+          planning_mode?: string | null
           status?: Database["public"]["Enums"]["trip_status"]
+          travel_mode?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trips_locked_destination_id_fkey"
+            columns: ["locked_destination_id"]
+            isOneToOne: false
+            referencedRelation: "trip_proposals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trips_pinned_proposal_fkey"
             columns: ["pinned_proposal_id"]
@@ -1068,6 +1227,7 @@ export type Database = {
     }
     Functions: {
       generate_join_code: { Args: never; Returns: string }
+      get_trip_by_code: { Args: { join_code_param: string }; Returns: Json }
       is_board_admin: {
         Args: { board_uuid: string; user_uuid: string }
         Returns: boolean
@@ -1109,7 +1269,20 @@ export type Database = {
       board_status: "active" | "decided" | "archived"
       invite_status: "pending" | "accepted" | "expired"
       member_status: "active" | "removed"
-      message_type: "text" | "proposal" | "system"
+      message_type: "text" | "proposal" | "system" | "driver"
+      proposal_type:
+        | "place"
+        | "activity"
+        | "food_spot"
+        | "full_itinerary"
+        | "housing"
+      trip_phase:
+        | "building"
+        | "destination"
+        | "transportation"
+        | "itinerary"
+        | "finalize"
+        | "ready"
       trip_role: "owner" | "admin" | "member"
       trip_status: "planning" | "decided"
       vote_type: "in" | "maybe" | "out"
@@ -1238,13 +1411,31 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       board_role: ["owner", "admin", "member"],
       board_status: ["active", "decided", "archived"],
       invite_status: ["pending", "accepted", "expired"],
       member_status: ["active", "removed"],
-      message_type: ["text", "proposal", "system"],
+      message_type: ["text", "proposal", "system", "driver"],
+      proposal_type: [
+        "place",
+        "activity",
+        "food_spot",
+        "full_itinerary",
+        "housing",
+      ],
+      trip_phase: [
+        "building",
+        "destination",
+        "transportation",
+        "itinerary",
+        "finalize",
+        "ready",
+      ],
       trip_role: ["owner", "admin", "member"],
       trip_status: ["planning", "decided"],
       vote_type: ["in", "maybe", "out"],
