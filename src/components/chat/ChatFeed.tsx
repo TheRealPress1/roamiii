@@ -272,7 +272,7 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
             )}
 
             <div className="py-4 space-y-4">
-              {proposalGroups.length === 0 ? (
+              {proposalGroups.length === 0 && includedProposals.length === 0 ? (
                 <div className="flex items-center justify-center p-8">
                   <div className="text-center">
                     <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">

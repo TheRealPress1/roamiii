@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
 import {
   MapPin,
   Calendar,
   ExternalLink,
   Check,
   Loader2,
-  ChevronRight,
+  DollarSign,
   Hotel,
   Ticket,
   Navigation,
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { getSiteName } from '@/lib/url-utils';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +22,6 @@ import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 import { SFSymbol } from '@/components/icons';
 import { PROPOSAL_TYPE_ICON_MAP } from '@/lib/icon-mappings';
 
@@ -58,13 +57,10 @@ export function FinalizeView({
     return acc;
   }, {} as Record<string, TripProposal[]>);
 
-  // Collect all booking links
-  const allBookingLinks = includedProposals.flatMap((p) => {
-    const links: string[] = [];
-    if (p.url) links.push(p.url);
-    if (p.lodging_links) links.push(...p.lodging_links);
-    return links;
-  }).filter(Boolean);
+  // Calculate total cost
+  const totalCost = includedProposals.reduce(
+    (sum, p) => sum + (p.estimated_cost_per_person || 0), 0
+  );
 
   const handleMarkReady = async () => {
     if (!user) return;
@@ -199,6 +195,24 @@ export function FinalizeView({
               </div>
             </div>
 
+            {/* Cost Summary */}
+            {totalCost > 0 && (
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <DollarSign className="h-5 w-5" />
+                    <span className="font-medium">Estimated Cost</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-foreground">
+                      ${totalCost.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">per person</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Included Items by Category */}
             {Object.entries(groupedProposals).map(([type, proposals]) => {
               const typeInfo = PROPOSAL_TYPES.find(t => t.value === type);
@@ -208,47 +222,60 @@ export function FinalizeView({
                     {getCategoryIcon(type)}
                     {typeInfo?.label || type} ({proposals.length})
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {proposals.map((proposal) => (
                       <div
                         key={proposal.id}
-                        className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
+                        className="rounded-xl border border-border bg-card p-4"
                       >
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                          {proposal.cover_image_url ? (
-                            <img
-                              src={proposal.cover_image_url}
-                              alt={proposal.name || proposal.destination}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                              {type && PROPOSAL_TYPE_ICON_MAP[type as keyof typeof PROPOSAL_TYPE_ICON_MAP] && (
-                                <SFSymbol name={PROPOSAL_TYPE_ICON_MAP[type as keyof typeof PROPOSAL_TYPE_ICON_MAP]} size="md" />
+                        <div className="flex gap-4">
+                          {/* Thumbnail */}
+                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                            {proposal.cover_image_url ? (
+                              <img
+                                src={proposal.cover_image_url}
+                                alt={proposal.name || proposal.destination}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                {type && PROPOSAL_TYPE_ICON_MAP[type as keyof typeof PROPOSAL_TYPE_ICON_MAP] && (
+                                  <SFSymbol name={PROPOSAL_TYPE_ICON_MAP[type as keyof typeof PROPOSAL_TYPE_ICON_MAP]} size="md" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-semibold text-foreground">
+                                  {proposal.name || proposal.destination}
+                                </p>
+                                {proposal.estimated_cost_per_person > 0 && (
+                                  <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                                    <DollarSign className="h-3 w-3" />
+                                    {proposal.estimated_cost_per_person}/person
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Book button */}
+                              {proposal.url && (
+                                <a
+                                  href={proposal.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-1.5 text-xs font-medium rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1 flex-shrink-0"
+                                >
+                                  {getSiteName(proposal.url)}
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
                               )}
                             </div>
-                          )}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">
-                            {proposal.name || proposal.destination}
-                          </p>
-                          {proposal.estimated_cost_per_person > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              ${proposal.estimated_cost_per_person}/person
-                            </p>
-                          )}
-                        </div>
-                        {proposal.url && (
-                          <a
-                            href={proposal.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 hover:bg-muted rounded-lg transition-colors"
-                          >
-                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                          </a>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -260,36 +287,6 @@ export function FinalizeView({
               <div className="text-center py-8 text-muted-foreground">
                 <p>No items included in the itinerary yet.</p>
                 <p className="text-sm mt-1">Go back and include some housing or activities!</p>
-              </div>
-            )}
-
-            {/* Booking Links */}
-            {allBookingLinks.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  Booking Links
-                </h3>
-                <div className="space-y-2">
-                  {allBookingLinks.slice(0, 5).map((link, index) => (
-                    <a
-                      key={index}
-                      href={link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-sm"
-                    >
-                      <ExternalLink className="h-4 w-4 text-primary flex-shrink-0" />
-                      <span className="truncate flex-1 text-primary min-w-0">{link}</span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    </a>
-                  ))}
-                  {allBookingLinks.length > 5 && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      +{allBookingLinks.length - 5} more links
-                    </p>
-                  )}
-                </div>
               </div>
             )}
 
