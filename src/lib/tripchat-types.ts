@@ -1,7 +1,8 @@
 // roamiii type definitions
 export type TripStatus = 'planning' | 'decided';
 export type TripRole = 'owner' | 'admin' | 'member';
-export type MessageType = 'text' | 'proposal' | 'system' | 'driver';
+export type MessageType = 'text' | 'proposal' | 'system' | 'driver' | 'poll';
+export type PollType = 'yes_no' | 'multiple_choice';
 export type VoteType = 'in' | 'maybe' | 'out';
 export type MemberStatus = 'active' | 'removed';
 export type ProposalType = 'housing' | 'activity';
@@ -96,6 +97,36 @@ export interface Message {
   reactions?: MessageReaction[];
   reply_to?: MessageReplyPreview | null;
   driver?: TripMember;
+  poll?: Poll;
+}
+
+export interface Poll {
+  id: string;
+  message_id: string;
+  trip_id: string;
+  question: string;
+  poll_type: PollType;
+  options: string[];
+  expires_at: string | null;
+  created_at: string;
+  votes?: PollVote[];
+}
+
+export interface PollVote {
+  id: string;
+  poll_id: string;
+  user_id: string;
+  option_index: number;
+  created_at: string;
+  voter?: Profile;
+}
+
+export interface MessageMention {
+  id: string;
+  message_id: string;
+  mentioned_user_id: string;
+  created_at: string;
+  mentioned_user?: Profile;
 }
 
 // Lightweight preview of a message for reply context
@@ -273,4 +304,73 @@ export interface Notification {
   read_at: string | null;
   created_at: string;
   actor?: Profile;
+}
+
+// Expense types
+export type ExpenseCategory = 'food' | 'transport' | 'housing' | 'activity' | 'other';
+
+export interface TripExpense {
+  id: string;
+  trip_id: string;
+  paid_by: string;
+  amount: number;
+  currency: string;
+  description: string;
+  category: ExpenseCategory;
+  receipt_url: string | null;
+  expense_date: string;
+  created_at: string;
+  payer?: Profile;
+  splits?: ExpenseSplit[];
+}
+
+export interface ExpenseSplit {
+  id: string;
+  expense_id: string;
+  user_id: string;
+  amount: number;
+  is_settled: boolean;
+  settled_at: string | null;
+  user?: Profile;
+}
+
+export interface SettlementSummary {
+  from_user_id: string;
+  to_user_id: string;
+  amount: number;
+  from_user?: Profile;
+  to_user?: Profile;
+}
+
+// Activity suggestion types
+export type SuggestionCategory = 'activity' | 'food' | 'experience' | 'nightlife';
+
+export interface ActivitySuggestion {
+  name: string;
+  description: string;
+  category: SuggestionCategory;
+  estimatedCost: number;
+  duration: string;
+  vibes: string[];
+}
+
+// Trip template types
+export type TemplateCategory = 'beach' | 'city' | 'adventure' | 'culture' | 'nature' | 'romantic';
+
+export interface TripTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  destination: string;
+  cover_image_url: string;
+  duration_days: number;
+  vibe_tags: string[];
+  budget_estimate_per_person: number | null;
+  suggested_activities: ActivitySuggestion[];
+  suggested_housing: { name: string; url: string; price_per_night: number }[];
+  best_time_to_visit: string | null;
+  local_tips: string | null;
+  is_featured: boolean;
+  category: TemplateCategory | null;
+  created_at: string;
 }

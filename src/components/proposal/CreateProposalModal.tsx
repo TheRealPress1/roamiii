@@ -15,7 +15,7 @@ import { CoverImagePickerModal } from '@/components/proposal/CoverImagePickerMod
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PROPOSAL_TYPES, type ProposalType, type TripPhase } from '@/lib/tripchat-types';
+import { PROPOSAL_TYPES, type ProposalType, type TripPhase, type ActivitySuggestion } from '@/lib/tripchat-types';
 import { cn } from '@/lib/utils';
 
 // Generate static map URL for destination cover images
@@ -56,9 +56,10 @@ interface CreateProposalModalProps {
   onCreated: () => void;
   memberCount: number;
   tripPhase?: TripPhase;
+  prefillSuggestion?: ActivitySuggestion | null;
 }
 
-export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCount, tripPhase = 'destination' }: CreateProposalModalProps) {
+export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCount, tripPhase = 'destination', prefillSuggestion }: CreateProposalModalProps) {
   const { user, profile } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -99,6 +100,17 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
   );
 
   const isDestinationPhase = tripPhase === 'destination';
+
+  // Prefill form when a suggestion is provided
+  useEffect(() => {
+    if (prefillSuggestion && open) {
+      setName(prefillSuggestion.name);
+      setDescription(prefillSuggestion.description);
+      setTotalCost(String(prefillSuggestion.estimatedCost * memberCount));
+      setVibeTags(prefillSuggestion.vibes);
+      setProposalType('activity');
+    }
+  }, [prefillSuggestion, open, memberCount]);
 
   // Auto-resolve cover image when URL changes
   useEffect(() => {

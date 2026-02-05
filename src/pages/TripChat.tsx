@@ -21,13 +21,16 @@ import { FinalizeView } from '@/components/trip/FinalizeView';
 import { TransportationView } from '@/components/trip/TransportationView';
 import { TripReadyView } from '@/components/trip/TripReadyView';
 import { TripBuilderView } from '@/components/trip/TripBuilderView';
+import { SuggestionsDrawer } from '@/components/suggestions/SuggestionsDrawer';
+import { TemplateGalleryModal } from '@/components/templates/TemplateGalleryModal';
+import { ExpenseLedgerModal } from '@/components/expenses/ExpenseLedgerModal';
 import { useTripData } from '@/hooks/useTripData';
 import { useTripMessages } from '@/hooks/useTripMessages';
 import { useProposalCompare } from '@/hooks/useProposalCompare';
 import { useAutoLock, useVotingStatus } from '@/hooks/useAutoLock';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import type { TripProposal, TripMember, Message, TripPhase } from '@/lib/tripchat-types';
+import type { TripProposal, TripMember, Message, TripPhase, ActivitySuggestion, TripTemplate, PollType } from '@/lib/tripchat-types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -37,8 +40,14 @@ export default function TripChat() {
   const { user } = useAuth();
   
   const { trip, members, proposals, loading: dataLoading, error: dataError, refetch } = useTripData(tripId!);
-  const { messages, loading: messagesLoading, sendMessage, sendDriverMessage } = useTripMessages(tripId!);
+  const { messages, loading: messagesLoading, sendMessage, sendDriverMessage, sendPollMessage } = useTripMessages(tripId!);
   const [joiningCarFor, setJoiningCarFor] = useState<string | null>(null);
+
+  // New feature states
+  const [suggestionsDrawerOpen, setSuggestionsDrawerOpen] = useState(false);
+  const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
+  const [expenseLedgerOpen, setExpenseLedgerOpen] = useState(false);
+  const [suggestionToPropose, setSuggestionToPropose] = useState<ActivitySuggestion | null>(null);
   
   const [showPanel, setShowPanel] = useState(true);
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
@@ -283,6 +292,57 @@ export default function TripChat() {
     }
   };
 
+  // Handler for adding an AI suggestion to the trip
+  const handleAddSuggestion = (suggestion: ActivitySuggestion) => {
+    setSuggestionToPropose(suggestion);
+    setProposalModalOpen(true);
+    setSuggestionsDrawerOpen(false);
+  };
+
+  // Handler for applying a trip template
+  const handleApplyTemplate = async (template: TripTemplate, includeSuggestions: boolean) => {
+    // Create a destination proposal from the template
+    const { error } = await supabase.from('trip_proposals').insert({
+      trip_id: tripId,
+      created_by: user?.id,
+      destination: template.destination,
+      name: template.name,
+      description: template.description,
+      cover_image_url: template.cover_image_url,
+      vibe_tags: template.vibe_tags,
+      is_destination: true,
+      type: 'housing',
+      estimated_cost_per_person: template.budget_estimate_per_person || 0,
+    });
+
+    if (error) {
+      toast.error('Failed to apply template');
+      console.error('Error applying template:', error);
+      return;
+    }
+
+    toast.success(`Applied "${template.name}" template!`);
+
+    // TODO: If includeSuggestions is true, could create activity proposals
+    // from template.suggested_activities
+
+    refetch();
+  };
+
+  // Handler for creating a poll
+  const handleCreatePoll = async (data: {
+    question: string;
+    pollType: PollType;
+    options: string[];
+    expiresAt: string | null;
+  }) => {
+    const { error } = await sendPollMessage(data);
+    if (error) {
+      toast.error('Failed to create poll');
+      console.error('Error creating poll:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -364,6 +424,8 @@ export default function TripChat() {
               lockedDestination={lockedDestination}
               destinationProposals={destinationProposals}
               includedProposals={includedProposals}
+              onOpenTemplates={() => setTemplateGalleryOpen(true)}
+              onOpenExpenses={() => setExpenseLedgerOpen(true)}
             />
           </SheetContent>
         </Sheet>
@@ -433,9 +495,14 @@ export default function TripChat() {
               <ChatComposer
                 onSend={sendMessage}
                 onPropose={() => setProposalModalOpen(true)}
+                onCreatePoll={handleCreatePoll}
+                onGetSuggestions={() => setSuggestionsDrawerOpen(true)}
                 replyTo={replyingTo}
                 onCancelReply={() => setReplyingTo(null)}
                 tripPhase={trip.phase}
+                members={members}
+                currentUserId={user?.id}
+                hasLockedDestination={!!lockedDestination}
               />
             </>
           )}
@@ -462,6 +529,8 @@ export default function TripChat() {
             lockedDestination={lockedDestination}
             destinationProposals={destinationProposals}
             includedProposals={includedProposals}
+            onOpenTemplates={() => setTemplateGalleryOpen(true)}
+            onOpenExpenses={() => setExpenseLedgerOpen(true)}
           />
           </div>
         )}
@@ -470,14 +539,19 @@ export default function TripChat() {
       {/* Modals */}
       <CreateProposalModal
         open={proposalModalOpen}
-        onClose={() => setProposalModalOpen(false)}
+        onClose={() => {
+          setProposalModalOpen(false);
+          setSuggestionToPropose(null);
+        }}
         tripId={tripId!}
         onCreated={() => {
           setProposalModalOpen(false);
+          setSuggestionToPropose(null);
           refetch();
         }}
         memberCount={members.length}
         tripPhase={trip.phase}
+        prefillSuggestion={suggestionToPropose}
       />
 
       <ProposalDetailModal
@@ -585,6 +659,33 @@ export default function TripChat() {
         onUpdated={refetch}
         onSendDriverMessage={sendDriverMessage}
         readOnly={transportationReadOnly}
+      />
+
+      {/* AI Suggestions Drawer */}
+      <SuggestionsDrawer
+        open={suggestionsDrawerOpen}
+        onClose={() => setSuggestionsDrawerOpen(false)}
+        trip={trip}
+        lockedDestination={lockedDestination}
+        includedProposals={includedProposals}
+        memberCount={members.length}
+        onAddSuggestion={handleAddSuggestion}
+      />
+
+      {/* Trip Templates Gallery */}
+      <TemplateGalleryModal
+        open={templateGalleryOpen}
+        onOpenChange={setTemplateGalleryOpen}
+        onApplyTemplate={handleApplyTemplate}
+      />
+
+      {/* Expense Ledger */}
+      <ExpenseLedgerModal
+        open={expenseLedgerOpen}
+        onOpenChange={setExpenseLedgerOpen}
+        tripId={tripId!}
+        members={members}
+        currentUserId={user?.id || ''}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye, Car } from 'lucide-react';
+import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye, Car, Receipt, Sparkles } from 'lucide-react';
 import type { Trip, TripMember, TripProposal } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES, TRIP_PHASES } from '@/lib/tripchat-types';
 import { PhaseActions } from '@/components/trip/PhaseActions';
@@ -40,6 +40,8 @@ interface TripPanelProps {
   lockedDestination?: TripProposal | null;
   destinationProposals?: TripProposal[];
   includedProposals?: TripProposal[];
+  onOpenTemplates?: () => void;
+  onOpenExpenses?: () => void;
 }
 
 export function TripPanel({
@@ -60,6 +62,8 @@ export function TripPanel({
   lockedDestination,
   destinationProposals = [],
   includedProposals = [],
+  onOpenTemplates,
+  onOpenExpenses,
 }: TripPanelProps) {
   const { user } = useAuth();
   const hasDeadline = trip.decision_deadline && new Date(trip.decision_deadline) > new Date();
@@ -157,6 +161,32 @@ export function TripPanel({
               >
                 <Eye className="h-4 w-4 mr-2" />
                 View Trip Summary
+              </Button>
+            )}
+
+            {/* Templates button - show in destination phase for admins */}
+            {currentPhase === 'destination' && isAdmin && onOpenTemplates && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenTemplates}
+                className="w-full mt-2"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Use Template
+              </Button>
+            )}
+
+            {/* Expenses button - show in all phases */}
+            {onOpenExpenses && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenExpenses}
+                className="w-full mt-2"
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                Expenses
               </Button>
             )}
           </section>

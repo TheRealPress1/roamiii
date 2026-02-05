@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Message } from '@/lib/tripchat-types';
+import type { Message, PollType } from '@/lib/tripchat-types';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useTripMessages(tripId: string) {
@@ -21,6 +21,10 @@ export function useTripMessages(tripId: string) {
     driver:trip_members!messages_driver_id_fkey(
       *,
       profile:profiles!trip_members_user_id_fkey(*)
+    ),
+    poll:polls(
+      *,
+      votes:poll_votes(*, voter:profiles!poll_votes_user_id_fkey(id, name, email, avatar_url))
     )
   `;
 
@@ -122,6 +126,47 @@ export function useTripMessages(tripId: string) {
     return { error };
   };
 
+  const sendPollMessage = async (data: {
+    question: string;
+    pollType: PollType;
+    options: string[];
+    expiresAt: string | null;
+  }) => {
+    if (!user) return { error: new Error('Not authenticated') };
+
+    // First create the message
+    const { data: messageData, error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        trip_id: tripId,
+        user_id: user.id,
+        type: 'poll',
+        body: data.question,
+      })
+      .select('id')
+      .single();
+
+    if (messageError) return { error: messageError };
+
+    // Then create the poll
+    const { error: pollError } = await supabase.from('polls').insert({
+      message_id: messageData.id,
+      trip_id: tripId,
+      question: data.question,
+      poll_type: data.pollType,
+      options: data.options,
+      expires_at: data.expiresAt,
+    });
+
+    if (pollError) {
+      // Cleanup message if poll creation fails
+      await supabase.from('messages').delete().eq('id', messageData.id);
+      return { error: pollError };
+    }
+
+    return { error: null };
+  };
+
   return {
     messages,
     loading,
@@ -129,6 +174,7 @@ export function useTripMessages(tripId: string) {
     sendMessage,
     sendSystemMessage,
     sendDriverMessage,
+    sendPollMessage,
     refetch: fetchMessages,
   };
 }

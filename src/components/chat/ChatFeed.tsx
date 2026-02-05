@@ -14,6 +14,7 @@ import { PROPOSAL_TYPES } from '@/lib/tripchat-types';
 import { ChatMessage } from './ChatMessage';
 import { ProposalMessage } from './ProposalMessage';
 import { DriverMessage } from './DriverMessage';
+import { PollMessage } from './PollMessage';
 import { ItineraryBoard } from '@/components/trip/ItineraryBoard';
 import { DraggableProposalWrapper } from '@/components/trip/DraggableProposalWrapper';
 import { BoardItemPreview } from '@/components/trip/BoardItemPreview';
@@ -369,21 +370,33 @@ export function ChatFeed({ messages, loading, tripId, onViewProposal, compareIds
               </div>
             ) : (
               <div className="space-y-1">
-                {regularMessages.map((message) => (
-                  message.type === 'driver' ? (
-                    <DriverMessage
-                      key={message.id}
-                      message={message}
-                      members={members}
-                      currentUserId={currentUserId || ''}
-                      onJoinCar={onJoinCar || (() => {})}
-                      onLeaveCar={onLeaveCar || (() => {})}
-                      isJoining={isJoiningCar}
-                    />
-                  ) : (
+                {regularMessages.map((message) => {
+                  if (message.type === 'driver') {
+                    return (
+                      <DriverMessage
+                        key={message.id}
+                        message={message}
+                        members={members}
+                        currentUserId={currentUserId || ''}
+                        onJoinCar={onJoinCar || (() => {})}
+                        onLeaveCar={onLeaveCar || (() => {})}
+                        isJoining={isJoiningCar}
+                      />
+                    );
+                  }
+                  if (message.type === 'poll' && message.poll) {
+                    return (
+                      <PollMessage
+                        key={message.id}
+                        message={message}
+                        poll={message.poll}
+                      />
+                    );
+                  }
+                  return (
                     <ChatMessage key={message.id} message={message} onReply={onReply} />
-                  )
-                ))}
+                  );
+                })}
               </div>
             )}
 
