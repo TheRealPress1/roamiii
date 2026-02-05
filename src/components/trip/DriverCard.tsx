@@ -12,6 +12,7 @@ interface DriverCardProps {
   onLeaveCar: () => void;
   isJoining?: boolean;
   className?: string;
+  readOnly?: boolean;
 }
 
 export function DriverCard({
@@ -22,6 +23,7 @@ export function DriverCard({
   onLeaveCar,
   isJoining = false,
   className,
+  readOnly = false,
 }: DriverCardProps) {
   const driverName = driver.profile?.name || driver.profile?.email?.split('@')[0] || 'Driver';
   const capacity = driver.car_capacity || 4;
@@ -85,7 +87,7 @@ export function DriverCard({
                 {passengerName}
                 {isCurrentUser && <span className="text-muted-foreground"> (You)</span>}
               </span>
-              {isCurrentUser && (
+              {isCurrentUser && !readOnly && (
                 <button
                   onClick={onLeaveCar}
                   className="ml-1 p-0.5 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
@@ -99,7 +101,7 @@ export function DriverCard({
 
         {/* Empty seats / Join button */}
         {Array.from({ length: spotsLeft }).map((_, index) => {
-          const isFirstEmpty = index === 0 && !isCurrentUserDriver && !isCurrentUserPassenger;
+          const isFirstEmpty = index === 0 && !isCurrentUserDriver && !isCurrentUserPassenger && !readOnly;
           return isFirstEmpty ? (
             <Button
               key={`empty-${index}`}

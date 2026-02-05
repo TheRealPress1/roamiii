@@ -9,9 +9,10 @@ interface PhaseProgressProps {
   currentPhase: TripPhase;
   lockedDestination?: TripProposal | null;
   className?: string;
+  onClickPhase?: (phase: TripPhase) => void;
 }
 
-export function PhaseProgress({ currentPhase, lockedDestination, className }: PhaseProgressProps) {
+export function PhaseProgress({ currentPhase, lockedDestination, className, onClickPhase }: PhaseProgressProps) {
   const currentPhaseIndex = TRIP_PHASES.findIndex(p => p.value === currentPhase);
 
   // Only show the first 4 phases in progress bar (ready is the final state)
@@ -30,12 +31,14 @@ export function PhaseProgress({ currentPhase, lockedDestination, className }: Ph
             <div key={phase.value} className="flex items-center flex-1">
               {/* Step Circle */}
               <div className="flex flex-col items-center">
-                <div
+                <button
+                  onClick={() => isCompleted && onClickPhase?.(phase.value as TripPhase)}
+                  disabled={!isCompleted}
                   className={cn(
                     'w-10 h-10 rounded-full flex items-center justify-center text-lg font-medium transition-all',
-                    isCompleted && 'bg-vote-in text-white',
-                    isCurrent && 'bg-primary text-white ring-4 ring-primary/20',
-                    isUpcoming && 'bg-muted text-muted-foreground'
+                    isCompleted && 'bg-vote-in text-white cursor-pointer hover:ring-4 hover:ring-vote-in/20',
+                    isCurrent && 'bg-primary text-white ring-4 ring-primary/20 cursor-default',
+                    isUpcoming && 'bg-muted text-muted-foreground cursor-default'
                   )}
                 >
                   {isCompleted ? (
@@ -47,7 +50,7 @@ export function PhaseProgress({ currentPhase, lockedDestination, className }: Ph
                       className={isCurrent ? 'invert' : ''}
                     />
                   )}
-                </div>
+                </button>
                 <span
                   className={cn(
                     'text-xs mt-1.5 font-medium text-center',

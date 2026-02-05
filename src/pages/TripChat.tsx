@@ -26,7 +26,7 @@ import { useProposalCompare } from '@/hooks/useProposalCompare';
 import { useAutoLock, useVotingStatus } from '@/hooks/useAutoLock';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import type { TripProposal, TripMember, Message } from '@/lib/tripchat-types';
+import type { TripProposal, TripMember, Message, TripPhase } from '@/lib/tripchat-types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -55,6 +55,8 @@ export default function TripChat() {
   const [proposalToLock, setProposalToLock] = useState<TripProposal | null>(null);
   const [finalizeViewOpen, setFinalizeViewOpen] = useState(false);
   const [transportationViewOpen, setTransportationViewOpen] = useState(false);
+  const [transportationReadOnly, setTransportationReadOnly] = useState(false);
+  const [finalizeReadOnly, setFinalizeReadOnly] = useState(false);
   const [chatViewMode, setChatViewMode] = useState<ChatViewMode>('proposals');
   const [lastViewedChatAt, setLastViewedChatAt] = useState<string | null>(null);
 
@@ -261,6 +263,25 @@ export default function TripChat() {
     }
   };
 
+  // Handle clicks on completed phase steps
+  const handlePhaseClick = (phase: TripPhase) => {
+    // Determine if viewing from a later phase (read-only mode)
+    const isViewingPastPhase = trip?.phase !== phase;
+
+    switch (phase) {
+      case 'transportation':
+        setTransportationReadOnly(isViewingPastPhase);
+        setTransportationViewOpen(true);
+        break;
+      case 'finalize':
+        setFinalizeReadOnly(isViewingPastPhase);
+        setFinalizeViewOpen(true);
+        break;
+      // destination and itinerary phases don't have dedicated modals
+      // (they're shown in the main chat/proposal view)
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -352,6 +373,7 @@ export default function TripChat() {
         <PhaseProgress
           currentPhase={trip.phase}
           lockedDestination={lockedDestination}
+          onClickPhase={handlePhaseClick}
         />
       )}
 
@@ -524,22 +546,30 @@ export default function TripChat() {
 
       <FinalizeView
         open={finalizeViewOpen}
-        onClose={() => setFinalizeViewOpen(false)}
+        onClose={() => {
+          setFinalizeViewOpen(false);
+          setFinalizeReadOnly(false);
+        }}
         trip={trip}
         lockedDestination={lockedDestination}
         includedProposals={includedProposals}
         isAdmin={isAdmin}
         onFinalized={refetch}
+        readOnly={finalizeReadOnly}
       />
 
       <TransportationView
         open={transportationViewOpen}
-        onClose={() => setTransportationViewOpen(false)}
+        onClose={() => {
+          setTransportationViewOpen(false);
+          setTransportationReadOnly(false);
+        }}
         trip={trip}
         members={members}
         isAdmin={isAdmin}
         onUpdated={refetch}
         onSendDriverMessage={sendDriverMessage}
+        readOnly={transportationReadOnly}
       />
     </div>
   );

@@ -33,6 +33,7 @@ interface FinalizeViewProps {
   includedProposals: TripProposal[];
   isAdmin: boolean;
   onFinalized: () => void;
+  readOnly?: boolean;
 }
 
 export function FinalizeView({
@@ -43,6 +44,7 @@ export function FinalizeView({
   includedProposals,
   isAdmin,
   onFinalized,
+  readOnly = false,
 }: FinalizeViewProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -178,7 +180,7 @@ export function FinalizeView({
                     type="date"
                     value={dateStart}
                     onChange={(e) => setDateStart(e.target.value)}
-                    disabled={!isAdmin}
+                    disabled={!isAdmin || readOnly}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -189,7 +191,7 @@ export function FinalizeView({
                     value={dateEnd}
                     onChange={(e) => setDateEnd(e.target.value)}
                     min={dateStart}
-                    disabled={!isAdmin}
+                    disabled={!isAdmin || readOnly}
                   />
                 </div>
               </div>
@@ -294,7 +296,7 @@ export function FinalizeView({
         </ScrollArea>
 
         {/* Sticky footer with button */}
-        {isAdmin && (
+        {isAdmin && !readOnly && (
           <div className="p-6 pt-4 border-t border-border flex-shrink-0">
             <Button
               onClick={handleMarkReady}

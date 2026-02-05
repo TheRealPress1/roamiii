@@ -27,6 +27,7 @@ interface TransportationViewProps {
   isAdmin: boolean;
   onUpdated: () => void;
   onSendDriverMessage?: (driverId: string, driverName: string) => void;
+  readOnly?: boolean;
 }
 
 export function TransportationView({
@@ -37,6 +38,7 @@ export function TransportationView({
   isAdmin,
   onUpdated,
   onSendDriverMessage,
+  readOnly = false,
 }: TransportationViewProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -287,14 +289,16 @@ export function TransportationView({
             How is everyone getting there?
           </DialogTitle>
           <DialogDescription>
-            Set the travel mode and coordinate carpools if driving.
+            {readOnly
+              ? 'View the transportation arrangements for this trip.'
+              : 'Set the travel mode and coordinate carpools if driving.'}
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[65vh]">
           <div className="p-6 space-y-6">
             {/* Trip Default Mode (Admin Only) */}
-            {isAdmin && (
+            {isAdmin && !readOnly && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Trip Default
@@ -327,6 +331,7 @@ export function TransportationView({
                           onJoinCar={() => handleJoinCar(driver.id)}
                           onLeaveCar={handleLeaveCar}
                           isJoining={updatingMember === currentMember?.id}
+                          readOnly={readOnly}
                         />
                       ))}
                     </div>
@@ -430,7 +435,7 @@ export function TransportationView({
             )}
 
             {/* Current User Controls */}
-            {currentMember && (
+            {currentMember && !readOnly && (
               <div className="space-y-4 pt-4 border-t border-border">
                 <h3 className="text-sm font-semibold text-foreground">Your Travel</h3>
 
@@ -502,7 +507,7 @@ export function TransportationView({
             )}
 
             {/* Continue Button (Admin Only) */}
-            {isAdmin && (
+            {isAdmin && !readOnly && (
               <Button
                 onClick={handleContinue}
                 disabled={loading}
