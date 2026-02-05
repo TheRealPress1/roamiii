@@ -134,9 +134,9 @@ export function FinalizeView({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-0">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
         {/* Destination Header */}
-        <div className="aspect-[21/9] relative bg-gradient-to-br from-primary/20 to-accent/20">
+        <div className="h-48 relative bg-gradient-to-br from-primary/20 to-accent/20 flex-shrink-0">
           {lockedDestination.cover_image_url && (
             <img
               src={lockedDestination.cover_image_url}
@@ -166,7 +166,7 @@ export function FinalizeView({
           </div>
         </div>
 
-        <ScrollArea className="max-h-[55vh]">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="p-6 space-y-6">
             {/* Date Confirmation */}
             <div className="space-y-3">
@@ -280,7 +280,7 @@ export function FinalizeView({
                       className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-sm"
                     >
                       <ExternalLink className="h-4 w-4 text-primary flex-shrink-0" />
-                      <span className="truncate flex-1 text-primary">{link}</span>
+                      <span className="truncate flex-1 text-primary min-w-0">{link}</span>
                       <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     </a>
                   ))}
@@ -293,29 +293,32 @@ export function FinalizeView({
               </div>
             )}
 
-            {/* Mark Ready Button */}
-            {isAdmin && (
-              <Button
-                onClick={handleMarkReady}
-                disabled={loading}
-                className="w-full bg-vote-in hover:bg-vote-in/90 text-white"
-                size="lg"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Finalizing...
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Mark Trip Ready
-                  </>
-                )}
-              </Button>
-            )}
           </div>
         </ScrollArea>
+
+        {/* Sticky footer with button */}
+        {isAdmin && (
+          <div className="p-6 pt-4 border-t border-border flex-shrink-0">
+            <Button
+              onClick={handleMarkReady}
+              disabled={loading}
+              className="w-full bg-vote-in hover:bg-vote-in/90 text-white"
+              size="lg"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Finalizing...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Mark Trip Ready
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
