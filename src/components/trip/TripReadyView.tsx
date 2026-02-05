@@ -63,26 +63,28 @@ export function TripReadyView({
   // Check if chat is enabled
   const chatEnabled = !!onSendMessage && !!tripId;
 
-  // Group included proposals by type
+  // Group included proposals by type (excluding destinations - shown in header)
   const groupedProposals = useMemo(() => {
-    return includedProposals.reduce((acc, proposal) => {
-      const type = proposal.type || 'housing';
-      if (!acc[type]) acc[type] = [];
-      acc[type].push(proposal);
-      return acc;
-    }, {} as Record<string, TripProposal[]>);
+    return includedProposals
+      .filter(p => !p.is_destination)
+      .reduce((acc, proposal) => {
+        const type = proposal.type || 'housing';
+        if (!acc[type]) acc[type] = [];
+        acc[type].push(proposal);
+        return acc;
+      }, {} as Record<string, TripProposal[]>);
   }, [includedProposals]);
 
-  // Calculate costs
+  // Calculate costs (excluding destinations)
   const activityCost = useMemo(() => {
     return includedProposals
-      .filter((p) => p.type === 'activity')
+      .filter((p) => p.type === 'activity' && !p.is_destination)
       .reduce((sum, p) => sum + (p.estimated_cost_per_person || 0), 0);
   }, [includedProposals]);
 
   const housingCost = useMemo(() => {
     return includedProposals
-      .filter((p) => p.type === 'housing')
+      .filter((p) => p.type === 'housing' && !p.is_destination)
       .reduce((sum, p) => sum + (p.estimated_cost_per_person || 0), 0);
   }, [includedProposals]);
 

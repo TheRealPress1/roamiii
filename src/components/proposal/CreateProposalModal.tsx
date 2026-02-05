@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, DollarSign, Link as LinkIcon, ChevronDown, ChevronUp, Calendar, Users, Pencil, ImageIcon } from 'lucide-react';
 import { getAutoPickCover, getAutoPickCoverFromName } from '@/lib/cover-presets';
-import { resolveCoverImage, type CoverImageResult, type CoverImageSource } from '@/lib/cover-image-resolver';
+import { resolveCoverImage, searchUnsplash, type CoverImageResult, type CoverImageSource } from '@/lib/cover-image-resolver';
 import { useLinkPreview } from '@/hooks/useLinkPreview';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -207,11 +207,18 @@ export function CreateProposalModal({ open, onClose, tripId, onCreated, memberCo
       }
     }
 
-    // Use map image for destination proposals
+    // For destinations, search Unsplash for a real photo
     // For itinerary items, use the resolved cover image or fall back to auto-pick
     let finalCoverUrl: string;
-    if (isDestinationPhase && coordinates) {
-      finalCoverUrl = getMapCoverUrl(coordinates);
+    if (isDestinationPhase) {
+      // Search Unsplash for a real photo of the destination
+      const unsplashResult = await searchUnsplash(destination);
+      if (unsplashResult?.image_url) {
+        finalCoverUrl = unsplashResult.image_url;
+      } else {
+        // Fallback to map if no photo found
+        finalCoverUrl = coordinates ? getMapCoverUrl(coordinates) : getAutoPickCoverFromName(destination);
+      }
     } else if (coverImage?.url) {
       finalCoverUrl = coverImage.url;
     } else if (name.trim()) {
