@@ -8,8 +8,7 @@ interface ProfileCompleteness {
 
 /**
  * Hook to check if user's profile is complete enough to use the app.
- * Required: phone number
- * Optional: avatar, tagline
+ * Profile just needs to exist - phone and other fields are optional.
  */
 export function useProfileComplete(): ProfileCompleteness {
   const { profile, loading } = useAuth();
@@ -22,16 +21,10 @@ export function useProfileComplete(): ProfileCompleteness {
     return { isComplete: false, isLoading: false, missingFields: ['profile'] };
   }
 
-  const missingFields: string[] = [];
-
-  // Check required fields - phone is required per spec
-  if (!profile.phone || profile.phone.trim() === '') {
-    missingFields.push('phone');
-  }
-
+  // Profile exists - that's all we need
   return {
-    isComplete: missingFields.length === 0,
+    isComplete: true,
     isLoading: false,
-    missingFields,
+    missingFields: [],
   };
 }
