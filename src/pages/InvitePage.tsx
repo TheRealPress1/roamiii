@@ -4,16 +4,14 @@ import { motion } from 'framer-motion';
 import { Loader2, Users, XCircle, Home, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfileComplete } from '@/hooks/useProfileComplete';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getDisplayName } from '@/lib/utils';
 
-type InviteState = 
+type InviteState =
   | 'loading'
   | 'invalid'
   | 'auth_required'
-  | 'profile_required'
   | 'checking_membership'
   | 'removed'
   | 'joining'
@@ -29,8 +27,7 @@ export default function InvitePage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { isComplete: profileComplete, isLoading: profileLoading } = useProfileComplete();
-  
+
   const [state, setState] = useState<InviteState>('loading');
   const [trip, setTrip] = useState<TripPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,10 +57,10 @@ export default function InvitePage() {
     fetchTrip();
   }, [code]);
 
-  // Handle auth and profile state transitions
+  // Handle auth state transitions
   useEffect(() => {
     if (!trip || state === 'invalid') return;
-    if (authLoading || profileLoading) return;
+    if (authLoading) return;
 
     const processInvite = async () => {
       // Not logged in - need auth first
@@ -73,13 +70,8 @@ export default function InvitePage() {
         return;
       }
 
-      // Logged in but profile incomplete - need onboarding
-      if (!profileComplete) {
-        localStorage.setItem('pending_invite_code', code!);
-        setState('profile_required');
-        navigate(`/app/profile?next=/invite/${code}`, { replace: true });
-        return;
-      }
+      // User is logged in - proceed to join
+      // ProfileGate will handle any profile issues after navigating to the trip
 
       // Check existing membership
       setState('checking_membership');
@@ -153,7 +145,7 @@ export default function InvitePage() {
     };
 
     processInvite();
-  }, [trip, user, authLoading, profileLoading, profileComplete, code, navigate, state]);
+  }, [trip, user, authLoading, code, navigate, state]);
 
   // Redirect to auth
   const handleGoToAuth = () => {
