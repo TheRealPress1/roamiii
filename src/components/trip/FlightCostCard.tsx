@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Camera, Upload, Loader2, Check, X, Pencil, DollarSign } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Camera, Upload, Loader2, Check, X, Pencil, DollarSign, Plane } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,11 +11,11 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { TripMember } from '@/lib/tripchat-types';
+import type { Trip } from '@/lib/tripchat-types';
 
 interface FlightCostCardProps {
-  member: TripMember;
-  isCurrentUser: boolean;
+  trip: Trip;
+  flyingMemberCount: number;
   onCostUpdated: () => void;
   className?: string;
 }
@@ -28,13 +27,12 @@ interface AnalysisResult {
 }
 
 export function FlightCostCard({
-  member,
-  isCurrentUser,
+  trip,
+  flyingMemberCount,
   onCostUpdated,
   className,
 }: FlightCostCardProps) {
-  const name = member.profile?.name || member.profile?.email?.split('@')[0] || '?';
-  const hasCost = member.flight_cost !== null && member.flight_cost > 0;
+  const hasCost = trip.flight_cost !== null && trip.flight_cost > 0;
 
   // Drop zone state
   const [dragOver, setDragOver] = useState(false);
@@ -184,12 +182,12 @@ export function FlightCostCard({
     setSaving(true);
     try {
       const { error } = await supabase
-        .from('trip_members')
+        .from('trips')
         .update({
           flight_cost: cost,
           flight_description: description || null,
         })
-        .eq('id', member.id);
+        .eq('id', trip.id);
 
       if (error) throw error;
 
@@ -220,7 +218,6 @@ export function FlightCostCard({
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-    if (!isCurrentUser) return;
     e.preventDefault();
     setDragOver(true);
   };
@@ -231,7 +228,6 @@ export function FlightCostCard({
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    if (!isCurrentUser) return;
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
@@ -247,33 +243,30 @@ export function FlightCostCard({
     }
   };
 
+  const totalCost = hasCost ? trip.flight_cost! * flyingMemberCount : 0;
+
   return (
     <>
       <div
         className={cn(
           'rounded-xl border bg-card p-4 transition-colors',
-          isCurrentUser && 'ring-2 ring-primary/30',
           dragOver && 'border-primary bg-primary/5',
-          isCurrentUser && !analyzing && 'cursor-pointer hover:border-primary/50',
+          !analyzing && 'cursor-pointer hover:border-primary/50',
           className
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => isCurrentUser && !analyzing && setModalOpen(true)}
+        onClick={() => !analyzing && setModalOpen(true)}
       >
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={member.profile?.avatar_url || undefined} />
-            <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-medium">
-              {name.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+            <Plane className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
 
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-foreground">
-              {name}
-              {isCurrentUser && <span className="text-muted-foreground font-normal"> (You)</span>}
+              Flight Cost
             </p>
 
             {analyzing ? (
@@ -282,23 +275,33 @@ export function FlightCostCard({
                 Analyzing screenshot...
               </p>
             ) : hasCost ? (
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-vote-in">${member.flight_cost!.toLocaleString()}</span>
-                {member.flight_description && (
-                  <span className="ml-1">- {member.flight_description}</span>
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-vote-in">${trip.flight_cost!.toLocaleString()}</span>
+                <span className="text-muted-foreground">/person</span>
+                {trip.flight_description && (
+                  <span className="ml-1">- {trip.flight_description}</span>
                 )}
-              </p>
-            ) : isCurrentUser ? (
+              </div>
+            ) : (
               <p className="text-sm text-muted-foreground flex items-center gap-1.5">
                 <Camera className="h-3.5 w-3.5" />
                 Drop screenshot or click to add cost
               </p>
-            ) : (
-              <p className="text-sm text-muted-foreground/60 italic">No cost added yet</p>
             )}
           </div>
 
-          {isCurrentUser && hasCost && (
+          {hasCost && (
+            <div className="text-right shrink-0">
+              <p className="text-sm font-semibold text-foreground">
+                ${totalCost.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                total ({flyingMemberCount})
+              </p>
+            </div>
+          )}
+
+          {hasCost && (
             <Button
               variant="ghost"
               size="icon"

@@ -50,6 +50,8 @@ export interface Trip {
   travel_mode: TravelMode | null;
   destination_voting_deadline: string | null;
   itinerary_voting_deadline: string | null;
+  flight_cost: number | null;
+  flight_description: string | null;
   created_at: string;
   updated_at: string;
 }
