@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   MapPin,
   Calendar,
@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { getSiteName } from '@/lib/url-utils';
+import { searchUnsplash } from '@/lib/cover-image-resolver';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { VibeTag } from '@/components/ui/VibeTag';
@@ -59,6 +60,36 @@ export function TripReadyView({
   const [chatOpen, setChatOpen] = useState(false);
   const [showDesktopChat, setShowDesktopChat] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+
+  // Resolve cover image - replace Mapbox URLs with real photos
+  const [resolvedCoverUrl, setResolvedCoverUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const resolveCover = async () => {
+      const url = lockedDestination?.cover_image_url;
+      if (!url) {
+        setResolvedCoverUrl(null);
+        return;
+      }
+
+      // Check if it's a Mapbox URL that needs replacement
+      if (url.includes('api.mapbox.com')) {
+        const destinationName = lockedDestination?.name || lockedDestination?.destination;
+        if (destinationName) {
+          const result = await searchUnsplash(destinationName);
+          if (result?.image_url) {
+            setResolvedCoverUrl(result.image_url);
+            return;
+          }
+        }
+      }
+
+      // Use existing URL if not Mapbox or no replacement found
+      setResolvedCoverUrl(url);
+    };
+
+    resolveCover();
+  }, [lockedDestination?.cover_image_url, lockedDestination?.name, lockedDestination?.destination]);
 
   // Check if chat is enabled
   const chatEnabled = !!onSendMessage && !!tripId;
@@ -147,9 +178,9 @@ export function TripReadyView({
     <div className="max-w-3xl mx-auto pb-8 lg:pb-0">
       {/* Destination Header */}
       <div className="h-56 relative bg-gradient-to-br from-primary/20 to-accent/20">
-        {lockedDestination?.cover_image_url && (
+        {resolvedCoverUrl && (
           <img
-            src={lockedDestination.cover_image_url}
+            src={resolvedCoverUrl}
             alt={displayName}
             className="w-full h-full object-cover"
           />
