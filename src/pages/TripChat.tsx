@@ -14,6 +14,7 @@ import { CompareTray } from '@/components/compare/CompareTray';
 import { CompareModal } from '@/components/compare/CompareModal';
 import { DeleteTripDialog } from '@/components/trip/DeleteTripDialog';
 import { RemoveMemberDialog } from '@/components/trip/RemoveMemberDialog';
+import { LeaveTripDialog } from '@/components/trip/LeaveTripDialog';
 import { EditTripCoverModal } from '@/components/trip/EditTripCoverModal';
 import { PhaseProgress } from '@/components/trip/PhaseProgress';
 import { LockDestinationModal } from '@/components/trip/LockDestinationModal';
@@ -70,6 +71,8 @@ export default function TripChat() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<TripMember | null>(null);
   const [removeLoading, setRemoveLoading] = useState(false);
+  const [leaveTripOpen, setLeaveTripOpen] = useState(false);
+  const [leaveLoading, setLeaveLoading] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editCoverModalOpen, setEditCoverModalOpen] = useState(false);
   const [lockDestinationModalOpen, setLockDestinationModalOpen] = useState(false);
@@ -251,6 +254,33 @@ export default function TripChat() {
     setMemberToRemove(null);
     setRemoveLoading(false);
     refetch();
+  };
+
+  const handleLeaveTrip = async () => {
+    if (!currentMember || !user) return;
+
+    setLeaveLoading(true);
+
+    const { error } = await supabase
+      .from('trip_members')
+      .update({
+        status: 'removed',
+        removed_at: new Date().toISOString(),
+        removed_by: user.id,
+      })
+      .eq('id', currentMember.id);
+
+    if (error) {
+      toast.error('Failed to leave trip');
+      console.error('Error leaving trip:', error);
+      setLeaveLoading(false);
+      return;
+    }
+
+    toast.success('You have left the trip');
+    setLeaveTripOpen(false);
+    setLeaveLoading(false);
+    navigate('/app');
   };
 
   // Carpool handlers for chat driver messages
@@ -465,6 +495,7 @@ export default function TripChat() {
               onClaimBooking={claimBooking}
               settlements={settlements}
               totalPerPerson={totalPerPerson}
+              onLeaveTrip={() => setLeaveTripOpen(true)}
             />
           </SheetContent>
         </Sheet>
@@ -574,6 +605,7 @@ export default function TripChat() {
               onClaimBooking={claimBooking}
               settlements={settlements}
               totalPerPerson={totalPerPerson}
+              onLeaveTrip={() => setLeaveTripOpen(true)}
             />
           </div>
         )}
@@ -651,6 +683,14 @@ export default function TripChat() {
         memberName={getDisplayName(memberToRemove?.profile, 'Member')}
         onConfirm={handleRemoveMember}
         loading={removeLoading}
+      />
+
+      <LeaveTripDialog
+        open={leaveTripOpen}
+        onOpenChange={setLeaveTripOpen}
+        onConfirm={handleLeaveTrip}
+        loading={leaveLoading}
+        tripName={trip.name}
       />
 
       <EditTripCoverModal

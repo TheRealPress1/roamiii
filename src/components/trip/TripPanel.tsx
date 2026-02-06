@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye, Car, Receipt, Sparkles, Users, CheckCircle2, CircleDashed, DollarSign, RotateCcw, Loader2, ExternalLink, Plane } from 'lucide-react';
+import { Calendar, MapPin, Clock, Trophy, ChevronRight, MoreVertical, Trash2, UserMinus, Crown, Shield, ImageIcon, Lock, Check, Eye, Car, Receipt, Sparkles, Users, CheckCircle2, CircleDashed, DollarSign, RotateCcw, Loader2, ExternalLink, Plane, LogOut } from 'lucide-react';
 import type { Trip, TripMember, TripProposal, SettlementSummary } from '@/lib/tripchat-types';
 import { PROPOSAL_TYPES, TRIP_PHASES } from '@/lib/tripchat-types';
 import { PhaseActions } from '@/components/trip/PhaseActions';
@@ -47,6 +47,7 @@ interface TripPanelProps {
   onClaimBooking?: (proposalId: string) => Promise<{ error: Error | null }>;
   settlements?: SettlementSummary[];
   totalPerPerson?: number;
+  onLeaveTrip?: () => void;
 }
 
 export function TripPanel({
@@ -72,6 +73,7 @@ export function TripPanel({
   onClaimBooking,
   settlements = [],
   totalPerPerson = 0,
+  onLeaveTrip,
 }: TripPanelProps) {
   const { user } = useAuth();
   const [claimingBookingId, setClaimingBookingId] = useState<string | null>(null);
@@ -518,6 +520,21 @@ export function TripPanel({
                 </DropdownMenu>
               </section>
             )}
+
+            {/* Leave Trip (non-owners only) */}
+            {!isOwner && onLeaveTrip && (
+              <section className="pt-4 border-t border-border">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  onClick={onLeaveTrip}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Leave Trip
+                </Button>
+              </section>
+            )}
           </div>
         </ScrollArea>
       </div>
@@ -761,6 +778,21 @@ export function TripPanel({
                   </p>
                 )}
               </div>
+            </section>
+          )}
+
+          {/* Leave Trip (non-owners only) */}
+          {!isOwner && onLeaveTrip && (
+            <section className="pt-4 border-t border-border">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                onClick={onLeaveTrip}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Leave Trip
+              </Button>
             </section>
           )}
         </div>
