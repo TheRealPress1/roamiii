@@ -6,6 +6,7 @@ import {
   UtensilsCrossed,
   Car,
   Package,
+  Ship,
   X,
   Link as LinkIcon,
   DollarSign,
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type BookingType = 'housing' | 'flight' | 'activity' | 'restaurant' | 'transport' | 'other';
+export type BookingType = 'housing' | 'flight' | 'cruise' | 'activity' | 'restaurant' | 'transport' | 'other';
 export type BookingMode = 'host_books' | 'everyone_books';
 export type CostType = 'total' | 'per_person';
 
@@ -32,6 +33,7 @@ export interface BookingEntry {
 const BOOKING_TYPES: { value: BookingType; label: string; icon: typeof Home }[] = [
   { value: 'housing', label: 'Housing', icon: Home },
   { value: 'flight', label: 'Flight', icon: Plane },
+  { value: 'cruise', label: 'Cruise', icon: Ship },
   { value: 'activity', label: 'Activity', icon: Compass },
   { value: 'restaurant', label: 'Restaurant', icon: UtensilsCrossed },
   { value: 'transport', label: 'Transport', icon: Car },

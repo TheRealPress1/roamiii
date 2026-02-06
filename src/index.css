@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&family=Merriweather:wght@700;900&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 /* Trip Arena Design System - Premium Travel Aesthetic */
 
@@ -193,8 +193,6 @@
   }
 
   .title-input {
-    font-family: 'Poppins', sans-serif;
-    font-weight: 700;
     font-size: clamp(2rem, 5vw, 3rem);
     line-height: 1.1;
     letter-spacing: -0.02em;
@@ -204,10 +202,40 @@
     padding: 0;
     color: hsl(var(--foreground));
     outline: none;
+    transition: font-family 0.2s ease;
   }
 
   .title-input::placeholder {
     color: hsl(var(--foreground) / 0.25);
+  }
+
+  /* Font style variants for title */
+  .title-classic {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-style: normal;
+  }
+  .title-eclectic {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-style: normal;
+  }
+  .title-fancy {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-style: italic;
+  }
+  .title-literary {
+    font-family: 'Merriweather', serif;
+    font-weight: 900;
+    font-style: normal;
+    letter-spacing: -0.01em;
+  }
+  .title-modern {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-style: normal;
+    letter-spacing: -0.03em;
   }
 
   .booking-card {

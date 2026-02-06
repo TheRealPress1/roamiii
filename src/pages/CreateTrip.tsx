@@ -12,9 +12,6 @@ import {
   Check,
   PartyPopper,
   Pencil,
-  Link as LinkIcon,
-  Image,
-  X,
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,18 +19,35 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { COVER_PRESETS } from '@/lib/cover-presets';
+import { COVER_PRESETS, PRESET_CATEGORIES } from '@/lib/cover-presets';
 import { cn } from '@/lib/utils';
+import { DestinationAutocomplete } from '@/components/ui/DestinationAutocomplete';
 import BookingItemCard, {
   createEmptyBooking,
   type BookingEntry,
 } from '@/components/trip/BookingItemCard';
+
+// ── Font styles (like Partiful's Classic / Eclectic / Fancy / Literary) ──
+
+type FontStyle = 'classic' | 'eclectic' | 'fancy' | 'literary' | 'modern';
+
+const FONT_STYLES: { key: FontStyle; label: string; preview: string }[] = [
+  { key: 'classic', label: 'Classic', preview: 'Classic' },
+  { key: 'eclectic', label: 'Eclectic', preview: 'Eclectic' },
+  { key: 'fancy', label: 'Fancy', preview: 'Fancy' },
+  { key: 'literary', label: 'Literary', preview: 'Literary' },
+  { key: 'modern', label: 'Modern', preview: 'Modern' },
+];
+
+// ── Types ──
 
 interface CreatedTrip {
   id: string;
   name: string;
   join_code: string;
 }
+
+// ── Component ──
 
 export default function CreateTrip() {
   const navigate = useNavigate();
@@ -42,9 +56,11 @@ export default function CreateTrip() {
   const [createdTrip, setCreatedTrip] = useState<CreatedTrip | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [showCoverPicker, setShowCoverPicker] = useState(false);
+  const [coverCategory, setCoverCategory] = useState('popular');
 
   // Form state
   const [name, setName] = useState('');
+  const [fontStyle, setFontStyle] = useState<FontStyle>('classic');
   const [description, setDescription] = useState('');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -58,6 +74,16 @@ export default function CreateTrip() {
     () => COVER_PRESETS.find((p) => p.key === coverImageKey) || COVER_PRESETS[0],
     [coverImageKey]
   );
+
+  // Filter cover presets by active category
+  const filteredPresets = useMemo(() => {
+    if (coverCategory === 'popular') {
+      return COVER_PRESETS.filter(
+        (p) => p.category === 'popular' || ['nature', 'party'].includes(p.key)
+      );
+    }
+    return COVER_PRESETS.filter((p) => p.category === coverCategory);
+  }, [coverCategory]);
 
   const getInviteLink = () => {
     if (!createdTrip) return '';
@@ -125,7 +151,7 @@ export default function CreateTrip() {
           return {
             trip_id: trip.id,
             created_by: user.id,
-            type: b.type === 'housing' ? ('housing' as const) : ('activity' as const),
+            type: b.type === 'housing' || b.type === 'cruise' ? ('housing' as const) : ('activity' as const),
             destination: location.trim() || name.trim(),
             name: b.name.trim(),
             url: b.url.trim() || null,
@@ -148,7 +174,6 @@ export default function CreateTrip() {
 
         if (proposalError) {
           console.error('Error creating bookings:', proposalError);
-          // Don't block trip creation for booking errors
         }
       }
 
@@ -178,7 +203,7 @@ export default function CreateTrip() {
     let text = start.toLocaleDateString('en-US', opts);
     if (dateEnd) {
       const end = new Date(dateEnd + 'T00:00:00');
-      text += ` – ${end.toLocaleDateString('en-US', opts)}`;
+      text += ` \u2013 ${end.toLocaleDateString('en-US', opts)}`;
     }
     if (flexibleDates) text += ' (flexible)';
     return text;
@@ -228,29 +253,48 @@ export default function CreateTrip() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Trip Name"
-                        className="title-input"
+                        className={cn('title-input', `title-${fontStyle}`)}
                         autoFocus
                       />
 
+                      {/* Font style picker */}
+                      <div className="flex items-center gap-1.5 pb-3">
+                        {FONT_STYLES.map((fs) => (
+                          <button
+                            key={fs.key}
+                            type="button"
+                            onClick={() => setFontStyle(fs.key)}
+                            className={cn(
+                              'px-3 py-1 rounded-full text-sm transition-all',
+                              fontStyle === fs.key
+                                ? 'bg-foreground text-background font-medium'
+                                : 'bg-black/[0.04] text-muted-foreground hover:bg-black/[0.08]'
+                            )}
+                          >
+                            <span className={`title-${fs.key}`} style={{ fontSize: '0.875rem', lineHeight: '1.25rem' }}>
+                              {fs.preview}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+
                       {/* Dates */}
                       <div className="flex items-center gap-3 py-3 border-b border-black/[0.06]">
-                        <Calendar className="h-4.5 w-4.5 text-muted-foreground shrink-0" />
+                        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div className="flex items-center gap-2 flex-1">
                           <input
                             type="date"
                             value={dateStart}
                             onChange={(e) => setDateStart(e.target.value)}
                             className="inline-field border-b-0 py-0 text-sm"
-                            placeholder="Start date"
                           />
-                          <span className="text-muted-foreground text-sm">–</span>
+                          <span className="text-muted-foreground text-sm">&ndash;</span>
                           <input
                             type="date"
                             value={dateEnd}
                             onChange={(e) => setDateEnd(e.target.value)}
                             min={dateStart}
                             className="inline-field border-b-0 py-0 text-sm"
-                            placeholder="End date"
                           />
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -269,21 +313,19 @@ export default function CreateTrip() {
                         </div>
                       </div>
 
-                      {/* Location */}
-                      <div className="flex items-center gap-3 py-3 border-b border-black/[0.06]">
-                        <MapPin className="h-4.5 w-4.5 text-muted-foreground shrink-0" />
-                        <input
-                          type="text"
+                      {/* Location — Mapbox Autocomplete */}
+                      <div className="py-1 border-b border-black/[0.06]">
+                        <DestinationAutocomplete
                           value={location}
-                          onChange={(e) => setLocation(e.target.value)}
+                          onChange={setLocation}
                           placeholder="Add destination..."
-                          className="inline-field border-b-0 py-0 text-sm flex-1"
+                          className="border-0 shadow-none bg-transparent pl-9 text-sm h-auto py-2 focus-visible:ring-0"
                         />
                       </div>
 
                       {/* Spots */}
                       <div className="flex items-center gap-3 py-3 border-b border-black/[0.06]">
-                        <Users className="h-4.5 w-4.5 text-muted-foreground shrink-0" />
+                        <Users className="h-4 w-4 text-muted-foreground shrink-0" />
                         <input
                           type="number"
                           value={spots}
@@ -304,7 +346,7 @@ export default function CreateTrip() {
                       />
                     </div>
 
-                    {/* Right column — Cover image */}
+                    {/* Right column — Cover image + RSVP */}
                     <div className="space-y-4">
                       {/* Main cover preview */}
                       <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-muted group">
@@ -324,7 +366,7 @@ export default function CreateTrip() {
                         </button>
                       </div>
 
-                      {/* Cover picker */}
+                      {/* Cover picker with category tabs */}
                       <AnimatePresence>
                         {showCoverPicker && (
                           <motion.div
@@ -333,41 +375,91 @@ export default function CreateTrip() {
                             exit={{ opacity: 0, height: 0 }}
                             className="overflow-hidden"
                           >
-                            <div className="grid grid-cols-5 gap-1.5 p-3 create-card-inner">
-                              {COVER_PRESETS.slice(0, 15).map((preset) => (
-                                <button
-                                  key={preset.key}
-                                  type="button"
-                                  onClick={() => {
-                                    setCoverImageKey(preset.key);
-                                    setShowCoverPicker(false);
-                                  }}
-                                  className={cn(
-                                    'relative aspect-square rounded-lg overflow-hidden transition-all',
-                                    'hover:ring-2 hover:ring-primary/50',
-                                    coverImageKey === preset.key &&
-                                      'ring-2 ring-primary'
-                                  )}
-                                >
-                                  <img
-                                    src={preset.imageUrl}
-                                    alt={preset.label}
-                                    className="w-full h-full object-cover"
-                                    loading="lazy"
-                                  />
-                                  {coverImageKey === preset.key && (
-                                    <div className="absolute inset-0 bg-primary/25 flex items-center justify-center">
-                                      <Check className="h-4 w-4 text-white drop-shadow" />
+                            <div className="create-card-inner p-3 space-y-3">
+                              {/* Category tabs */}
+                              <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
+                                {PRESET_CATEGORIES.map((cat) => (
+                                  <button
+                                    key={cat.key}
+                                    type="button"
+                                    onClick={() => setCoverCategory(cat.key)}
+                                    className={cn(
+                                      'px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all',
+                                      coverCategory === cat.key
+                                        ? 'bg-foreground text-background'
+                                        : 'bg-black/[0.05] text-muted-foreground hover:bg-black/[0.1]'
+                                    )}
+                                  >
+                                    {cat.label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Image grid */}
+                              <div className="grid grid-cols-4 gap-1.5 max-h-[240px] overflow-y-auto">
+                                {filteredPresets.map((preset) => (
+                                  <button
+                                    key={preset.key}
+                                    type="button"
+                                    onClick={() => {
+                                      setCoverImageKey(preset.key);
+                                      setShowCoverPicker(false);
+                                    }}
+                                    className={cn(
+                                      'relative aspect-square rounded-lg overflow-hidden transition-all',
+                                      'hover:ring-2 hover:ring-primary/50',
+                                      coverImageKey === preset.key && 'ring-2 ring-primary'
+                                    )}
+                                  >
+                                    <img
+                                      src={preset.imageUrl}
+                                      alt={preset.label}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                    />
+                                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-1">
+                                      <span className="text-[9px] text-white font-medium leading-none">
+                                        {preset.label}
+                                      </span>
                                     </div>
-                                  )}
-                                </button>
-                              ))}
+                                    {coverImageKey === preset.key && (
+                                      <div className="absolute inset-0 bg-primary/25 flex items-center justify-center">
+                                        <Check className="h-4 w-4 text-white drop-shadow" />
+                                      </div>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
 
-                      {/* Date summary chip */}
+                      {/* RSVP Options */}
+                      <div className="create-card-inner p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-foreground">RSVP Options</h3>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-vote-in/5 border border-vote-in/10">
+                            <span className="text-2xl">&#x1F44D;</span>
+                            <span className="text-xs font-medium text-vote-in">I'm In</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-vote-maybe/5 border border-vote-maybe/10">
+                            <span className="text-2xl">&#x1F914;</span>
+                            <span className="text-xs font-medium text-vote-maybe">Maybe</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-vote-out/5 border border-vote-out/10">
+                            <span className="text-2xl">&#x1F622;</span>
+                            <span className="text-xs font-medium text-vote-out">Can't Go</span>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground text-center">
+                          Your crew will see these options when they open the invite
+                        </p>
+                      </div>
+
+                      {/* Date/location summary */}
                       {formatDateRange() && (
                         <div className="create-card-inner px-4 py-3">
                           <div className="flex items-center gap-2 text-sm">
@@ -394,7 +486,7 @@ export default function CreateTrip() {
                         Things to Book
                       </h2>
                       <p className="text-sm text-muted-foreground mt-0.5">
-                        Add lodging, flights, activities — anything the group needs
+                        Add lodging, flights, cruises, activities — anything the group needs
                       </p>
                     </div>
                     <Button
@@ -419,7 +511,7 @@ export default function CreateTrip() {
                         <Plus className="h-5 w-5" />
                       </div>
                       <span className="text-sm font-medium">Add your first booking</span>
-                      <span className="text-xs">Airbnb, flights, activities, restaurants...</span>
+                      <span className="text-xs">Airbnb, flights, cruises, activities, restaurants...</span>
                     </button>
                   ) : (
                     <div className="space-y-3">
