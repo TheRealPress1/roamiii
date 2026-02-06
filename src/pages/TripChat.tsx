@@ -21,7 +21,7 @@ import { LockDestinationModal } from '@/components/trip/LockDestinationModal';
 import { FinalizeView } from '@/components/trip/FinalizeView';
 import { TransportationView } from '@/components/trip/TransportationView';
 import { TripReadyView } from '@/components/trip/TripReadyView';
-import { TripBuilderView } from '@/components/trip/TripBuilderView';
+import { TripOverview } from '@/components/trip/TripOverview';
 import { SuggestionsDrawer } from '@/components/suggestions/SuggestionsDrawer';
 import { TemplateGalleryModal } from '@/components/templates/TemplateGalleryModal';
 import { ExpenseLedgerModal } from '@/components/expenses/ExpenseLedgerModal';
@@ -514,9 +514,9 @@ export default function TripChat() {
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Chat area, Builder View, or Ready View */}
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
-          {/* Freeform trips in building phase show TripBuilderView */}
+          {/* Freeform trips in building phase show TripOverview */}
           {trip.planning_mode === 'freeform' && trip.phase === 'building' ? (
-            <TripBuilderView
+            <TripOverview
               trip={trip}
               proposals={proposals}
               members={members}
