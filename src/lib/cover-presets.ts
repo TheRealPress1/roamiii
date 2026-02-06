@@ -14,6 +14,8 @@ export const PRESET_CATEGORIES = [
   { key: 'outdoor', label: 'Outdoor & Nature' },
   { key: 'urban', label: 'Urban & Nightlife' },
   { key: 'adventure', label: 'Adventure & Sports' },
+  { key: 'vibes', label: 'Vibes & Aesthetic' },
+  { key: 'cruise', label: 'Cruise & Water' },
 ] as const;
 
 export const COVER_PRESETS: CoverPreset[] = [
@@ -196,6 +198,191 @@ export const COVER_PRESETS: CoverPreset[] = [
     label: 'Safari',
     imageUrl: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=800&h=450&fit=crop',
     category: 'adventure',
+  },
+  // Vibes & Aesthetic
+  {
+    key: 'sunset',
+    label: 'Sunset',
+    imageUrl: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'sunrise',
+    label: 'Sunrise',
+    imageUrl: 'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'pool',
+    label: 'Pool Party',
+    imageUrl: 'https://images.unsplash.com/photo-1572331165267-854da2b021b1?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'resort',
+    label: 'Resort',
+    imageUrl: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'cabin',
+    label: 'Cabin',
+    imageUrl: 'https://images.unsplash.com/photo-1449158743715-0a90ebb6d2d8?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'camping',
+    label: 'Camping',
+    imageUrl: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'festival',
+    label: 'Festival',
+    imageUrl: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'desert',
+    label: 'Desert',
+    imageUrl: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'hammock',
+    label: 'Hammock',
+    imageUrl: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'bonfire',
+    label: 'Bonfire',
+    imageUrl: 'https://images.unsplash.com/photo-1475483768296-6163e08872a1?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'neon',
+    label: 'Neon Nights',
+    imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  {
+    key: 'stargazing',
+    label: 'Stargazing',
+    imageUrl: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=800&h=450&fit=crop',
+    category: 'vibes',
+  },
+  // Cruise & Water
+  {
+    key: 'yacht',
+    label: 'Yacht',
+    imageUrl: 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&h=450&fit=crop',
+    category: 'cruise',
+  },
+  {
+    key: 'sailboat',
+    label: 'Sailboat',
+    imageUrl: 'https://images.unsplash.com/photo-1540946485063-a40da27545f8?w=800&h=450&fit=crop',
+    category: 'cruise',
+  },
+  {
+    key: 'cruise_ship',
+    label: 'Cruise Ship',
+    imageUrl: 'https://images.unsplash.com/photo-1599640842225-85d111c60e6b?w=800&h=450&fit=crop',
+    category: 'cruise',
+  },
+  {
+    key: 'snorkeling',
+    label: 'Snorkeling',
+    imageUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=450&fit=crop',
+    category: 'cruise',
+  },
+  {
+    key: 'catamaran',
+    label: 'Catamaran',
+    imageUrl: 'https://images.unsplash.com/photo-1500514966906-fe245eea9344?w=800&h=450&fit=crop',
+    category: 'cruise',
+  },
+  // More Popular
+  {
+    key: 'villa',
+    label: 'Villa',
+    imageUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&h=450&fit=crop',
+    category: 'popular',
+  },
+  {
+    key: 'bali',
+    label: 'Bali',
+    imageUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&h=450&fit=crop',
+    category: 'popular',
+  },
+  {
+    key: 'amalfi',
+    label: 'Amalfi Coast',
+    imageUrl: 'https://images.unsplash.com/photo-1534113414509-0eec2bfb493f?w=800&h=450&fit=crop',
+    category: 'popular',
+  },
+  {
+    key: 'tokyo',
+    label: 'Tokyo',
+    imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=450&fit=crop',
+    category: 'urban',
+  },
+  {
+    key: 'nyc',
+    label: 'New York',
+    imageUrl: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&h=450&fit=crop',
+    category: 'urban',
+  },
+  {
+    key: 'paris',
+    label: 'Paris',
+    imageUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&h=450&fit=crop',
+    category: 'culture',
+  },
+  {
+    key: 'santorini',
+    label: 'Santorini',
+    imageUrl: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&h=450&fit=crop',
+    category: 'popular',
+  },
+  {
+    key: 'maldives',
+    label: 'Maldives',
+    imageUrl: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800&h=450&fit=crop',
+    category: 'popular',
+  },
+  // More Outdoor
+  {
+    key: 'aurora',
+    label: 'Northern Lights',
+    imageUrl: 'https://images.unsplash.com/photo-1483347756197-71ef80e95f73?w=800&h=450&fit=crop',
+    category: 'outdoor',
+  },
+  {
+    key: 'canyon',
+    label: 'Canyon',
+    imageUrl: 'https://images.unsplash.com/photo-1474044159687-1ee9f3a51722?w=800&h=450&fit=crop',
+    category: 'outdoor',
+  },
+  {
+    key: 'hotspring',
+    label: 'Hot Springs',
+    imageUrl: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&h=450&fit=crop',
+    category: 'outdoor',
+  },
+  // More Food
+  {
+    key: 'streetfood',
+    label: 'Street Food',
+    imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=450&fit=crop',
+    category: 'food',
+  },
+  {
+    key: 'brewery',
+    label: 'Brewery',
+    imageUrl: 'https://images.unsplash.com/photo-1559526324-593bc073d938?w=800&h=450&fit=crop',
+    category: 'food',
   },
 ];
 
