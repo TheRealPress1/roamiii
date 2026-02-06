@@ -8,9 +8,7 @@ import {
   Users,
   Plus,
   Loader2,
-  Copy,
   Check,
-  PartyPopper,
   Pencil,
   Sparkles,
 } from 'lucide-react';
@@ -39,22 +37,12 @@ const FONT_STYLES: { key: FontStyle; label: string; preview: string }[] = [
   { key: 'modern', label: 'Modern', preview: 'Modern' },
 ];
 
-// ── Types ──
-
-interface CreatedTrip {
-  id: string;
-  name: string;
-  join_code: string;
-}
-
 // ── Component ──
 
 export default function CreateTrip() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [createdTrip, setCreatedTrip] = useState<CreatedTrip | null>(null);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [showCoverPicker, setShowCoverPicker] = useState(false);
   const [coverCategory, setCoverCategory] = useState('popular');
 
@@ -84,22 +72,6 @@ export default function CreateTrip() {
     }
     return COVER_PRESETS.filter((p) => p.category === coverCategory);
   }, [coverCategory]);
-
-  const getInviteLink = () => {
-    if (!createdTrip) return '';
-    return `${window.location.origin}/join/${createdTrip.join_code}`;
-  };
-
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(getInviteLink());
-      setCopiedLink(true);
-      toast.success('Link copied! Share it with your crew');
-      setTimeout(() => setCopiedLink(false), 2000);
-    } catch {
-      toast.error('Failed to copy');
-    }
-  };
 
   const addBooking = () => {
     setBookings((prev) => [...prev, createEmptyBooking()]);
@@ -185,8 +157,8 @@ export default function CreateTrip() {
         body: 'Trip created! Share the link to invite your crew.',
       });
 
-      setCreatedTrip(trip);
       toast.success('Trip created!');
+      navigate(`/app/trip/${trip.id}`);
     } catch (error: any) {
       console.error('Error creating trip:', error);
       toast.error(error.message || 'Failed to create trip');
@@ -233,13 +205,9 @@ export default function CreateTrip() {
         </div>
 
         <div className="px-4 sm:px-6 pb-12 max-w-5xl mx-auto">
-          <AnimatePresence mode="wait">
-            {!createdTrip ? (
               <motion.div
-                key="create"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
                 {/* Main card */}
@@ -556,91 +524,6 @@ export default function CreateTrip() {
                   </Button>
                 </div>
               </motion.div>
-            ) : (
-              /* Success / Invite screen */
-              <motion.div
-                key="success"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, ease: 'easeOut' }}
-                className="max-w-lg mx-auto"
-              >
-                <div className="create-card p-8 text-center space-y-6">
-                  {/* Celebration */}
-                  <div>
-                    <div className="w-20 h-20 rounded-full bg-vote-in/10 mx-auto mb-4 flex items-center justify-center">
-                      <PartyPopper className="h-10 w-10 text-vote-in" />
-                    </div>
-                    <h1 className="text-2xl font-display font-bold text-foreground">
-                      {createdTrip.name}
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                      Your trip is ready. Share the link with your crew!
-                    </p>
-                  </div>
-
-                  {/* Invite link */}
-                  <div className="create-card-inner p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 text-left">
-                        <p className="text-xs text-muted-foreground mb-1">Invite link</p>
-                        <p className="text-sm font-mono text-foreground truncate">
-                          {getInviteLink()}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={handleCopyLink}
-                        className={cn(
-                          'rounded-full shrink-0 transition-all',
-                          copiedLink
-                            ? 'bg-vote-in text-white'
-                            : 'gradient-primary text-white'
-                        )}
-                      >
-                        {copiedLink ? (
-                          <>
-                            <Check className="h-4 w-4 mr-1" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-4 w-4 mr-1" />
-                            Copy Link
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    <div className="pt-2 border-t border-black/[0.06]">
-                      <p className="text-xs text-muted-foreground mb-1">Join code</p>
-                      <p className="text-2xl font-mono font-bold tracking-[0.15em] text-foreground">
-                        {createdTrip.join_code}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      onClick={() => navigate(`/app/trip/${createdTrip.id}`)}
-                      className="gradient-primary text-white rounded-full w-full"
-                      size="lg"
-                    >
-                      Go to Trip
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => navigate('/app')}
-                      className="text-muted-foreground"
-                    >
-                      Back to Dashboard
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </div>
     </div>
