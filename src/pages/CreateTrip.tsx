@@ -27,14 +27,15 @@ import BookingItemCard, {
 
 // ── Font styles (like Partiful's Classic / Eclectic / Fancy / Literary) ──
 
-type FontStyle = 'classic' | 'eclectic' | 'fancy' | 'literary' | 'modern';
+type FontStyle = 'classic' | 'eclectic' | 'fancy' | 'literary' | 'modern' | 'bold';
 
 const FONT_STYLES: { key: FontStyle; label: string; preview: string }[] = [
   { key: 'classic', label: 'Classic', preview: 'Classic' },
-  { key: 'eclectic', label: 'Eclectic', preview: 'Eclectic' },
-  { key: 'fancy', label: 'Fancy', preview: 'Fancy' },
-  { key: 'literary', label: 'Literary', preview: 'Literary' },
-  { key: 'modern', label: 'Modern', preview: 'Modern' },
+  { key: 'eclectic', label: 'Handwritten', preview: 'Handwritten' },
+  { key: 'fancy', label: 'Elegant', preview: 'Elegant' },
+  { key: 'literary', label: 'Serif', preview: 'Serif' },
+  { key: 'modern', label: 'Poster', preview: 'Poster' },
+  { key: 'bold', label: 'Bold', preview: 'Bold' },
 ];
 
 // ── Emoji presets for RSVP buttons ──

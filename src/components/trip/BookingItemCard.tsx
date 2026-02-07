@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Home,
   Plane,
@@ -12,6 +12,7 @@ import {
   DollarSign,
   Users,
   ChevronDown,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -48,6 +49,7 @@ interface BookingItemCardProps {
 
 export default function BookingItemCard({ entry, onChange, onRemove }: BookingItemCardProps) {
   const [typeOpen, setTypeOpen] = useState(false);
+  const [fetchingMeta, setFetchingMeta] = useState(false);
 
   const currentType = BOOKING_TYPES.find((t) => t.value === entry.type) || BOOKING_TYPES[0];
   const TypeIcon = currentType.icon;
@@ -55,6 +57,50 @@ export default function BookingItemCard({ entry, onChange, onRemove }: BookingIt
   const update = (partial: Partial<BookingEntry>) => {
     onChange({ ...entry, ...partial });
   };
+
+  // Extract metadata from pasted URL
+  const fetchUrlMetadata = useCallback(async (url: string) => {
+    if (!url || !url.startsWith('http')) return;
+    setFetchingMeta(true);
+    try {
+      const res = await fetch(`https://jsonlink.io/api/extract?url=${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error('fetch failed');
+      const data = await res.json();
+
+      const updates: Partial<BookingEntry> = {};
+
+      // Auto-fill name from page title if empty
+      if (!entry.name && data.title) {
+        // Clean up common title suffixes
+        let title = data.title
+          .replace(/\s*[-|·–]\s*(Airbnb|Booking\.com|Expedia|VRBO|Hotels\.com|Kayak|Google).*$/i, '')
+          .replace(/\s*[-|·–]\s*\d{4}.*$/, '')
+          .trim();
+        if (title.length > 60) title = title.substring(0, 57) + '...';
+        updates.name = title;
+      }
+
+      // Try to detect type from URL domain
+      const domain = new URL(url).hostname.toLowerCase();
+      if (domain.includes('airbnb') || domain.includes('vrbo') || domain.includes('booking.com') || domain.includes('hotels.com')) {
+        updates.type = 'housing';
+      } else if (domain.includes('airline') || domain.includes('delta') || domain.includes('united') || domain.includes('southwest') || domain.includes('kayak') || domain.includes('google.com/travel/flights')) {
+        updates.type = 'flight';
+      } else if (domain.includes('carnival') || domain.includes('royal') || domain.includes('norwegian') || domain.includes('cruise')) {
+        updates.type = 'cruise';
+      } else if (domain.includes('opentable') || domain.includes('resy') || domain.includes('yelp')) {
+        updates.type = 'restaurant';
+      }
+
+      if (Object.keys(updates).length > 0) {
+        onChange({ ...entry, url, ...updates });
+      }
+    } catch {
+      // Silently fail — metadata is a nice-to-have
+    } finally {
+      setFetchingMeta(false);
+    }
+  }, [entry, onChange]);
 
   return (
     <div className="booking-card p-4 space-y-3 relative group">
@@ -125,11 +171,22 @@ export default function BookingItemCard({ entry, onChange, onRemove }: BookingIt
 
       {/* URL */}
       <div className="flex items-center gap-2 text-sm">
-        <LinkIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        {fetchingMeta ? (
+          <Loader2 className="h-3.5 w-3.5 text-primary shrink-0 animate-spin" />
+        ) : (
+          <LinkIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        )}
         <input
           type="url"
           value={entry.url}
           onChange={(e) => update({ url: e.target.value })}
+          onPaste={(e) => {
+            const pasted = e.clipboardData.getData('text');
+            if (pasted.startsWith('http')) {
+              // Let the onChange fire first, then fetch metadata
+              setTimeout(() => fetchUrlMetadata(pasted), 100);
+            }
+          }}
           placeholder="Paste booking link..."
           className="inline-field py-1 text-sm text-muted-foreground"
         />

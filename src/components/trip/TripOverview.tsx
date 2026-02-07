@@ -52,14 +52,15 @@ function getBookingIcon(type: string) {
   return BOOKING_ICONS[type] || Compass;
 }
 
-type FontStyle = 'classic' | 'eclectic' | 'fancy' | 'literary' | 'modern';
+type FontStyle = 'classic' | 'eclectic' | 'fancy' | 'literary' | 'modern' | 'bold';
 
 const FONT_STYLES: { key: FontStyle; label: string; className: string }[] = [
   { key: 'classic', label: 'Classic', className: 'title-classic' },
-  { key: 'eclectic', label: 'Eclectic', className: 'title-eclectic' },
-  { key: 'fancy', label: 'Fancy', className: 'title-fancy' },
-  { key: 'literary', label: 'Literary', className: 'title-literary' },
-  { key: 'modern', label: 'Modern', className: 'title-modern' },
+  { key: 'eclectic', label: 'Handwritten', className: 'title-eclectic' },
+  { key: 'fancy', label: 'Elegant', className: 'title-fancy' },
+  { key: 'literary', label: 'Serif', className: 'title-literary' },
+  { key: 'modern', label: 'Poster', className: 'title-modern' },
+  { key: 'bold', label: 'Bold', className: 'title-bold' },
 ];
 
 const EMOJI_PRESETS: Record<string, [string, string, string]> = {
