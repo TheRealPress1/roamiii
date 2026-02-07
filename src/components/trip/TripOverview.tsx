@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, eachDayOfInterval, parseISO, isSameDay } from 'date-fns';
 import {
   Calendar,
@@ -20,6 +20,7 @@ import {
   UtensilsCrossed,
   Car,
   Package,
+  Type,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -51,6 +52,25 @@ function getBookingIcon(type: string) {
   return BOOKING_ICONS[type] || Compass;
 }
 
+type FontStyle = 'classic' | 'eclectic' | 'fancy' | 'literary' | 'modern';
+
+const FONT_STYLES: { key: FontStyle; label: string; className: string }[] = [
+  { key: 'classic', label: 'Classic', className: 'title-classic' },
+  { key: 'eclectic', label: 'Eclectic', className: 'title-eclectic' },
+  { key: 'fancy', label: 'Fancy', className: 'title-fancy' },
+  { key: 'literary', label: 'Literary', className: 'title-literary' },
+  { key: 'modern', label: 'Modern', className: 'title-modern' },
+];
+
+const EMOJI_PRESETS: Record<string, [string, string, string]> = {
+  thumbs: ['👍', '🤔', '😢'],
+  faces: ['😎', '🤷', '😬'],
+  hands: ['🙌', '🤞', '🙅'],
+  travel: ['✈️', '🤔', '🏠'],
+  fire: ['🔥', '👀', '💤'],
+  hearts: ['❤️', '💛', '💔'],
+};
+
 export function TripOverview({
   trip,
   proposals,
@@ -62,6 +82,27 @@ export function TripOverview({
   const [copiedLink, setCopiedLink] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState<'in' | 'maybe' | 'out' | null>(null);
   const [costExpanded, setCostExpanded] = useState(false);
+  const [fontStyle, setFontStyle] = useState<FontStyle>('classic');
+  const [showFontPicker, setShowFontPicker] = useState(false);
+  const [rsvpEmojis, setRsvpEmojis] = useState<[string, string, string]>(['👍', '🤔', '😢']);
+
+  // Load font and emoji preferences from localStorage
+  useEffect(() => {
+    const savedFont = localStorage.getItem(`trip-${trip.id}-fontStyle`) as FontStyle | null;
+    if (savedFont && FONT_STYLES.some((f) => f.key === savedFont)) {
+      setFontStyle(savedFont);
+    }
+    const savedEmoji = localStorage.getItem(`trip-${trip.id}-emojiPreset`);
+    if (savedEmoji && EMOJI_PRESETS[savedEmoji]) {
+      setRsvpEmojis(EMOJI_PRESETS[savedEmoji]);
+    }
+  }, [trip.id]);
+
+  const handleFontChange = (fs: FontStyle) => {
+    setFontStyle(fs);
+    localStorage.setItem(`trip-${trip.id}-fontStyle`, fs);
+    setShowFontPicker(false);
+  };
 
   const coverUrl = trip.cover_image_url || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=450&fit=crop';
   const hostMember = members.find((m) => m.role === 'owner');
@@ -220,10 +261,48 @@ export function TripOverview({
             />
           </div>
 
-          {/* Trip name */}
-          <h1 className="title-input title-classic mb-1" style={{ cursor: 'default' }}>
-            {trip.name}
-          </h1>
+          {/* Trip name + font picker */}
+          <div className="relative">
+            <h1
+              className={cn('title-input mb-1', `title-${fontStyle}`)}
+              style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+              onClick={() => isAdmin && setShowFontPicker(!showFontPicker)}
+              title={isAdmin ? 'Click to change font' : undefined}
+            >
+              {trip.name}
+            </h1>
+
+            {/* Font picker — only visible to admin/host */}
+            {isAdmin && showFontPicker && (
+              <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                {FONT_STYLES.map((fs) => (
+                  <button
+                    key={fs.key}
+                    type="button"
+                    onClick={() => handleFontChange(fs.key)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+                      fs.className,
+                      fontStyle === fs.key
+                        ? 'bg-foreground text-background border-foreground shadow-sm'
+                        : 'bg-white/60 text-foreground border-white/40 hover:bg-white/80'
+                    )}
+                  >
+                    {fs.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {isAdmin && !showFontPicker && (
+              <button
+                onClick={() => setShowFontPicker(true)}
+                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors mb-1"
+              >
+                <Type className="h-3 w-3" />
+                Change font
+              </button>
+            )}
+          </div>
 
           {/* Date */}
           {trip.date_start && (
@@ -301,7 +380,7 @@ export function TripOverview({
                   : 'from-white/60 to-white/30 border-white/40 hover:from-vote-in/10 hover:to-vote-in/5'
               )}
             >
-              <span className="text-2xl">&#x1F44D;</span>
+              <span className="text-2xl">{rsvpEmojis[0]}</span>
               <span className={cn(
                 'text-xs font-semibold',
                 rsvpStatus === 'in' ? 'text-vote-in' : 'text-foreground'
@@ -318,7 +397,7 @@ export function TripOverview({
                   : 'from-white/60 to-white/30 border-white/40 hover:from-vote-maybe/10 hover:to-vote-maybe/5'
               )}
             >
-              <span className="text-2xl">&#x1F914;</span>
+              <span className="text-2xl">{rsvpEmojis[1]}</span>
               <span className={cn(
                 'text-xs font-semibold',
                 rsvpStatus === 'maybe' ? 'text-vote-maybe' : 'text-foreground'
@@ -335,7 +414,7 @@ export function TripOverview({
                   : 'from-white/60 to-white/30 border-white/40 hover:from-vote-out/10 hover:to-vote-out/5'
               )}
             >
-              <span className="text-2xl">&#x1F622;</span>
+              <span className="text-2xl">{rsvpEmojis[2]}</span>
               <span className={cn(
                 'text-xs font-semibold',
                 rsvpStatus === 'out' ? 'text-vote-out' : 'text-foreground'
@@ -347,7 +426,7 @@ export function TripOverview({
           <div className="border-t border-black/[0.06] pt-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground">
-                Guest List
+                The Crew
                 <span className="text-muted-foreground font-normal ml-1.5">
                   {members.length}
                 </span>
