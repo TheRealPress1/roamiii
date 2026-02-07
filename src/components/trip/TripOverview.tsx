@@ -196,11 +196,16 @@ export function TripOverview({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto relative">
-      {/* Themed background */}
+    <div className="flex-1 overflow-y-auto relative isolate">
+      {/* Themed background — scoped to this container, not full viewport */}
       <div
-        className="create-bg"
-        style={{ backgroundImage: `url(${coverUrl})` }}
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: `url(${coverUrl})`,
+          filter: 'blur(80px) brightness(0.85) saturate(1.4)',
+          transform: 'scale(1.3)',
+          zIndex: 0,
+        }}
       />
 
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-6">
