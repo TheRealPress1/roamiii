@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ChatFeed, type ChatViewMode } from '@/components/chat/ChatFeed';
 import { ChatComposer } from '@/components/chat/ChatComposer';
 import { TripPanel } from '@/components/trip/TripPanel';
+import { TripChatPanel } from '@/components/trip/TripChatPanel';
 import { CreateProposalModal } from '@/components/proposal/CreateProposalModal';
 import { ProposalDetailModal } from '@/components/proposal/ProposalDetailModal';
 import { InviteModal } from '@/components/invite/InviteModal';
@@ -488,50 +489,12 @@ export default function TripChat() {
           </SheetTrigger>
           <SheetContent className="w-80 p-0">
             {isOverviewMode ? (
-              <div className="flex flex-col h-full">
-                <div className="p-4 border-b border-border">
-                  <h2 className="font-semibold text-foreground">Group Chat</h2>
-                </div>
-                <div className="flex-1 flex flex-col min-h-0">
-                  <ChatFeed
-                    messages={messages}
-                    loading={messagesLoading}
-                    tripId={tripId!}
-                    onViewProposal={handleViewProposal}
-                    compareIds={compareIds}
-                    onToggleCompare={toggleCompare}
-                    onReply={setReplyingTo}
-                    isAdmin={isAdmin}
-                    tripPhase={trip.phase}
-                    onProposalUpdated={refetch}
-                    viewMode="chat"
-                    onViewModeChange={handleViewModeChange}
-                    lockedDestinationId={trip.locked_destination_id}
-                    lastViewedChatAt={lastViewedChatAt}
-                    votingStatus={votingStatus}
-                    includedProposals={includedProposals}
-                    lockedDestination={lockedDestination}
-                    onProposalIncludedChange={handleProposalIncludedChange}
-                    members={members}
-                    currentUserId={user?.id}
-                    onJoinCar={handleJoinCar}
-                    onLeaveCar={handleLeaveCar}
-                    isJoiningCar={!!joiningCarFor}
-                  />
-                  <ChatComposer
-                    onSend={sendMessage}
-                    onPropose={() => setProposalModalOpen(true)}
-                    onCreatePoll={handleCreatePoll}
-                    onGetSuggestions={() => setSuggestionsDrawerOpen(true)}
-                    replyTo={replyingTo}
-                    onCancelReply={() => setReplyingTo(null)}
-                    tripPhase={trip.phase}
-                    members={members}
-                    currentUserId={user?.id}
-                    hasLockedDestination={!!lockedDestination}
-                  />
-                </div>
-              </div>
+              <TripChatPanel
+                messages={messages}
+                loading={messagesLoading}
+                onSend={sendMessage}
+                tripName={trip.name}
+              />
             ) : (
               <TripPanel
                 trip={trip}
@@ -645,51 +608,12 @@ export default function TripChat() {
         {showPanel && (
           <div className="hidden md:flex w-80 flex-shrink-0 overflow-hidden border-l border-border flex-col">
             {isOverviewMode ? (
-              <>
-                <div className="p-4 border-b border-border bg-card flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold text-foreground">Group Chat</h2>
-                </div>
-                <div className="flex-1 flex flex-col min-h-0">
-                  <ChatFeed
-                    messages={messages}
-                    loading={messagesLoading}
-                    tripId={tripId!}
-                    onViewProposal={handleViewProposal}
-                    compareIds={compareIds}
-                    onToggleCompare={toggleCompare}
-                    onReply={setReplyingTo}
-                    isAdmin={isAdmin}
-                    tripPhase={trip.phase}
-                    onProposalUpdated={refetch}
-                    viewMode="chat"
-                    onViewModeChange={handleViewModeChange}
-                    lockedDestinationId={trip.locked_destination_id}
-                    lastViewedChatAt={lastViewedChatAt}
-                    votingStatus={votingStatus}
-                    includedProposals={includedProposals}
-                    lockedDestination={lockedDestination}
-                    onProposalIncludedChange={handleProposalIncludedChange}
-                    members={members}
-                    currentUserId={user?.id}
-                    onJoinCar={handleJoinCar}
-                    onLeaveCar={handleLeaveCar}
-                    isJoiningCar={!!joiningCarFor}
-                  />
-                  <ChatComposer
-                    onSend={sendMessage}
-                    onPropose={() => setProposalModalOpen(true)}
-                    onCreatePoll={handleCreatePoll}
-                    onGetSuggestions={() => setSuggestionsDrawerOpen(true)}
-                    replyTo={replyingTo}
-                    onCancelReply={() => setReplyingTo(null)}
-                    tripPhase={trip.phase}
-                    members={members}
-                    currentUserId={user?.id}
-                    hasLockedDestination={!!lockedDestination}
-                  />
-                </div>
-              </>
+              <TripChatPanel
+                messages={messages}
+                loading={messagesLoading}
+                onSend={sendMessage}
+                tripName={trip.name}
+              />
             ) : (
               <TripPanel
                 trip={trip}
