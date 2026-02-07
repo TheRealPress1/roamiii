@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, PanelRightOpen, PanelRightClose, Loader2, Copy, Check } from 'lucide-react';
+import { ArrowLeft, PanelRightOpen, PanelRightClose, Loader2, Copy, Check, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ChatFeed, type ChatViewMode } from '@/components/chat/ChatFeed';
@@ -112,6 +112,7 @@ export default function TripChat() {
   const currentMember = members.find((m) => m.user_id === user?.id);
   const isAdmin = currentMember?.role === 'owner' || currentMember?.role === 'admin';
   const isOwner = currentMember?.role === 'owner';
+  const isOverviewMode = trip?.planning_mode === 'freeform' && trip?.phase === 'building';
 
   // Voting status hook
   const votingStatus = useVotingStatus(trip, proposals, members);
@@ -424,29 +425,39 @@ export default function TripChat() {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="h-16 border-b border-border bg-card flex items-center px-4 gap-4 flex-shrink-0">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/app')}>
+      <header className={cn(
+        "h-14 flex items-center px-4 gap-3 flex-shrink-0",
+        isOverviewMode
+          ? "bg-transparent absolute top-0 left-0 right-0 z-20"
+          : "border-b border-border bg-card"
+      )}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/app')} className={isOverviewMode ? "bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white/90" : ""}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold text-foreground truncate">{trip.name}</h1>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{members.length} member{members.length !== 1 ? 's' : ''}</span>
-            <span>·</span>
-            <button
-              onClick={handleCopyCode}
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              Code: <span className="font-mono">{trip.join_code}</span>
-              {codeCopied ? (
-                <Check className="h-3.5 w-3.5 text-vote-in" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </button>
+
+        {/* Show trip name only in non-overview mode */}
+        {!isOverviewMode && (
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-semibold text-foreground truncate">{trip.name}</h1>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{members.length} member{members.length !== 1 ? 's' : ''}</span>
+              <span>·</span>
+              <button
+                onClick={handleCopyCode}
+                className="flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                Code: <span className="font-mono">{trip.join_code}</span>
+                {codeCopied ? (
+                  <Check className="h-3.5 w-3.5 text-vote-in" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {isOverviewMode && <div className="flex-1" />}
 
         {/* Notification Bell */}
         <NotificationBell
@@ -454,49 +465,100 @@ export default function TripChat() {
           onClick={() => setNotificationDrawerOpen(true)}
         />
 
-        {/* Desktop panel toggle */}
+        {/* Chat / Panel toggle (desktop) */}
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setShowPanel(!showPanel)}
-          className="hidden md:flex"
+          className={cn("hidden md:flex", isOverviewMode && "bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white/90")}
         >
-          {showPanel ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
+          {isOverviewMode ? (
+            showPanel ? <PanelRightClose className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />
+          ) : (
+            showPanel ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />
+          )}
         </Button>
 
-        {/* Mobile panel trigger */}
+        {/* Mobile panel/chat trigger */}
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <PanelRightOpen className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className={cn("md:hidden", isOverviewMode && "bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white/90")}>
+              {isOverviewMode ? <MessageSquare className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
             </Button>
           </SheetTrigger>
           <SheetContent className="w-80 p-0">
-            <TripPanel
-              trip={trip}
-              members={members}
-              proposals={proposals}
-              onInvite={() => setInviteModalOpen(true)}
-              onViewProposal={handleViewProposal}
-              isOwner={isOwner}
-              isAdmin={isAdmin}
-              onDeleteTrip={() => setDeleteModalOpen(true)}
-              onRemoveMember={(member) => setMemberToRemove(member)}
-              onEditCover={() => setEditCoverModalOpen(true)}
-              onOpenLockDestination={handleOpenLockDestination}
-              onOpenFinalizeView={() => setFinalizeViewOpen(true)}
-              onOpenTransportation={() => setTransportationViewOpen(true)}
-              onPhaseChanged={refetch}
-              lockedDestination={lockedDestination}
-              destinationProposals={destinationProposals}
-              includedProposals={includedProposals}
-              onOpenTemplates={() => setTemplateGalleryOpen(true)}
-              onOpenExpenses={() => setExpenseLedgerOpen(true)}
-              onClaimBooking={claimBooking}
-              settlements={settlements}
-              totalPerPerson={totalPerPerson}
-              onLeaveTrip={() => setLeaveTripOpen(true)}
-            />
+            {isOverviewMode ? (
+              <div className="flex flex-col h-full">
+                <div className="p-4 border-b border-border">
+                  <h2 className="font-semibold text-foreground">Group Chat</h2>
+                </div>
+                <div className="flex-1 flex flex-col min-h-0">
+                  <ChatFeed
+                    messages={messages}
+                    loading={messagesLoading}
+                    tripId={tripId!}
+                    onViewProposal={handleViewProposal}
+                    compareIds={compareIds}
+                    onToggleCompare={toggleCompare}
+                    onReply={setReplyingTo}
+                    isAdmin={isAdmin}
+                    tripPhase={trip.phase}
+                    onProposalUpdated={refetch}
+                    viewMode="chat"
+                    onViewModeChange={handleViewModeChange}
+                    lockedDestinationId={trip.locked_destination_id}
+                    lastViewedChatAt={lastViewedChatAt}
+                    votingStatus={votingStatus}
+                    includedProposals={includedProposals}
+                    lockedDestination={lockedDestination}
+                    onProposalIncludedChange={handleProposalIncludedChange}
+                    members={members}
+                    currentUserId={user?.id}
+                    onJoinCar={handleJoinCar}
+                    onLeaveCar={handleLeaveCar}
+                    isJoiningCar={!!joiningCarFor}
+                  />
+                  <ChatComposer
+                    onSend={sendMessage}
+                    onPropose={() => setProposalModalOpen(true)}
+                    onCreatePoll={handleCreatePoll}
+                    onGetSuggestions={() => setSuggestionsDrawerOpen(true)}
+                    replyTo={replyingTo}
+                    onCancelReply={() => setReplyingTo(null)}
+                    tripPhase={trip.phase}
+                    members={members}
+                    currentUserId={user?.id}
+                    hasLockedDestination={!!lockedDestination}
+                  />
+                </div>
+              </div>
+            ) : (
+              <TripPanel
+                trip={trip}
+                members={members}
+                proposals={proposals}
+                onInvite={() => setInviteModalOpen(true)}
+                onViewProposal={handleViewProposal}
+                isOwner={isOwner}
+                isAdmin={isAdmin}
+                onDeleteTrip={() => setDeleteModalOpen(true)}
+                onRemoveMember={(member) => setMemberToRemove(member)}
+                onEditCover={() => setEditCoverModalOpen(true)}
+                onOpenLockDestination={handleOpenLockDestination}
+                onOpenFinalizeView={() => setFinalizeViewOpen(true)}
+                onOpenTransportation={() => setTransportationViewOpen(true)}
+                onPhaseChanged={refetch}
+                lockedDestination={lockedDestination}
+                destinationProposals={destinationProposals}
+                includedProposals={includedProposals}
+                onOpenTemplates={() => setTemplateGalleryOpen(true)}
+                onOpenExpenses={() => setExpenseLedgerOpen(true)}
+                onClaimBooking={claimBooking}
+                settlements={settlements}
+                totalPerPerson={totalPerPerson}
+                onLeaveTrip={() => setLeaveTripOpen(true)}
+              />
+            )}
           </SheetContent>
         </Sheet>
       </header>
@@ -579,34 +641,82 @@ export default function TripChat() {
           )}
         </div>
 
-        {/* Desktop panel */}
+        {/* Desktop right panel — Chat when in overview mode, TripPanel otherwise */}
         {showPanel && (
-          <div className="hidden md:block w-80 flex-shrink-0 overflow-hidden">
-            <TripPanel
-              trip={trip}
-              members={members}
-              proposals={proposals}
-              onInvite={() => setInviteModalOpen(true)}
-              onViewProposal={handleViewProposal}
-              isOwner={isOwner}
-              isAdmin={isAdmin}
-              onDeleteTrip={() => setDeleteModalOpen(true)}
-              onRemoveMember={(member) => setMemberToRemove(member)}
-              onEditCover={() => setEditCoverModalOpen(true)}
-              onOpenLockDestination={handleOpenLockDestination}
-              onOpenFinalizeView={() => setFinalizeViewOpen(true)}
-              onOpenTransportation={() => setTransportationViewOpen(true)}
-              onPhaseChanged={refetch}
-              lockedDestination={lockedDestination}
-              destinationProposals={destinationProposals}
-              includedProposals={includedProposals}
-              onOpenTemplates={() => setTemplateGalleryOpen(true)}
-              onOpenExpenses={() => setExpenseLedgerOpen(true)}
-              onClaimBooking={claimBooking}
-              settlements={settlements}
-              totalPerPerson={totalPerPerson}
-              onLeaveTrip={() => setLeaveTripOpen(true)}
-            />
+          <div className="hidden md:flex w-80 flex-shrink-0 overflow-hidden border-l border-border flex-col">
+            {isOverviewMode ? (
+              <>
+                <div className="p-4 border-b border-border bg-card flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold text-foreground">Group Chat</h2>
+                </div>
+                <div className="flex-1 flex flex-col min-h-0">
+                  <ChatFeed
+                    messages={messages}
+                    loading={messagesLoading}
+                    tripId={tripId!}
+                    onViewProposal={handleViewProposal}
+                    compareIds={compareIds}
+                    onToggleCompare={toggleCompare}
+                    onReply={setReplyingTo}
+                    isAdmin={isAdmin}
+                    tripPhase={trip.phase}
+                    onProposalUpdated={refetch}
+                    viewMode="chat"
+                    onViewModeChange={handleViewModeChange}
+                    lockedDestinationId={trip.locked_destination_id}
+                    lastViewedChatAt={lastViewedChatAt}
+                    votingStatus={votingStatus}
+                    includedProposals={includedProposals}
+                    lockedDestination={lockedDestination}
+                    onProposalIncludedChange={handleProposalIncludedChange}
+                    members={members}
+                    currentUserId={user?.id}
+                    onJoinCar={handleJoinCar}
+                    onLeaveCar={handleLeaveCar}
+                    isJoiningCar={!!joiningCarFor}
+                  />
+                  <ChatComposer
+                    onSend={sendMessage}
+                    onPropose={() => setProposalModalOpen(true)}
+                    onCreatePoll={handleCreatePoll}
+                    onGetSuggestions={() => setSuggestionsDrawerOpen(true)}
+                    replyTo={replyingTo}
+                    onCancelReply={() => setReplyingTo(null)}
+                    tripPhase={trip.phase}
+                    members={members}
+                    currentUserId={user?.id}
+                    hasLockedDestination={!!lockedDestination}
+                  />
+                </div>
+              </>
+            ) : (
+              <TripPanel
+                trip={trip}
+                members={members}
+                proposals={proposals}
+                onInvite={() => setInviteModalOpen(true)}
+                onViewProposal={handleViewProposal}
+                isOwner={isOwner}
+                isAdmin={isAdmin}
+                onDeleteTrip={() => setDeleteModalOpen(true)}
+                onRemoveMember={(member) => setMemberToRemove(member)}
+                onEditCover={() => setEditCoverModalOpen(true)}
+                onOpenLockDestination={handleOpenLockDestination}
+                onOpenFinalizeView={() => setFinalizeViewOpen(true)}
+                onOpenTransportation={() => setTransportationViewOpen(true)}
+                onPhaseChanged={refetch}
+                lockedDestination={lockedDestination}
+                destinationProposals={destinationProposals}
+                includedProposals={includedProposals}
+                onOpenTemplates={() => setTemplateGalleryOpen(true)}
+                onOpenExpenses={() => setExpenseLedgerOpen(true)}
+                onClaimBooking={claimBooking}
+                settlements={settlements}
+                totalPerPerson={totalPerPerson}
+                onLeaveTrip={() => setLeaveTripOpen(true)}
+              />
+            )}
           </div>
         )}
       </div>
