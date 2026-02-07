@@ -80,6 +80,18 @@ export default function BookingItemCard({ entry, onChange, onRemove }: BookingIt
         updates.name = title;
       }
 
+      // Try to extract price from title/description
+      if (!entry.cost) {
+        const priceText = `${data.title || ''} ${data.description || ''}`;
+        // Match patterns like $1,234, $99.99, $500/night, from $299
+        const priceMatch = priceText.match(/\$\s?([\d,]+(?:\.\d{1,2})?)/);
+        if (priceMatch) {
+          const price = priceMatch[1].replace(/,/g, '');
+          updates.cost = price;
+          updates.costType = 'total';
+        }
+      }
+
       // Try to detect type from URL domain
       const domain = new URL(url).hostname.toLowerCase();
       if (domain.includes('airbnb') || domain.includes('vrbo') || domain.includes('booking.com') || domain.includes('hotels.com')) {
