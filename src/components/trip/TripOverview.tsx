@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { format, eachDayOfInterval, parseISO, isSameDay } from 'date-fns';
 import {
   Calendar,
@@ -23,6 +23,8 @@ import {
   Type,
   Loader2,
   X,
+  Send,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,7 +34,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import BookingItemCard, { createEmptyBooking, type BookingEntry } from '@/components/trip/BookingItemCard';
 import { supabase } from '@/integrations/supabase/client';
-import type { Trip, TripProposal, TripMember } from '@/lib/tripchat-types';
+import type { Trip, TripProposal, TripMember, Message } from '@/lib/tripchat-types';
 
 interface TripOverviewProps {
   trip: Trip;
@@ -40,6 +42,9 @@ interface TripOverviewProps {
   members: TripMember[];
   isAdmin: boolean;
   onUpdated: () => void;
+  messages: Message[];
+  messagesLoading: boolean;
+  onSendMessage: (message: string) => Promise<{ error: Error | null }>;
 }
 
 const BOOKING_ICONS: Record<string, typeof Home> = {
@@ -82,6 +87,9 @@ export function TripOverview({
   members,
   isAdmin,
   onUpdated,
+  messages,
+  messagesLoading,
+  onSendMessage,
 }: TripOverviewProps) {
   const { user } = useAuth();
   const [copiedLink, setCopiedLink] = useState(false);
@@ -93,8 +101,13 @@ export function TripOverview({
   const [newBookings, setNewBookings] = useState<BookingEntry[]>([]);
   const [savingBookings, setSavingBookings] = useState(false);
   const [assigningDay, setAssigningDay] = useState<string | null>(null);
+  const [chatExpanded, setChatExpanded] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load font and emoji preferences from localStorage
+  // Load font, emoji, and RSVP preferences from localStorage
   useEffect(() => {
     const savedFont = localStorage.getItem(`trip-${trip.id}-fontStyle`) as FontStyle | null;
     if (savedFont && FONT_STYLES.some((f) => f.key === savedFont)) {
@@ -104,6 +117,8 @@ export function TripOverview({
     if (savedEmoji && EMOJI_PRESETS[savedEmoji]) {
       setRsvpEmojis(EMOJI_PRESETS[savedEmoji]);
     }
+    const savedRsvp = localStorage.getItem(`trip-${trip.id}-rsvp`) as 'in' | 'maybe' | 'out' | null;
+    if (savedRsvp) setRsvpStatus(savedRsvp);
   }, [trip.id]);
 
   const handleFontChange = (fs: FontStyle) => {
@@ -274,6 +289,42 @@ export function TripOverview({
       onUpdated();
     } catch {
       toast.error('Failed to unschedule item');
+    }
+  };
+
+  // ── RSVP handler with localStorage persistence ──
+  const handleRsvp = (status: 'in' | 'maybe' | 'out') => {
+    const newStatus = rsvpStatus === status ? null : status;
+    setRsvpStatus(newStatus);
+    if (newStatus) {
+      localStorage.setItem(`trip-${trip.id}-rsvp`, newStatus);
+    } else {
+      localStorage.removeItem(`trip-${trip.id}-rsvp`);
+    }
+  };
+
+  // ── Chat (embedded, collapsible) ──
+  const chatMessages = useMemo(
+    () => messages.filter((m) => m.type === 'text' || m.type === 'system'),
+    [messages]
+  );
+
+  useEffect(() => {
+    if (chatExpanded) {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages.length, chatExpanded]);
+
+  const handleSendChat = async () => {
+    const text = chatInput.trim();
+    if (!text || chatSending) return;
+    setChatSending(true);
+    setChatInput('');
+    try {
+      await onSendMessage(text);
+    } finally {
+      setChatSending(false);
+      chatTextareaRef.current?.focus();
     }
   };
 
@@ -489,7 +540,7 @@ export function TripOverview({
           <div className="grid grid-cols-3 gap-3 mb-6">
             <button
               type="button"
-              onClick={() => setRsvpStatus(rsvpStatus === 'in' ? null : 'in')}
+              onClick={() => handleRsvp('in')}
               className={cn(
                 'flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl transition-all',
                 'bg-gradient-to-br border',
@@ -506,7 +557,7 @@ export function TripOverview({
             </button>
             <button
               type="button"
-              onClick={() => setRsvpStatus(rsvpStatus === 'maybe' ? null : 'maybe')}
+              onClick={() => handleRsvp('maybe')}
               className={cn(
                 'flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl transition-all',
                 'bg-gradient-to-br border',
@@ -523,7 +574,7 @@ export function TripOverview({
             </button>
             <button
               type="button"
-              onClick={() => setRsvpStatus(rsvpStatus === 'out' ? null : 'out')}
+              onClick={() => handleRsvp('out')}
               className={cn(
                 'flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl transition-all',
                 'bg-gradient-to-br border',
@@ -540,11 +591,11 @@ export function TripOverview({
             </button>
           </div>
 
-          {/* Guest List */}
+          {/* Who's Going */}
           <div className="border-t border-black/[0.06] pt-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground">
-                The Crew
+                Who's Going
                 <span className="text-muted-foreground font-normal ml-1.5">
                   {members.length}
                 </span>
@@ -820,6 +871,137 @@ export function TripOverview({
             </AnimatePresence>
           </div>
         )}
+
+        {/* Collapsible Group Chat */}
+        <div className="create-card mb-6 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setChatExpanded(!chatExpanded)}
+            className="w-full p-5 flex items-center justify-between hover:bg-black/[0.01] transition-colors"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <MessageSquare className="h-4 w-4 text-primary" />
+              </div>
+              <div className="text-left">
+                <h2 className="text-sm font-semibold text-foreground">Group Chat</h2>
+                <p className="text-[11px] text-muted-foreground">
+                  {chatMessages.length} message{chatMessages.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+            <motion.div
+              animate={{ rotate: chatExpanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+            </motion.div>
+          </button>
+
+          <AnimatePresence>
+            {chatExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="border-t border-black/[0.06]">
+                  {/* Messages */}
+                  <div className="max-h-[320px] overflow-y-auto px-5 py-3 space-y-3">
+                    {messagesLoading ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : chatMessages.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        Start the conversation about this trip
+                      </p>
+                    ) : (
+                      chatMessages.map((msg) => {
+                        if (msg.type === 'system') {
+                          return (
+                            <div key={msg.id} className="flex justify-center">
+                              <span className="text-[10px] text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full">
+                                {msg.body}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div key={msg.id} className="flex items-start gap-2.5">
+                            <Avatar className="h-7 w-7 shrink-0 mt-0.5">
+                              <AvatarImage src={msg.author?.avatar_url || ''} />
+                              <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-medium">
+                                {msg.author?.name?.charAt(0)?.toUpperCase() || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-xs font-semibold text-foreground">
+                                  {msg.author?.name?.split(' ')[0] || 'Guest'}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {format(new Date(msg.created_at), 'h:mm a')}
+                                </span>
+                              </div>
+                              <p className="text-sm text-foreground/90 mt-0.5 whitespace-pre-wrap break-words">
+                                {msg.body}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                    <div ref={chatBottomRef} />
+                  </div>
+
+                  {/* Composer */}
+                  <div className="p-3 border-t border-black/[0.06]">
+                    <div className="flex items-end gap-2">
+                      <textarea
+                        ref={chatTextareaRef}
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendChat();
+                          }
+                        }}
+                        placeholder="Type a message..."
+                        rows={1}
+                        className="flex-1 resize-none rounded-xl border border-black/10 bg-white/60 px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 max-h-24 min-h-[40px]"
+                        onInput={(e) => {
+                          const target = e.target as HTMLTextAreaElement;
+                          target.style.height = 'auto';
+                          target.style.height = Math.min(target.scrollHeight, 96) + 'px';
+                        }}
+                      />
+                      <button
+                        onClick={handleSendChat}
+                        disabled={!chatInput.trim() || chatSending}
+                        className={cn(
+                          'shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all',
+                          chatInput.trim()
+                            ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
+                            : 'bg-muted text-muted-foreground'
+                        )}
+                      >
+                        {chatSending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

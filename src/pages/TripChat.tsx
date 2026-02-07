@@ -466,36 +466,27 @@ export default function TripChat() {
           onClick={() => setNotificationDrawerOpen(true)}
         />
 
-        {/* Chat / Panel toggle (desktop) */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setShowPanel(!showPanel)}
-          className={cn("hidden md:flex", isOverviewMode && "bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white/90")}
-        >
-          {isOverviewMode ? (
-            showPanel ? <PanelRightClose className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />
-          ) : (
-            showPanel ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />
-          )}
-        </Button>
+        {/* Panel toggle (desktop) — hidden in overview mode (chat is embedded) */}
+        {!isOverviewMode && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowPanel(!showPanel)}
+            className="hidden md:flex"
+          >
+            {showPanel ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
+          </Button>
+        )}
 
-        {/* Mobile panel/chat trigger */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className={cn("md:hidden", isOverviewMode && "bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white/90")}>
-              {isOverviewMode ? <MessageSquare className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="w-80 p-0">
-            {isOverviewMode ? (
-              <TripChatPanel
-                messages={messages}
-                loading={messagesLoading}
-                onSend={sendMessage}
-                tripName={trip.name}
-              />
-            ) : (
+        {/* Mobile panel trigger — hidden in overview mode */}
+        {!isOverviewMode && (
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <PanelRightOpen className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-80 p-0">
               <TripPanel
                 trip={trip}
                 members={members}
@@ -521,9 +512,9 @@ export default function TripChat() {
                 totalPerPerson={totalPerPerson}
                 onLeaveTrip={() => setLeaveTripOpen(true)}
               />
-            )}
-          </SheetContent>
-        </Sheet>
+            </SheetContent>
+          </Sheet>
+        )}
       </header>
 
       {/* Phase Progress - show below header (hide for freeform building phase) */}
@@ -547,6 +538,9 @@ export default function TripChat() {
               members={members}
               isAdmin={isAdmin}
               onUpdated={refetch}
+              messages={messages}
+              messagesLoading={messagesLoading}
+              onSendMessage={sendMessage}
             />
           ) : trip.phase === 'ready' ? (
             <TripReadyView
@@ -604,18 +598,10 @@ export default function TripChat() {
           )}
         </div>
 
-        {/* Desktop right panel — Chat when in overview mode, TripPanel otherwise */}
-        {showPanel && (
+        {/* Desktop right panel — only in non-overview mode */}
+        {showPanel && !isOverviewMode && (
           <div className="hidden md:flex w-80 flex-shrink-0 overflow-hidden border-l border-border flex-col bg-card relative z-20">
-            {isOverviewMode ? (
-              <TripChatPanel
-                messages={messages}
-                loading={messagesLoading}
-                onSend={sendMessage}
-                tripName={trip.name}
-              />
-            ) : (
-              <TripPanel
+            <TripPanel
                 trip={trip}
                 members={members}
                 proposals={proposals}
@@ -640,7 +626,6 @@ export default function TripChat() {
                 totalPerPerson={totalPerPerson}
                 onLeaveTrip={() => setLeaveTripOpen(true)}
               />
-            )}
           </div>
         )}
       </div>
