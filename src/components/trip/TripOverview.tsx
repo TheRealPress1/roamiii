@@ -21,6 +21,8 @@ import {
   Car,
   Package,
   Type,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,6 +30,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import BookingItemCard, { createEmptyBooking, type BookingEntry } from '@/components/trip/BookingItemCard';
+import { supabase } from '@/integrations/supabase/client';
 import type { Trip, TripProposal, TripMember } from '@/lib/tripchat-types';
 
 interface TripOverviewProps {
@@ -86,6 +90,9 @@ export function TripOverview({
   const [fontStyle, setFontStyle] = useState<FontStyle>('classic');
   const [showFontPicker, setShowFontPicker] = useState(false);
   const [rsvpEmojis, setRsvpEmojis] = useState<[string, string, string]>(['👍', '🤔', '😢']);
+  const [newBookings, setNewBookings] = useState<BookingEntry[]>([]);
+  const [savingBookings, setSavingBookings] = useState(false);
+  const [assigningDay, setAssigningDay] = useState<string | null>(null);
 
   // Load font and emoji preferences from localStorage
   useEffect(() => {
@@ -186,6 +193,90 @@ export function TripOverview({
     }
   };
 
+  // ── Booking management (admin) ──
+  const addNewBooking = () => {
+    setNewBookings((prev) => [...prev, createEmptyBooking()]);
+  };
+
+  const updateNewBooking = (id: string, updated: BookingEntry) => {
+    setNewBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
+  };
+
+  const removeNewBooking = (id: string) => {
+    setNewBookings((prev) => prev.filter((b) => b.id !== id));
+  };
+
+  const handleSaveBookings = async () => {
+    const valid = newBookings.filter((b) => b.name.trim());
+    if (valid.length === 0) return;
+    setSavingBookings(true);
+    try {
+      const inserts = valid.map((b) => {
+        const costPerPerson =
+          b.costType === 'per_person'
+            ? Number(b.cost) || 0
+            : b.spots
+              ? Math.round((Number(b.cost) || 0) / Number(b.spots))
+              : Number(b.cost) || 0;
+        return {
+          trip_id: trip.id,
+          created_by: user?.id,
+          type: b.type === 'housing' || b.type === 'cruise' ? ('housing' as const) : ('activity' as const),
+          destination: trip.home_city || trip.name,
+          name: b.name.trim(),
+          url: b.url.trim() || null,
+          cover_image_url: trip.cover_image_url,
+          estimated_cost_per_person: costPerPerson,
+          attendee_count: Number(b.spots) || null,
+          is_destination: false,
+          included: true,
+          booked_by: b.bookingMode === 'host_books' ? user?.id : null,
+          description: b.bookingMode === 'everyone_books' ? 'Everyone books their own' : null,
+        };
+      });
+      const { error } = await supabase.from('trip_proposals').insert(inserts);
+      if (error) throw error;
+      toast.success(`${valid.length} booking${valid.length > 1 ? 's' : ''} added!`);
+      setNewBookings([]);
+      onUpdated();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save bookings');
+    } finally {
+      setSavingBookings(false);
+    }
+  };
+
+  // ── Itinerary day assignment (admin) ──
+  const handleAssignToDay = async (proposalId: string, dayDate: Date) => {
+    setAssigningDay(proposalId);
+    try {
+      const dateStr = format(dayDate, 'yyyy-MM-dd');
+      const { error } = await supabase
+        .from('trip_proposals')
+        .update({ date_start: dateStr })
+        .eq('id', proposalId);
+      if (error) throw error;
+      onUpdated();
+    } catch {
+      toast.error('Failed to assign item');
+    } finally {
+      setAssigningDay(null);
+    }
+  };
+
+  const handleUnschedule = async (proposalId: string) => {
+    try {
+      const { error } = await supabase
+        .from('trip_proposals')
+        .update({ date_start: null })
+        .eq('id', proposalId);
+      if (error) throw error;
+      onUpdated();
+    } catch {
+      toast.error('Failed to unschedule item');
+    }
+  };
+
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return null;
     return format(new Date(dateStr + 'T00:00:00'), 'EEEE, MMM d');
@@ -195,43 +286,70 @@ export function TripOverview({
     return `Day ${index + 1} — ${format(date, 'EEE, MMM d')}`;
   };
 
-  // Render a single plan item (no price)
-  const renderPlanItem = (proposal: TripProposal) => {
+  // Render a single plan item (no price) with optional admin controls
+  const renderPlanItem = (proposal: TripProposal, options?: { showDayAssign?: boolean; showUnschedule?: boolean }) => {
     const Icon = getBookingIcon(proposal.type);
     return (
-      <div
-        key={proposal.id}
-        className="booking-card p-4 flex items-center gap-4"
-      >
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-          <Icon className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">
-            {proposal.name || proposal.destination}
-          </p>
-          {proposal.description && (
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-              {proposal.description}
+      <div key={proposal.id} className="space-y-1.5">
+        <div className="booking-card p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Icon className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">
+              {proposal.name || proposal.destination}
             </p>
+            {proposal.description && (
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                {proposal.description}
+              </p>
+            )}
+          </div>
+
+          {proposal.booked_by && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-vote-in/10 text-vote-in font-medium shrink-0">
+              Booked
+            </span>
+          )}
+
+          {proposal.url && (
+            <a
+              href={proposal.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-full hover:bg-black/[0.04] transition-colors shrink-0"
+            >
+              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            </a>
+          )}
+
+          {/* Admin: unschedule from day */}
+          {isAdmin && options?.showUnschedule && (
+            <button
+              onClick={() => handleUnschedule(proposal.id)}
+              className="p-1.5 rounded-full hover:bg-black/[0.06] transition-colors shrink-0"
+              title="Remove from this day"
+            >
+              <X className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
           )}
         </div>
 
-        {proposal.booked_by && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-vote-in/10 text-vote-in font-medium shrink-0">
-            Booked
-          </span>
-        )}
-
-        {proposal.url && (
-          <a
-            href={proposal.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-2 rounded-full hover:bg-black/[0.04] transition-colors shrink-0"
-          >
-            <ExternalLink className="h-4 w-4 text-muted-foreground" />
-          </a>
+        {/* Admin: day assignment selector for unscheduled items */}
+        {isAdmin && options?.showDayAssign && tripDays.length > 0 && (
+          <div className="flex items-center gap-1.5 pl-14 flex-wrap">
+            <span className="text-[10px] text-muted-foreground mr-0.5">Move to:</span>
+            {tripDays.map((day, idx) => (
+              <button
+                key={day.toISOString()}
+                onClick={() => handleAssignToDay(proposal.id, day)}
+                disabled={assigningDay === proposal.id}
+                className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+              >
+                Day {idx + 1}
+              </button>
+            ))}
+          </div>
         )}
       </div>
     );
@@ -314,7 +432,6 @@ export function TripOverview({
                 {trip.date_end && trip.date_end !== trip.date_start && (
                   <> — {formatDate(trip.date_end)}</>
                 )}
-                {trip.flexible_dates && ' (flexible)'}
               </p>
             </div>
           )}
@@ -504,20 +621,89 @@ export function TripOverview({
           </div>
         )}
 
+        {/* Admin: Things to Book */}
+        {isAdmin && (
+          <div className="create-card p-6 sm:p-8 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-display font-semibold text-foreground">
+                  Things to Book
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Add lodging, flights, activities — anything the group needs
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addNewBooking}
+                className="rounded-full border-dashed"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+            </div>
+
+            {newBookings.length === 0 ? (
+              <button
+                type="button"
+                onClick={addNewBooking}
+                className="w-full py-6 border-2 border-dashed border-black/[0.08] rounded-xl hover:border-primary/30 hover:bg-primary/[0.02] transition-all flex flex-col items-center gap-2 text-muted-foreground"
+              >
+                <Plus className="h-5 w-5" />
+                <span className="text-sm font-medium">Add a booking</span>
+                <span className="text-xs">Airbnb, flights, cruises, activities...</span>
+              </button>
+            ) : (
+              <div className="space-y-3">
+                {newBookings.map((booking) => (
+                  <BookingItemCard
+                    key={booking.id}
+                    entry={booking}
+                    onChange={(updated) => updateNewBooking(booking.id, updated)}
+                    onRemove={() => removeNewBooking(booking.id)}
+                  />
+                ))}
+                <Button
+                  onClick={handleSaveBookings}
+                  disabled={savingBookings || newBookings.every((b) => !b.name.trim())}
+                  className="w-full gradient-primary text-white rounded-full"
+                >
+                  {savingBookings ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Save Bookings
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Day-by-Day Itinerary */}
-        {proposals.length > 0 && (
+        {(proposals.length > 0 || isAdmin) && (
           <div className="create-card p-6 sm:p-8 mb-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-display font-semibold text-foreground">
-                The Plan
+                Itinerary
               </h2>
               <span className="text-sm text-muted-foreground">
                 {proposals.length} item{proposals.length !== 1 ? 's' : ''}
               </span>
             </div>
 
-            {/* If we have trip dates, show day-by-day */}
-            {tripDays.length > 0 ? (
+            {proposals.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Add bookings above, then structure your day-by-day plan here
+              </p>
+            ) : tripDays.length > 0 ? (
               <div className="space-y-5">
                 {tripDays.map((day, idx) => {
                   const dayKey = day.toISOString();
@@ -534,7 +720,7 @@ export function TripOverview({
                       </div>
                       {dayProposals.length > 0 ? (
                         <div className="space-y-2 ml-8">
-                          {dayProposals.map(renderPlanItem)}
+                          {dayProposals.map((p) => renderPlanItem(p, { showUnschedule: true }))}
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground ml-8 py-2 italic">
@@ -545,7 +731,7 @@ export function TripOverview({
                   );
                 })}
 
-                {/* Unscheduled items */}
+                {/* Unscheduled items — admin can assign to days */}
                 {proposalsByDay.unscheduled.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
@@ -553,11 +739,11 @@ export function TripOverview({
                         <Calendar className="h-3 w-3 text-muted-foreground" />
                       </div>
                       <h3 className="text-sm font-semibold text-muted-foreground">
-                        General
+                        Not yet scheduled
                       </h3>
                     </div>
                     <div className="space-y-2 ml-8">
-                      {proposalsByDay.unscheduled.map(renderPlanItem)}
+                      {proposalsByDay.unscheduled.map((p) => renderPlanItem(p, { showDayAssign: true }))}
                     </div>
                   </div>
                 )}
@@ -565,7 +751,7 @@ export function TripOverview({
             ) : (
               /* No dates set — flat list */
               <div className="space-y-2">
-                {proposals.map(renderPlanItem)}
+                {proposals.map((p) => renderPlanItem(p))}
               </div>
             )}
           </div>

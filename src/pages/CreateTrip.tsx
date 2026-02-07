@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,9 +11,9 @@ import {
   Check,
   Pencil,
   Sparkles,
+  ImagePlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -67,16 +67,45 @@ export default function CreateTrip() {
   const [description, setDescription] = useState('');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
-  const [flexibleDates, setFlexibleDates] = useState(false);
   const [location, setLocation] = useState('');
   const [spots, setSpots] = useState('');
   const [coverImageKey, setCoverImageKey] = useState('beach');
+  const [customCoverUrl, setCustomCoverUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [bookings, setBookings] = useState<BookingEntry[]>([]);
 
   const coverPreset = useMemo(
     () => COVER_PRESETS.find((p) => p.key === coverImageKey) || COVER_PRESETS[0],
     [coverImageKey]
   );
+
+  const effectiveCoverUrl = customCoverUrl || coverPreset.imageUrl;
+
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = 800;
+        const scale = Math.min(1, maxW / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setCustomCoverUrl(canvas.toDataURL('image/jpeg', 0.8));
+        setShowCoverPicker(false);
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Filter cover presets by active category
   const filteredPresets = useMemo(() => {
@@ -113,8 +142,8 @@ export default function CreateTrip() {
           created_by: user.id,
           date_start: dateStart || null,
           date_end: dateEnd || null,
-          flexible_dates: flexibleDates,
-          cover_image_url: coverPreset.imageUrl,
+          flexible_dates: false,
+          cover_image_url: effectiveCoverUrl,
           home_city: location.trim() || null,
           planning_mode: 'freeform',
           phase: 'building',
@@ -142,7 +171,7 @@ export default function CreateTrip() {
             destination: location.trim() || name.trim(),
             name: b.name.trim(),
             url: b.url.trim() || null,
-            cover_image_url: coverPreset.imageUrl,
+            cover_image_url: effectiveCoverUrl,
             estimated_cost_per_person: costPerPerson,
             attendee_count: Number(b.spots) || null,
             is_destination: false,
@@ -196,7 +225,6 @@ export default function CreateTrip() {
       const end = new Date(dateEnd + 'T00:00:00');
       text += ` \u2013 ${end.toLocaleDateString('en-US', opts)}`;
     }
-    if (flexibleDates) text += ' (flexible)';
     return text;
   };
 
@@ -205,7 +233,7 @@ export default function CreateTrip() {
       {/* Themed blurred background */}
       <div
         className="create-bg"
-        style={{ backgroundImage: `url(${coverPreset.imageUrl})` }}
+        style={{ backgroundImage: `url(${effectiveCoverUrl})` }}
       />
 
       {/* Content */}
@@ -284,20 +312,6 @@ export default function CreateTrip() {
                             className="inline-field border-b-0 py-0 text-sm"
                           />
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <Switch
-                            id="flex"
-                            checked={flexibleDates}
-                            onCheckedChange={setFlexibleDates}
-                            className="scale-75"
-                          />
-                          <label
-                            htmlFor="flex"
-                            className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap"
-                          >
-                            Flexible
-                          </label>
-                        </div>
                       </div>
 
                       {/* Location — Mapbox Autocomplete */}
@@ -338,8 +352,8 @@ export default function CreateTrip() {
                       {/* Main cover preview */}
                       <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-muted group">
                         <img
-                          src={coverPreset.imageUrl}
-                          alt={coverPreset.label}
+                          src={effectiveCoverUrl}
+                          alt="Trip cover"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
@@ -363,6 +377,23 @@ export default function CreateTrip() {
                             className="overflow-hidden"
                           >
                             <div className="create-card-inner p-3 space-y-3">
+                              {/* Upload your own */}
+                              <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 border-dashed border-black/[0.08] hover:border-primary/30 hover:bg-primary/[0.02] transition-all text-sm font-medium text-muted-foreground"
+                              >
+                                <ImagePlus className="h-4 w-4" />
+                                Upload your own image
+                              </button>
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleCoverUpload}
+                              />
+
                               {/* Category tabs */}
                               <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
                                 {PRESET_CATEGORIES.map((cat) => (
