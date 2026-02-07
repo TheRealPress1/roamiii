@@ -606,7 +606,7 @@ export default function TripChat() {
 
         {/* Desktop right panel — Chat when in overview mode, TripPanel otherwise */}
         {showPanel && (
-          <div className="hidden md:flex w-80 flex-shrink-0 overflow-hidden border-l border-border flex-col">
+          <div className="hidden md:flex w-80 flex-shrink-0 overflow-hidden border-l border-border flex-col bg-card relative z-20">
             {isOverviewMode ? (
               <TripChatPanel
                 messages={messages}

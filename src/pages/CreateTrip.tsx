@@ -37,6 +37,19 @@ const FONT_STYLES: { key: FontStyle; label: string; preview: string }[] = [
   { key: 'modern', label: 'Modern', preview: 'Modern' },
 ];
 
+// ── Emoji presets for RSVP buttons ──
+
+type EmojiPreset = 'thumbs' | 'faces' | 'hands' | 'travel' | 'fire' | 'hearts';
+
+const EMOJI_PRESETS: { key: EmojiPreset; label: string; emojis: [string, string, string] }[] = [
+  { key: 'thumbs', label: '👍 Thumbs', emojis: ['👍', '🤔', '😢'] },
+  { key: 'faces', label: '😎 Faces', emojis: ['😎', '🤷', '😬'] },
+  { key: 'hands', label: '🙌 Hands', emojis: ['🙌', '🤞', '🙅'] },
+  { key: 'travel', label: '✈️ Travel', emojis: ['✈️', '🤔', '🏠'] },
+  { key: 'fire', label: '🔥 Fire', emojis: ['🔥', '👀', '💤'] },
+  { key: 'hearts', label: '❤️ Hearts', emojis: ['❤️', '💛', '💔'] },
+];
+
 // ── Component ──
 
 export default function CreateTrip() {
@@ -49,6 +62,7 @@ export default function CreateTrip() {
   // Form state
   const [name, setName] = useState('');
   const [fontStyle, setFontStyle] = useState<FontStyle>('classic');
+  const [emojiPreset, setEmojiPreset] = useState<EmojiPreset>('thumbs');
   const [description, setDescription] = useState('');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -149,7 +163,11 @@ export default function CreateTrip() {
         }
       }
 
-      // 3. Post welcome message
+      // 3. Save font + emoji preferences to localStorage
+      localStorage.setItem(`trip-${trip.id}-fontStyle`, fontStyle);
+      localStorage.setItem(`trip-${trip.id}-emojiPreset`, emojiPreset);
+
+      // 4. Post welcome message
       await supabase.from('messages').insert({
         trip_id: trip.id,
         user_id: user.id,
@@ -403,25 +421,41 @@ export default function CreateTrip() {
                         )}
                       </AnimatePresence>
 
-                      {/* RSVP Options */}
+                      {/* RSVP Options with emoji picker */}
                       <div className="create-card-inner p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-semibold text-foreground">RSVP Options</h3>
+                          <select
+                            value={emojiPreset}
+                            onChange={(e) => setEmojiPreset(e.target.value as EmojiPreset)}
+                            className="text-xs font-medium bg-white/60 border border-white/40 rounded-full px-3 py-1 text-foreground cursor-pointer hover:bg-white/80 transition-colors"
+                          >
+                            {EMOJI_PRESETS.map((ep) => (
+                              <option key={ep.key} value={ep.key}>
+                                {ep.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-vote-in/5 border border-vote-in/10">
-                            <span className="text-2xl">&#x1F44D;</span>
-                            <span className="text-xs font-medium text-vote-in">I'm In</span>
-                          </div>
-                          <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-vote-maybe/5 border border-vote-maybe/10">
-                            <span className="text-2xl">&#x1F914;</span>
-                            <span className="text-xs font-medium text-vote-maybe">Maybe</span>
-                          </div>
-                          <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-vote-out/5 border border-vote-out/10">
-                            <span className="text-2xl">&#x1F622;</span>
-                            <span className="text-xs font-medium text-vote-out">Can't Go</span>
-                          </div>
-                        </div>
+                        {(() => {
+                          const currentEmojis = EMOJI_PRESETS.find((ep) => ep.key === emojiPreset)?.emojis || EMOJI_PRESETS[0].emojis;
+                          return (
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-vote-in/5 border border-vote-in/10">
+                                <span className="text-2xl">{currentEmojis[0]}</span>
+                                <span className="text-xs font-medium text-vote-in">I'm In</span>
+                              </div>
+                              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-vote-maybe/5 border border-vote-maybe/10">
+                                <span className="text-2xl">{currentEmojis[1]}</span>
+                                <span className="text-xs font-medium text-vote-maybe">Maybe</span>
+                              </div>
+                              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-vote-out/5 border border-vote-out/10">
+                                <span className="text-2xl">{currentEmojis[2]}</span>
+                                <span className="text-xs font-medium text-vote-out">Can't Go</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                         <p className="text-[11px] text-muted-foreground text-center">
                           Your crew will see these options when they open the invite
                         </p>
