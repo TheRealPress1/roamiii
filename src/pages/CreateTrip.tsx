@@ -18,6 +18,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { COVER_PRESETS, PRESET_CATEGORIES } from '@/lib/cover-presets';
+import {
+  POSTER_THEMES,
+  POSTER_CATEGORIES,
+  getPosterTheme,
+  getPosterBackground,
+  type PosterCategory,
+} from '@/lib/poster-themes';
 import { cn } from '@/lib/utils';
 import { DestinationAutocomplete } from '@/components/ui/DestinationAutocomplete';
 import BookingItemCard, {
@@ -71,6 +78,9 @@ export default function CreateTrip() {
   const [spots, setSpots] = useState('');
   const [coverImageKey, setCoverImageKey] = useState('beach');
   const [customCoverUrl, setCustomCoverUrl] = useState<string | null>(null);
+  const [coverMode, setCoverMode] = useState<'photos' | 'posters'>('posters');
+  const [posterKey, setPosterKey] = useState('sunset-glow');
+  const [posterCategory, setPosterCategory] = useState<PosterCategory>('warm');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [bookings, setBookings] = useState<BookingEntry[]>([]);
 
@@ -79,7 +89,9 @@ export default function CreateTrip() {
     [coverImageKey]
   );
 
-  const effectiveCoverUrl = customCoverUrl || coverPreset.imageUrl;
+  const currentPoster = getPosterTheme(posterKey);
+  const isUsingPoster = coverMode === 'posters' && !customCoverUrl;
+  const effectiveCoverUrl = customCoverUrl || (isUsingPoster ? `poster:${posterKey}` : coverPreset.imageUrl);
 
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -143,7 +155,7 @@ export default function CreateTrip() {
           date_start: dateStart || null,
           date_end: dateEnd || null,
           flexible_dates: false,
-          cover_image_url: effectiveCoverUrl,
+          cover_image_url: isUsingPoster ? `poster:${posterKey}` : (customCoverUrl || coverPreset.imageUrl),
           home_city: location.trim() || null,
           planning_mode: 'freeform',
           phase: 'building',
@@ -171,7 +183,7 @@ export default function CreateTrip() {
             destination: location.trim() || name.trim(),
             name: b.name.trim(),
             url: b.url.trim() || null,
-            cover_image_url: effectiveCoverUrl,
+            cover_image_url: isUsingPoster ? coverPreset.imageUrl : (customCoverUrl || coverPreset.imageUrl),
             estimated_cost_per_person: costPerPerson,
             attendee_count: Number(b.spots) || null,
             is_destination: false,
@@ -231,10 +243,20 @@ export default function CreateTrip() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Themed blurred background */}
-      <div
-        className="create-bg"
-        style={{ backgroundImage: `url(${effectiveCoverUrl})` }}
-      />
+      {isUsingPoster && currentPoster ? (
+        <div
+          className="fixed inset-0"
+          style={{
+            ...getPosterBackground(currentPoster),
+            zIndex: 0,
+          }}
+        />
+      ) : (
+        <div
+          className="create-bg"
+          style={{ backgroundImage: `url(${customCoverUrl || coverPreset.imageUrl})` }}
+        />
+      )}
 
       {/* Content */}
       <div className="relative z-10 min-h-screen">
@@ -351,23 +373,35 @@ export default function CreateTrip() {
                     <div className="space-y-4">
                       {/* Main cover preview */}
                       <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-muted group">
-                        <img
-                          src={effectiveCoverUrl}
-                          alt="Trip cover"
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                        {isUsingPoster && currentPoster ? (
+                          <div
+                            className="w-full h-full"
+                            style={getPosterBackground(currentPoster)}
+                          />
+                        ) : (
+                          <img
+                            src={customCoverUrl || coverPreset.imageUrl}
+                            alt="Trip cover"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                         <button
                           type="button"
                           onClick={() => setShowCoverPicker(!showCoverPicker)}
-                          className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 hover:bg-black/70 text-white text-sm font-medium backdrop-blur-sm transition-colors"
+                          className={cn(
+                            "absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm transition-colors",
+                            isUsingPoster && currentPoster?.textColor === 'dark'
+                              ? "bg-black/30 hover:bg-black/50 text-white"
+                              : "bg-black/50 hover:bg-black/70 text-white"
+                          )}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           Edit
                         </button>
                       </div>
 
-                      {/* Cover picker with category tabs */}
+                      {/* Cover picker with Photos/Posters toggle */}
                       <AnimatePresence>
                         {showCoverPicker && (
                           <motion.div
@@ -377,77 +411,175 @@ export default function CreateTrip() {
                             className="overflow-hidden"
                           >
                             <div className="create-card-inner p-3 space-y-3">
-                              {/* Upload your own */}
-                              <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 border-dashed border-black/[0.08] hover:border-primary/30 hover:bg-primary/[0.02] transition-all text-sm font-medium text-muted-foreground"
-                              >
-                                <ImagePlus className="h-4 w-4" />
-                                Upload your own image
-                              </button>
-                              <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handleCoverUpload}
-                              />
-
-                              {/* Category tabs */}
-                              <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
-                                {PRESET_CATEGORIES.map((cat) => (
-                                  <button
-                                    key={cat.key}
-                                    type="button"
-                                    onClick={() => setCoverCategory(cat.key)}
-                                    className={cn(
-                                      'px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all',
-                                      coverCategory === cat.key
-                                        ? 'bg-foreground text-background'
-                                        : 'bg-black/[0.05] text-muted-foreground hover:bg-black/[0.1]'
-                                    )}
-                                  >
-                                    {cat.label}
-                                  </button>
-                                ))}
+                              {/* Photos / Posters toggle */}
+                              <div className="flex rounded-lg bg-black/[0.04] p-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => { setCoverMode('posters'); setCustomCoverUrl(null); }}
+                                  className={cn(
+                                    'flex-1 text-xs font-semibold py-2 rounded-md transition-all',
+                                    coverMode === 'posters'
+                                      ? 'bg-white text-foreground shadow-sm'
+                                      : 'text-muted-foreground hover:text-foreground'
+                                  )}
+                                >
+                                  Posters
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCoverMode('photos')}
+                                  className={cn(
+                                    'flex-1 text-xs font-semibold py-2 rounded-md transition-all',
+                                    coverMode === 'photos'
+                                      ? 'bg-white text-foreground shadow-sm'
+                                      : 'text-muted-foreground hover:text-foreground'
+                                  )}
+                                >
+                                  Photos
+                                </button>
                               </div>
 
-                              {/* Image grid */}
-                              <div className="grid grid-cols-4 gap-1.5 max-h-[240px] overflow-y-auto">
-                                {filteredPresets.map((preset) => (
+                              {coverMode === 'posters' ? (
+                                <>
+                                  {/* Poster category tabs */}
+                                  <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
+                                    {POSTER_CATEGORIES.map((cat) => (
+                                      <button
+                                        key={cat.key}
+                                        type="button"
+                                        onClick={() => setPosterCategory(cat.key)}
+                                        className={cn(
+                                          'px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all',
+                                          posterCategory === cat.key
+                                            ? 'bg-foreground text-background'
+                                            : 'bg-black/[0.05] text-muted-foreground hover:bg-black/[0.1]'
+                                        )}
+                                      >
+                                        {cat.label}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  {/* Poster gradient grid */}
+                                  <div className="grid grid-cols-3 gap-2 max-h-[280px] overflow-y-auto">
+                                    {POSTER_THEMES.filter((t) => t.category === posterCategory).map((theme) => (
+                                      <button
+                                        key={theme.key}
+                                        type="button"
+                                        onClick={() => {
+                                          setPosterKey(theme.key);
+                                          setCustomCoverUrl(null);
+                                          setShowCoverPicker(false);
+                                        }}
+                                        className={cn(
+                                          'relative aspect-[4/3] rounded-xl overflow-hidden transition-all',
+                                          'hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]',
+                                          posterKey === theme.key && isUsingPoster && 'ring-2 ring-primary shadow-lg'
+                                        )}
+                                      >
+                                        <div
+                                          className="w-full h-full"
+                                          style={getPosterBackground(theme)}
+                                        />
+                                        <div className={cn(
+                                          'absolute inset-x-0 bottom-0 p-1.5',
+                                          theme.textColor === 'light'
+                                            ? 'bg-gradient-to-t from-black/40 to-transparent'
+                                            : 'bg-gradient-to-t from-white/30 to-transparent'
+                                        )}>
+                                          <span className={cn(
+                                            'text-[10px] font-medium leading-none',
+                                            theme.textColor === 'light' ? 'text-white' : 'text-foreground'
+                                          )}>
+                                            {theme.label}
+                                          </span>
+                                        </div>
+                                        {posterKey === theme.key && isUsingPoster && (
+                                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                                            <Check className="h-5 w-5 text-white drop-shadow-lg" />
+                                          </div>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  {/* Upload your own */}
                                   <button
-                                    key={preset.key}
                                     type="button"
-                                    onClick={() => {
-                                      setCoverImageKey(preset.key);
-                                      setShowCoverPicker(false);
-                                    }}
-                                    className={cn(
-                                      'relative aspect-square rounded-lg overflow-hidden transition-all',
-                                      'hover:ring-2 hover:ring-primary/50',
-                                      coverImageKey === preset.key && 'ring-2 ring-primary'
-                                    )}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 border-dashed border-black/[0.08] hover:border-primary/30 hover:bg-primary/[0.02] transition-all text-sm font-medium text-muted-foreground"
                                   >
-                                    <img
-                                      src={preset.imageUrl}
-                                      alt={preset.label}
-                                      className="w-full h-full object-cover"
-                                      loading="lazy"
-                                    />
-                                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-1">
-                                      <span className="text-[9px] text-white font-medium leading-none">
-                                        {preset.label}
-                                      </span>
-                                    </div>
-                                    {coverImageKey === preset.key && (
-                                      <div className="absolute inset-0 bg-primary/25 flex items-center justify-center">
-                                        <Check className="h-4 w-4 text-white drop-shadow" />
-                                      </div>
-                                    )}
+                                    <ImagePlus className="h-4 w-4" />
+                                    Upload your own image
                                   </button>
-                                ))}
-                              </div>
+                                  <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleCoverUpload}
+                                  />
+
+                                  {/* Photo category tabs */}
+                                  <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
+                                    {PRESET_CATEGORIES.map((cat) => (
+                                      <button
+                                        key={cat.key}
+                                        type="button"
+                                        onClick={() => setCoverCategory(cat.key)}
+                                        className={cn(
+                                          'px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all',
+                                          coverCategory === cat.key
+                                            ? 'bg-foreground text-background'
+                                            : 'bg-black/[0.05] text-muted-foreground hover:bg-black/[0.1]'
+                                        )}
+                                      >
+                                        {cat.label}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  {/* Image grid */}
+                                  <div className="grid grid-cols-4 gap-1.5 max-h-[240px] overflow-y-auto">
+                                    {filteredPresets.map((preset) => (
+                                      <button
+                                        key={preset.key}
+                                        type="button"
+                                        onClick={() => {
+                                          setCoverImageKey(preset.key);
+                                          setCoverMode('photos');
+                                          setCustomCoverUrl(null);
+                                          setShowCoverPicker(false);
+                                        }}
+                                        className={cn(
+                                          'relative aspect-square rounded-lg overflow-hidden transition-all',
+                                          'hover:ring-2 hover:ring-primary/50',
+                                          coverImageKey === preset.key && coverMode === 'photos' && !customCoverUrl && 'ring-2 ring-primary'
+                                        )}
+                                      >
+                                        <img
+                                          src={preset.imageUrl}
+                                          alt={preset.label}
+                                          className="w-full h-full object-cover"
+                                          loading="lazy"
+                                        />
+                                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-1">
+                                          <span className="text-[9px] text-white font-medium leading-none">
+                                            {preset.label}
+                                          </span>
+                                        </div>
+                                        {coverImageKey === preset.key && coverMode === 'photos' && !customCoverUrl && (
+                                          <div className="absolute inset-0 bg-primary/25 flex items-center justify-center">
+                                            <Check className="h-4 w-4 text-white drop-shadow" />
+                                          </div>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </motion.div>
                         )}

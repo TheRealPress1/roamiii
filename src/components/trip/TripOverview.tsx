@@ -35,6 +35,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BookingItemCard, { createEmptyBooking, type BookingEntry } from '@/components/trip/BookingItemCard';
 import { supabase } from '@/integrations/supabase/client';
 import type { Trip, TripProposal, TripMember, Message } from '@/lib/tripchat-types';
+import { isPosterCover, getPosterKeyFromCover, getPosterTheme, getPosterBackground } from '@/lib/poster-themes';
 
 interface TripOverviewProps {
   trip: Trip;
@@ -127,7 +128,10 @@ export function TripOverview({
     setShowFontPicker(false);
   };
 
-  const coverUrl = trip.cover_image_url || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=450&fit=crop';
+  const rawCover = trip.cover_image_url || '';
+  const hasPoster = isPosterCover(rawCover);
+  const posterTheme = hasPoster ? getPosterTheme(getPosterKeyFromCover(rawCover)) : null;
+  const coverUrl = hasPoster ? 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=450&fit=crop' : (rawCover || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=450&fit=crop');
   const hostMember = members.find((m) => m.role === 'owner');
   const hostProfile = hostMember?.profile;
   const inviteLink = `${window.location.origin}/join/${trip.join_code}`;
@@ -409,26 +413,43 @@ export function TripOverview({
   return (
     <div className="flex-1 overflow-y-auto relative isolate">
       {/* Themed background — scoped to this container, not full viewport */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: `url(${coverUrl})`,
-          filter: 'blur(80px) brightness(0.85) saturate(1.4)',
-          transform: 'scale(1.3)',
-          zIndex: 0,
-        }}
-      />
+      {hasPoster && posterTheme ? (
+        <div
+          className="absolute inset-0"
+          style={{
+            ...getPosterBackground(posterTheme),
+            zIndex: 0,
+          }}
+        />
+      ) : (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${coverUrl})`,
+            filter: 'blur(80px) brightness(0.85) saturate(1.4)',
+            transform: 'scale(1.3)',
+            zIndex: 0,
+          }}
+        />
+      )}
 
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-6">
         {/* Main card */}
         <div className="create-card p-6 sm:p-8 mb-6">
           {/* Cover image at top */}
           <div className="relative rounded-xl overflow-hidden aspect-[21/9] bg-muted mb-6 -mx-2 -mt-2 sm:-mx-4 sm:-mt-4">
-            <img
-              src={coverUrl}
-              alt={trip.name}
-              className="w-full h-full object-cover"
-            />
+            {hasPoster && posterTheme ? (
+              <div
+                className="w-full h-full"
+                style={getPosterBackground(posterTheme)}
+              />
+            ) : (
+              <img
+                src={coverUrl}
+                alt={trip.name}
+                className="w-full h-full object-cover"
+              />
+            )}
           </div>
 
           {/* Trip name + font picker */}
