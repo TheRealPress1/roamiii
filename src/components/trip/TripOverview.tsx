@@ -102,6 +102,7 @@ export function TripOverview({
   const [newBookings, setNewBookings] = useState<BookingEntry[]>([]);
   const [savingBookings, setSavingBookings] = useState(false);
   const [assigningDay, setAssigningDay] = useState<string | null>(null);
+  const [housingCheckIn, setHousingCheckIn] = useState<{ proposalId: string; dayDate: Date } | null>(null);
   const [chatExpanded, setChatExpanded] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatSending, setChatSending] = useState(false);
@@ -149,13 +150,26 @@ export function TripOverview({
     }
   }, [trip.date_start, trip.date_end]);
 
-  // Group proposals by day
+  // Group proposals by day (housing can span multiple days)
   const proposalsByDay = useMemo(() => {
     const grouped: Map<string, TripProposal[]> = new Map();
     const unscheduled: TripProposal[] = [];
 
     proposals.forEach((p) => {
-      if (p.date_start) {
+      if (p.type === 'housing' && p.date_start && p.date_end && p.date_start !== p.date_end) {
+        // Multi-day housing: show on all days in range
+        let addedToAny = false;
+        tripDays.forEach((d) => {
+          const dayStr = format(d, 'yyyy-MM-dd');
+          if (dayStr >= p.date_start! && dayStr <= p.date_end!) {
+            const key = d.toISOString();
+            if (!grouped.has(key)) grouped.set(key, []);
+            grouped.get(key)!.push(p);
+            addedToAny = true;
+          }
+        });
+        if (!addedToAny) unscheduled.push(p);
+      } else if (p.date_start) {
         const pDate = parseISO(p.date_start);
         const matchingDay = tripDays.find((d) => isSameDay(d, pDate));
         if (matchingDay) {
@@ -283,11 +297,32 @@ export function TripOverview({
     }
   };
 
+  // Assign housing to a date range (check-in to check-out)
+  const handleAssignHousingDays = async (proposalId: string, startDate: Date, endDate: Date) => {
+    setAssigningDay(proposalId);
+    try {
+      const { error } = await supabase
+        .from('trip_proposals')
+        .update({
+          date_start: format(startDate, 'yyyy-MM-dd'),
+          date_end: format(endDate, 'yyyy-MM-dd'),
+        })
+        .eq('id', proposalId);
+      if (error) throw error;
+      onUpdated();
+    } catch {
+      toast.error('Failed to assign housing');
+    } finally {
+      setAssigningDay(null);
+      setHousingCheckIn(null);
+    }
+  };
+
   const handleUnschedule = async (proposalId: string) => {
     try {
       const { error } = await supabase
         .from('trip_proposals')
-        .update({ date_start: null })
+        .update({ date_start: null, date_end: null })
         .eq('id', proposalId);
       if (error) throw error;
       onUpdated();
@@ -342,8 +377,39 @@ export function TripOverview({
   };
 
   // Render a single plan item (no price) with optional admin controls
-  const renderPlanItem = (proposal: TripProposal, options?: { showDayAssign?: boolean; showUnschedule?: boolean }) => {
+  const renderPlanItem = (proposal: TripProposal, options?: { showDayAssign?: boolean; showUnschedule?: boolean; currentDay?: Date }) => {
     const Icon = getBookingIcon(proposal.type);
+    const isMultiDayHousing = proposal.type === 'housing' && proposal.date_start && proposal.date_end && proposal.date_start !== proposal.date_end;
+
+    // For multi-day housing on non-first days, show compact indicator
+    if (isMultiDayHousing && options?.currentDay) {
+      const isFirstDay = isSameDay(options.currentDay, parseISO(proposal.date_start!));
+      const isLastDay = isSameDay(options.currentDay, parseISO(proposal.date_end!));
+
+      if (!isFirstDay) {
+        return (
+          <div key={proposal.id} className="flex items-center gap-3 py-2 pl-1">
+            <div className="w-6 h-6 rounded-lg bg-primary/5 flex items-center justify-center shrink-0">
+              <Home className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <span className="text-xs text-muted-foreground italic">
+              {proposal.name || proposal.destination}
+              {isLastDay ? ' · Check-out' : ' · Staying'}
+            </span>
+          </div>
+        );
+      }
+    }
+
+    // Day range label for multi-day housing
+    const housingRangeLabel = isMultiDayHousing
+      ? (() => {
+          const startIdx = tripDays.findIndex((d) => isSameDay(d, parseISO(proposal.date_start!)));
+          const endIdx = tripDays.findIndex((d) => isSameDay(d, parseISO(proposal.date_end!)));
+          return `Day ${startIdx + 1} – Day ${endIdx + 1}`;
+        })()
+      : null;
+
     return (
       <div key={proposal.id} className="space-y-1.5">
         <div className="booking-card p-4 flex items-center gap-4">
@@ -354,11 +420,15 @@ export function TripOverview({
             <p className="text-sm font-medium text-foreground truncate">
               {proposal.name || proposal.destination}
             </p>
-            {proposal.description && (
+            {housingRangeLabel ? (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {housingRangeLabel}
+              </p>
+            ) : proposal.description ? (
               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                 {proposal.description}
               </p>
-            )}
+            ) : null}
           </div>
 
           {proposal.booked_by && (
@@ -378,20 +448,20 @@ export function TripOverview({
             </a>
           )}
 
-          {/* Admin: unschedule from day */}
+          {/* Admin: unschedule from schedule */}
           {isAdmin && options?.showUnschedule && (
             <button
               onClick={() => handleUnschedule(proposal.id)}
               className="p-1.5 rounded-full hover:bg-black/[0.06] transition-colors shrink-0"
-              title="Remove from this day"
+              title="Remove from schedule"
             >
               <X className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
           )}
         </div>
 
-        {/* Admin: day assignment selector for unscheduled items */}
-        {isAdmin && options?.showDayAssign && tripDays.length > 0 && (
+        {/* Admin: day assignment for activities (single day) */}
+        {isAdmin && options?.showDayAssign && tripDays.length > 0 && proposal.type !== 'housing' && (
           <div className="flex items-center gap-1.5 pl-14 flex-wrap">
             <span className="text-[10px] text-muted-foreground mr-0.5">Move to:</span>
             {tripDays.map((day, idx) => (
@@ -404,6 +474,52 @@ export function TripOverview({
                 Day {idx + 1}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Admin: housing day-range assignment (check-in / check-out) */}
+        {isAdmin && options?.showDayAssign && tripDays.length > 0 && proposal.type === 'housing' && (
+          <div className="flex flex-col gap-1.5 pl-14">
+            {housingCheckIn?.proposalId === proposal.id ? (
+              <>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-muted-foreground mr-0.5">Check-out:</span>
+                  {tripDays.map((day, idx) => {
+                    if (day < housingCheckIn.dayDate) return null;
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        onClick={() => handleAssignHousingDays(proposal.id, housingCheckIn.dayDate, day)}
+                        disabled={assigningDay === proposal.id}
+                        className="text-[10px] px-2 py-0.5 rounded-full bg-vote-in/10 text-vote-in hover:bg-vote-in/20 transition-colors disabled:opacity-50"
+                      >
+                        Day {idx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setHousingCheckIn(null)}
+                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors self-start"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] text-muted-foreground mr-0.5">Check-in:</span>
+                {tripDays.map((day, idx) => (
+                  <button
+                    key={day.toISOString()}
+                    onClick={() => setHousingCheckIn({ proposalId: proposal.id, dayDate: day })}
+                    disabled={assigningDay === proposal.id}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+                  >
+                    Day {idx + 1}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -792,7 +908,7 @@ export function TripOverview({
                       </div>
                       {dayProposals.length > 0 ? (
                         <div className="space-y-2 ml-8">
-                          {dayProposals.map((p) => renderPlanItem(p, { showUnschedule: true }))}
+                          {dayProposals.map((p) => renderPlanItem(p, { showUnschedule: true, currentDay: day }))}
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground ml-8 py-2 italic">
